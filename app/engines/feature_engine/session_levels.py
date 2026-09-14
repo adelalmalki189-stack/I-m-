@@ -34,3 +34,16 @@ def running_day_high_low(current_session_candles: Sequence[Candle]) -> list[tupl
         result.append((running_high, running_low))
 
     return result
+
+
+def compute_opening_range(
+    current_session_candles: Sequence[Candle], *, bars: int = 3
+) -> tuple[Decimal, Decimal] | None:
+    """Methodology §6.1 (Setup Engine's third-priority resistance/support
+    candidate): high/low of the first `bars` 5m candles (3 bars = 15
+    minutes). Returns None until that many candles have closed — never a
+    partial-window guess."""
+    if len(current_session_candles) < bars:
+        return None
+    window = current_session_candles[:bars]
+    return max(c.high for c in window), min(c.low for c in window)

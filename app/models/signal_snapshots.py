@@ -21,8 +21,12 @@ class SignalSnapshot(Base):
 
     underlying_price: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
     vwap: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
-    ema20: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
-    ema50: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    # Nullable: a signal can legitimately fire before a symbol has 20/50
+    # bars of same-day history (EMA warm-up — docs/CALCULATION_SPEC_V0.1.md
+    # §2). Faking a value here would violate the "never fabricate" rule
+    # applied everywhere else in this schema (e.g. rvol below).
+    ema20: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    ema50: Mapped[float | None] = mapped_column(Numeric(12, 4))
     rvol: Mapped[float | None] = mapped_column(Numeric(6, 3))
 
     spy_state: Mapped[str | None] = mapped_column(String(20))
