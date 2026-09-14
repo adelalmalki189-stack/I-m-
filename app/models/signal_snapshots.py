@@ -1,0 +1,48 @@
+"""docs/DATA_SPEC_V0.1.md §12 — signal_snapshots (TradeSnapshot).
+
+Every field here is a COPY frozen at decision time, never a live reference —
+that's the entire point: answer "was this a good call given what was known
+then?" without hindsight contaminating the record.
+"""
+from __future__ import annotations
+
+from datetime import date
+
+from sqlalchemy import Date, ForeignKey, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.models.base import Base
+
+
+class SignalSnapshot(Base):
+    __tablename__ = "signal_snapshots"
+
+    signal_id: Mapped[str] = mapped_column(String(36), ForeignKey("signals.signal_id"), primary_key=True)
+
+    underlying_price: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    vwap: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    ema20: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    ema50: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    rvol: Mapped[float | None] = mapped_column(Numeric(6, 3))
+
+    spy_state: Mapped[str | None] = mapped_column(String(20))
+    qqq_state: Mapped[str | None] = mapped_column(String(20))
+    vix_value: Mapped[float | None] = mapped_column(Numeric(6, 2))
+    sector_state: Mapped[str | None] = mapped_column(String(20))
+
+    contract_id: Mapped[str | None] = mapped_column(String(50))
+    strike: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    expiration: Mapped[date | None] = mapped_column(Date)
+    dte: Mapped[int | None] = mapped_column()
+
+    bid: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    ask: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    last: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    volume: Mapped[int | None] = mapped_column()
+    oi: Mapped[int | None] = mapped_column()
+    iv: Mapped[float | None] = mapped_column(Numeric(6, 4))
+    delta: Mapped[float | None] = mapped_column(Numeric(8, 5))
+
+    calc_version: Mapped[str] = mapped_column(
+        String(10), ForeignKey("strategy_parameters.version"), nullable=False
+    )
