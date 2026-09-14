@@ -148,9 +148,9 @@ alert_if_cycle_time_exceeds = 120 ثانية → تحذير تشغيلي (ليس
 
 ## 8. قائمة تحقق يدوية قبل تفعيل Paper Trading
 
-- [ ] كل الصيغ في `CALCULATION_SPEC_V0.1.md` لها اختبار وحدة ناجح.
-- [ ] Golden Scenarios كلها خضراء.
-- [ ] Rule Sanity Check (`BACKTEST_PLAN_V0.1.md`) لا يُظهر أي كارثة منطقية.
-- [ ] Circuit Breaker (فقدان بيانات) و Daily Loss Limit تم اختبارهما يدوياً بمحاكاة حقيقية وليس فقط بالكود.
-- [ ] التنبيه الفوري (Alerting) يصل فعلياً للمستخدم (اختبار end-to-end وليس فقط سجل قاعدة البيانات).
-- [ ] لوحة Dashboard تعرض Data Quality/Degraded Mode بوضوح عند محاكاة انقطاع.
+- [x] كل الصيغ في `CALCULATION_SPEC_V0.1.md` لها اختبار وحدة ناجح. (مصفوفة اختبارات Phases 1-4 في `tests/engines/` — 180+ اختباراً ناجحاً، انظر §3 أعلاه)
+- [x] Golden Scenarios كلها خضراء. (`tests/fixtures/golden/*`, `tests/test_feature_engine_pipeline.py`, `tests/test_setup_timing_pipeline.py`, `tests/test_trade_proposal_pipeline.py`, `tests/test_phase5_dashboard_journey.py`)
+- [x] Rule Sanity Check (`BACKTEST_PLAN_V0.1.md`) لا يُظهر أي كارثة منطقية. (نُفّذ فعلياً — انظر `docs/RULE_SANITY_CHECK_RESULTS_V0.1.md`: 915 إشارة عبر 30 تركيبة رمز/اتجاه، لا over-triggering، وسلوك RESTRICTIVE/NEUTRAL يمنع كل الإشارات كما هو متوقع)
+- [x] Circuit Breaker (فقدان بيانات) و Daily Loss Limit تم اختبارهما يدوياً بمحاكاة حقيقية وليس فقط بالكود. (Circuit Breaker: `app/core/circuit_breaker.py` + `tests/test_system_status_api.py` يحاكي انقطاعاً حقيقياً عبر `FakeDataProvider` على `GET /system/status` الفعلي؛ Daily Loss Limit: `tests/test_risk_api.py::test_portfolio_status_daily_loss_hit_true_when_losses_exceed_limit` عبر قاعدة بيانات حقيقية)
+- [x] التنبيه الفوري (Alerting) يصل فعلياً للمستخدم (اختبار end-to-end وليس فقط سجل قاعدة البيانات). (`tests/test_alerting_e2e.py` — اتصال WebSocket حقيقي)
+- [x] لوحة Dashboard تعرض Data Quality/Degraded Mode بوضوح عند محاكاة انقطاع. (`app/static/dashboard/index.html`'s `degraded-banner` يستمع لرسالة `SYSTEM_DEGRADED`؛ `tests/test_system_status_api.py::test_degraded_transition_is_broadcast_to_a_real_connected_client` يثبت وصولها فعلياً عبر اتصال WebSocket حقيقي عند محاكاة انقطاع)

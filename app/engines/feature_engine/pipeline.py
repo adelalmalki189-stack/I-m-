@@ -58,16 +58,42 @@ def compute_technical_features_for_session(
     atr_period: int = DEFAULT_ATR_PERIOD,
     swing_k: int = DEFAULT_SWING_K,
     rvol_min_valid_days: int = DEFAULT_MIN_VALID_DAYS,
+    prior_candles_for_continuity: Sequence[Candle] = (),
 ) -> list[FeatureRow]:
+    """`prior_candles_for_continuity` (default: none) lets EMA20/EMA50 and
+    ATR14 warm up from real prior history instead of reseeding every
+    session. docs/CALCULATION_SPEC_V0.1.md §2 explicitly requires EMA to
+    be "مستمرة عبر الأيام (لا تُصفَّر يومياً)" — seeded only once, ever, per
+    symbol — but every caller through Phase 6 only ever passed one
+    session, so this parameter defaulted away and nothing exercised it
+    until Phase 7's multi-day Replay harness did. Left opt-in (default
+    `()`, reproducing the exact prior single-session behavior bit-for-bit)
+    rather than changed by default, because flipping the default would
+    silently change every frozen golden-fixture value computed through
+    Phase 6 — a deliberate, separately-reviewed migration, not a side
+    effect of adding Phase 7. The Replay harness (app/replay/harness.py)
+    opts in; production ingestion should too once it exists.
+    """
     if not current_session_candles:
         return []
 
+    prior_closes = [c.close for c in prior_candles_for_continuity]
+    prior_count = len(prior_closes)
+
     closes = [c.close for c in current_session_candles]
     vwap_series = compute_session_vwap(current_session_candles)
-    ema_fast_series = compute_ema(closes, ema_periods[0])
-    ema_slow_series = compute_ema(closes, ema_periods[1])
-    slope_series = compute_slope_series(ema_fast_series)
-    atr_series = compute_atr(current_session_candles, atr_period)
+
+    # Slope is computed on the full (prior + current) EMA series before
+    # slicing, so a continuation day's first few candles still see the
+    # real trend from the end of the prior session instead of a false gap.
+    ema_fast_full = compute_ema(prior_closes + closes, ema_periods[0])
+    ema_slow_full = compute_ema(prior_closes + closes, ema_periods[1])
+    slope_full = compute_slope_series(ema_fast_full)
+    ema_fast_series = ema_fast_full[prior_count:]
+    ema_slow_series = ema_slow_full[prior_count:]
+    slope_series = slope_full[prior_count:]
+
+    atr_series = compute_atr([*prior_candles_for_continuity, *current_session_candles], atr_period)[prior_count:]
     rvol_series = compute_rvol_for_session(
         current_session_candles, baseline_sessions_for_rvol, min_valid_days=rvol_min_valid_days
     )
