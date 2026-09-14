@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from app.data_providers.schemas import OptionContractInfo, OptionQuote
+from app.engines._score_utils import clamp, lerp
 from app.models.enums import OptionType
 
 # ---------------------------------------------------------------------------
@@ -98,19 +99,9 @@ IDEAL_DTE_MAX = 21
 DEFAULT_OI_TARGET = 5000
 
 
-def _clamp(value: Decimal, lo: Decimal, hi: Decimal) -> Decimal:
-    return max(lo, min(hi, value))
-
-
-def _lerp(x: Decimal, x0: Decimal, y0: Decimal, x1: Decimal, y1: Decimal) -> Decimal:
-    if x1 == x0:
-        return y0
-    return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
-
-
 def spread_score(spread_pct: Decimal, *, max_spread_pct: Decimal = DEFAULT_MAX_SPREAD_PCT) -> Decimal:
     """§9.1: 0% spread -> 100, max_spread_pct -> 0."""
-    return _clamp(Decimal(100) - (spread_pct / max_spread_pct) * Decimal(100), Decimal(0), Decimal(100))
+    return clamp(Decimal(100) - (spread_pct / max_spread_pct) * Decimal(100), Decimal(0), Decimal(100))
 
 
 def delta_score(delta: Decimal) -> Decimal:
@@ -119,9 +110,9 @@ def delta_score(delta: Decimal) -> Decimal:
     if IDEAL_DELTA_MIN <= d <= IDEAL_DELTA_MAX:
         return Decimal(100)
     if DEFAULT_MIN_ABS_DELTA <= d < IDEAL_DELTA_MIN:
-        return _lerp(d, DEFAULT_MIN_ABS_DELTA, Decimal(70), IDEAL_DELTA_MIN, Decimal(100))
+        return lerp(d, DEFAULT_MIN_ABS_DELTA, Decimal(70), IDEAL_DELTA_MIN, Decimal(100))
     if IDEAL_DELTA_MAX < d <= DEFAULT_MAX_ABS_DELTA:
-        return _lerp(d, IDEAL_DELTA_MAX, Decimal(100), DEFAULT_MAX_ABS_DELTA, Decimal(70))
+        return lerp(d, IDEAL_DELTA_MAX, Decimal(100), DEFAULT_MAX_ABS_DELTA, Decimal(70))
     return Decimal(0)  # outside the Hard Gate range anyway
 
 
@@ -130,9 +121,9 @@ def dte_score(dte: int) -> Decimal:
     if IDEAL_DTE_MIN <= dte <= IDEAL_DTE_MAX:
         return Decimal(100)
     if DEFAULT_MIN_DTE <= dte < IDEAL_DTE_MIN:
-        return _lerp(Decimal(dte), Decimal(DEFAULT_MIN_DTE), Decimal(70), Decimal(IDEAL_DTE_MIN), Decimal(100))
+        return lerp(Decimal(dte), Decimal(DEFAULT_MIN_DTE), Decimal(70), Decimal(IDEAL_DTE_MIN), Decimal(100))
     if IDEAL_DTE_MAX < dte <= DEFAULT_MAX_DTE:
-        return _lerp(Decimal(dte), Decimal(IDEAL_DTE_MAX), Decimal(100), Decimal(DEFAULT_MAX_DTE), Decimal(70))
+        return lerp(Decimal(dte), Decimal(IDEAL_DTE_MAX), Decimal(100), Decimal(DEFAULT_MAX_DTE), Decimal(70))
     return Decimal(0)  # outside the Hard Gate range anyway (0DTE scored separately by callers if allowed)
 
 
@@ -143,7 +134,7 @@ def volume_oi_score(open_interest: int, volume: int, *, oi_target: int = DEFAULT
     del volume  # kept in the signature for callers/tests that want it explicit; not in the §9.4 formula itself
     oi_decimal = Decimal(max(open_interest, 1))
     target_decimal = Decimal(oi_target)
-    return _clamp(Decimal(100) * (oi_decimal.log10() / target_decimal.log10()), Decimal(0), Decimal(100))
+    return clamp(Decimal(100) * (oi_decimal.log10() / target_decimal.log10()), Decimal(0), Decimal(100))
 
 
 def compute_iv_rank(current_iv: Decimal, historical_ivs: Sequence[Decimal]) -> Decimal | None:
@@ -167,8 +158,8 @@ def iv_score(iv_rank: Decimal | None) -> Decimal:
     if iv_rank <= 50:
         return Decimal(100)
     if iv_rank <= 80:
-        return _lerp(iv_rank, Decimal(50), Decimal(100), Decimal(80), Decimal(60))
-    return _lerp(_clamp(iv_rank, Decimal(80), Decimal(100)), Decimal(80), Decimal(60), Decimal(100), Decimal(20))
+        return lerp(iv_rank, Decimal(50), Decimal(100), Decimal(80), Decimal(60))
+    return lerp(clamp(iv_rank, Decimal(80), Decimal(100)), Decimal(80), Decimal(60), Decimal(100), Decimal(20))
 
 
 # ---------------------------------------------------------------------------
