@@ -24,6 +24,7 @@ from app.models.iv_history import IVHistory
 from app.models.outcomes import Outcome
 from app.models.signal_snapshots import SignalSnapshot
 from app.models.signals import Signal
+from app.services.alerting_service import notify_signal_entry
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
@@ -118,6 +119,15 @@ class OutcomeItem(BaseModel):
     option_price_at_offset: Decimal | None
     mfe: Decimal | None
     mae: Decimal | None
+
+
+class SignalStatusUpdateRequest(BaseModel):
+    status: SignalStatus
+
+
+class SignalStatusUpdateResponse(BaseModel):
+    signal_id: str
+    status: SignalStatus
 
 
 class ContractCandidateResponse(BaseModel):
@@ -249,6 +259,37 @@ async def get_signal_outcome(
         )
         for o in result.scalars().all()
     ]
+
+
+@router.patch("/{signal_id}/status", response_model=SignalStatusUpdateResponse)
+async def update_signal_status(
+    signal_id: str, body: SignalStatusUpdateRequest, session: AsyncSession = Depends(get_db_session)
+) -> SignalStatusUpdateResponse:
+    """Not part of the original API_SPEC — added in Phase 6 as the hook a
+    live scanner loop calls to report a status transition it already
+    computed via app/engines/timing_engine.py (this endpoint never
+    re-derives the decision itself). Firing the alert exactly here, at the
+    single choke point every status change passes through, is what makes
+    docs/OPERATIONAL_SPEC_V0.1.md §6 ("alert only on transition to ENTRY")
+    enforceable in one place instead of every future call site
+    remembering to do it.
+    """
+    signal = await _get_signal_or_404(signal_id, session)
+
+    if signal.status == SignalStatus.INVALIDATED:
+        raise _error(
+            409, "SIGNAL_INVALIDATED_TERMINAL",
+            "INVALIDATED is terminal — a new Signal must be created instead of reverting this one",
+        )
+
+    previous_status = signal.status
+    signal.status = body.status
+    await session.commit()
+
+    if body.status == SignalStatus.ENTRY and previous_status != SignalStatus.ENTRY:
+        await notify_signal_entry(session, signal)
+
+    return SignalStatusUpdateResponse(signal_id=signal.signal_id, status=signal.status)
 
 
 @router.get("/{signal_id}/contracts", response_model=list[ContractCandidateResponse])
