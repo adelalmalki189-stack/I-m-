@@ -7,6 +7,7 @@ own, not folded silently into `signal = bullish`.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import DateTime, Enum, ForeignKey, ForeignKeyConstraint, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -24,22 +25,22 @@ class TechnicalFeatures(Base):
     symbol: Mapped[str] = mapped_column(String(10), primary_key=True)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
 
-    ema20: Mapped[float | None] = mapped_column(Numeric(12, 4))
-    ema50: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    ema20: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    ema50: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     ema20_slope: Mapped[TrendSlope | None] = mapped_column(Enum(TrendSlope, native_enum=False))
 
     # nullable: docs/CALCULATION_SPEC_V0.1.md §3.3 — INVALID during RVOL warm-up
-    rvol: Mapped[float | None] = mapped_column(Numeric(6, 3))
+    rvol: Mapped[Decimal | None] = mapped_column(Numeric(6, 3))
 
-    atr14: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    atr14: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
 
-    pdh: Mapped[float | None] = mapped_column(Numeric(12, 4))
-    pdl: Mapped[float | None] = mapped_column(Numeric(12, 4))
-    day_high: Mapped[float | None] = mapped_column(Numeric(12, 4))
-    day_low: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    pdh: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    pdl: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    day_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    day_low: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
 
-    swing_high: Mapped[float | None] = mapped_column(Numeric(12, 4))
-    swing_low: Mapped[float | None] = mapped_column(Numeric(12, 4))
+    swing_high: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
+    swing_low: Mapped[Decimal | None] = mapped_column(Numeric(12, 4))
     swing_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     market_structure: Mapped[MarketStructureState | None] = mapped_column(

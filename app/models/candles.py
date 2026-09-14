@@ -7,6 +7,7 @@ that hasn't closed yet. A row is only written once is_complete=True.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
@@ -22,10 +23,10 @@ class Candle5m(Base):
     )
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
 
-    open: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
-    high: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
-    low: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
-    close: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    open: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    high: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    low: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     volume: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    vwap: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False)
+    vwap: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
     is_complete: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

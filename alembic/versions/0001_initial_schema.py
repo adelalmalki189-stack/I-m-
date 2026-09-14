@@ -158,6 +158,8 @@ def upgrade() -> None:
             sa.Enum("LOW", "MEDIUM", "HIGH", "EXTREME", name="event_severity", native_enum=False),
             nullable=True,
         ),
+        sa.Column("conditions", sa.JSON(), nullable=True),
+        sa.Column("hard_gates", sa.JSON(), nullable=True),
         sa.Column("calc_version", sa.String(10), sa.ForeignKey("strategy_parameters.version"), nullable=False),
     )
 
@@ -206,6 +208,8 @@ def upgrade() -> None:
     op.create_table(
         "portfolio_risk_config",
         sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("account_size", sa.Numeric(14, 2), nullable=False, server_default="2000"),
+        sa.Column("risk_percent", sa.Numeric(5, 2), nullable=False, server_default="1"),
         sa.Column("max_concurrent_signals", sa.Integer(), nullable=False, server_default="3"),
         sa.Column("max_concurrent_per_sector", sa.Integer(), nullable=False, server_default="2"),
         sa.Column("daily_max_loss_pct", sa.Numeric(5, 2), nullable=False, server_default="3.0"),

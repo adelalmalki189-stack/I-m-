@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Options Trading — Dashboard</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #8b93a3;
+    --green: #3ecf6b;
+    --yellow: #e0b13c;
+    --red: #e0503c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+  }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  h2 { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 24px 0 8px; }
+  .banner {
+    background: var(--red); color: #fff; padding: 10px 14px; border-radius: 8px;
+    margin-bottom: 12px; font-weight: 600; display: none;
+  }
+  .banner.show { display: block; }
+  .market-bar { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 10px; }
+  .market-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--muted); }
+  .dot.BULLISH, .dot.SUPPORTIVE, .dot.NORMAL { background: var(--green); }
+  .dot.NEUTRAL, .dot.ELEVATED { background: var(--yellow); }
+  .dot.BEARISH, .dot.RESTRICTIVE, .dot.HIGH, .dot.EXTREME { background: var(--red); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; }
+  tr.opportunity-row { cursor: pointer; }
+  tr.opportunity-row:hover { background: rgba(255,255,255,0.04); }
+  .status-pill { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .status-ENTRY { background: var(--green); color: #04240f; }
+  .status-READY { background: var(--yellow); color: #2b2003; }
+  .status-WAIT { background: var(--border); color: var(--muted); }
+  .status-INVALIDATED { background: var(--red); color: #2b0603; }
+  #why-panel { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; margin-top: 12px; }
+  #why-panel.show { display: block; }
+  .gate-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+  .gate-PASS { color: var(--green); }
+  .gate-FAIL { color: var(--red); }
+  .cond-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--muted); }
+  .cond-row.passed { color: var(--text); }
+  form.log-trade { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: end; }
+  form.log-trade label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 4px; }
+  input, button, select { background: #0c0e12; border: 1px solid var(--border); color: var(--text);
+    padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+  button { background: var(--green); color: #04240f; font-weight: 600; cursor: pointer; border: none; }
+  button:hover { opacity: 0.9; }
+  .empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
+  .close-why { float: right; cursor: pointer; color: var(--muted); }
+</style>
+</head>
+<body>
+  <h1>Options Trading — Decision Support</h1>
+
+  <div id="degraded-banner" class="banner">⚠️ Data Feed Degraded — signals may be stale</div>
+
+  <h2>Market</h2>
+  <div id="market-bar" class="market-bar">
+    <span class="empty">Loading market context…</span>
+  </div>
+
+  <h2>Top Opportunities</h2>
+  <table id="opportunities-table">
+    <thead><tr><th>Symbol</th><th>Direction</th><th>Score</th><th>R:R</th><th>Status</th></tr></thead>
+    <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+  </table>
+
+  <div id="why-panel">
+    <span class="close-why" onclick="closeWhy()">✕ close</span>
+    <h2 style="margin-top:0">Why This Trade?</h2>
+    <div id="why-content"></div>
+
+    <h2>Log Manual Trade</h2>
+    <form class="log-trade" onsubmit="return submitTrade(event)">
+      <input type="hidden" id="log-signal-id">
+      <label>Entry time <input type="datetime-local" id="log-entry-time" required></label>
+      <label>Entry price <input type="number" step="0.01" id="log-entry-price" required></label>
+      <label>Quantity <input type="number" id="log-quantity" value="1" min="1" required></label>
+      <button type="submit">Log Trade</button>
+    </form>
+    <div id="log-result" class="empty"></div>
+  </div>
+
+  <h2>Trade Journal</h2>
+  <table id="trades-table">
+    <thead><tr><th>Entry Time</th><th>Entry Price</th><th>Qty</th><th>Exit Price</th><th>Realized P&L</th></tr></thead>
+    <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+  </table>
+
+<script>
+async function fetchJSON(url, opts) {
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body?.detail?.message || res.statusText);
+  }
+  return res.json();
+}
+
+async function loadSystemStatus() {
+  try {
+    const status = await fetchJSON('/system/status');
+    document.getElementById('degraded-banner').classList.toggle('show', !!status.degraded_mode);
+  } catch (e) { /* system status is best-effort on the dashboard */ }
+}
+
+async function loadMarketContext() {
+  const el = document.getElementById('market-bar');
+  try {
+    const ctx = await fetchJSON('/market/context');
+    el.innerHTML = `
+      <span class="market-item"><span class="dot ${ctx.spy.regime}"></span>SPY ${ctx.spy.regime}</span>
+      <span class="market-item"><span class="dot ${ctx.qqq.regime}"></span>QQQ ${ctx.qqq.regime}</span>
+      <span class="market-item"><span class="dot ${ctx.vix.regime}"></span>VIX ${ctx.vix.value} (${ctx.vix.regime})</span>
+      <span class="market-item"><span class="dot ${ctx.overall_market_regime}"></span>Overall: ${ctx.overall_market_regime}</span>
+    `;
+  } catch (e) {
+    el.innerHTML = '<span class="empty">Market context not available yet</span>';
+  }
+}
+
+async function loadOpportunities() {
+  const tbody = document.querySelector('#opportunities-table tbody');
+  try {
+    const signals = await fetchJSON('/signals?status=ENTRY,READY&limit=20');
+    if (!signals.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No opportunities right now</td></tr>';
+      return;
+    }
+    tbody.innerHTML = signals.map(s => `
+      <tr class="opportunity-row" onclick="openWhy('${s.signal_id}')">
+        <td>${s.symbol}</td>
+        <td>${s.direction}</td>
+        <td>${s.final_score ?? '—'}</td>
+        <td>${s.risk_reward ?? '—'}</td>
+        <td><span class="status-pill status-${s.status}">${s.status}</span></td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Could not load signals: ${e.message}</td></tr>`;
+  }
+}
+
+async function openWhy(signalId) {
+  const panel = document.getElementById('why-panel');
+  const content = document.getElementById('why-content');
+  document.getElementById('log-signal-id').value = signalId;
+  panel.classList.add('show');
+  content.innerHTML = '<span class="empty">Loading…</span>';
+
+  try {
+    const [detail, why] = await Promise.all([
+      fetchJSON(`/signals/${signalId}`),
+      fetchJSON(`/signals/${signalId}/why`).catch(() => null),
+    ]);
+
+    let html = `<p><strong>${detail.symbol} ${detail.direction}</strong> — Score ${detail.final_score ?? '—'}/100</p>`;
+    html += `<p>Entry zone: ${detail.entry_zone_low ?? '—'} – ${detail.entry_zone_high ?? '—'} &nbsp; `
+          + `Invalidation: ${detail.invalidation ?? '—'} &nbsp; Target: ${detail.target ?? '—'} &nbsp; `
+          + `R:R ${detail.risk_reward ?? '—'}</p>`;
+
+    if (why) {
+      html += '<h3 style="margin-bottom:4px">Hard Gates</h3>';
+      html += Object.entries(why.hard_gates).map(([k, v]) =>
+        `<div class="gate-row"><span>${k}</span><span class="gate-${v}">${v}</span></div>`
+      ).join('');
+
+      html += '<h3 style="margin-bottom:4px">Conditions</h3>';
+      html += why.conditions.map(c =>
+        `<div class="cond-row ${c.passed ? 'passed' : ''}">
+           <span>${c.rule}${c.threshold != null ? ' (threshold ' + c.threshold + ')' : ''}</span>
+           <span>${c.value}</span>
+         </div>`
+      ).join('');
+    } else {
+      html += '<p class="empty">No condition/hard-gate breakdown recorded for this signal.</p>';
+    }
+
+    content.innerHTML = html;
+  } catch (e) {
+    content.innerHTML = `<span class="empty">Could not load details: ${e.message}</span>`;
+  }
+}
+
+function closeWhy() {
+  document.getElementById('why-panel').classList.remove('show');
+}
+
+async function submitTrade(evt) {
+  evt.preventDefault();
+  const signalId = document.getElementById('log-signal-id').value;
+  const entryTime = document.getElementById('log-entry-time').value;
+  const entryPrice = document.getElementById('log-entry-price').value;
+  const quantity = document.getElementById('log-quantity').value;
+  const resultEl = document.getElementById('log-result');
+
+  try {
+    await fetchJSON('/trades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        signal_id: signalId,
+        entry_time: new Date(entryTime).toISOString(),
+        entry_price: entryPrice,
+        quantity: parseInt(quantity, 10),
+      }),
+    });
+    resultEl.textContent = 'Trade logged.';
+    loadTrades();
+  } catch (e) {
+    resultEl.textContent = `Could not log trade: ${e.message}`;
+  }
+  return false;
+}
+
+async function loadTrades() {
+  const tbody = document.querySelector('#trades-table tbody');
+  try {
+    const trades = await fetchJSON('/trades');
+    if (!trades.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="empty">No trades logged yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = trades.map(t => `
+      <tr>
+        <td>${new Date(t.user_entry_time).toLocaleString()}</td>
+        <td>${t.user_entry_price}</td>
+        <td>${t.quantity}</td>
+        <td>${t.user_exit_price ?? '—'}</td>
+        <td>${t.realized_pnl ?? '—'}</td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="5" class="empty">Could not load trades: ${e.message}</td></tr>`;
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([loadSystemStatus(), loadMarketContext(), loadOpportunities(), loadTrades()]);
+}
+
+refreshAll();
+setInterval(refreshAll, 15000);
+</script>
+</body>
+</html>
