@@ -24,7 +24,7 @@ from app.models.iv_history import IVHistory
 from app.models.outcomes import Outcome
 from app.models.signal_snapshots import SignalSnapshot
 from app.models.signals import Signal
-from app.services.alerting_service import notify_signal_entry
+from app.services.signal_lifecycle import SignalTerminalError, apply_signal_status_transition
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
@@ -265,29 +265,26 @@ async def get_signal_outcome(
 async def update_signal_status(
     signal_id: str, body: SignalStatusUpdateRequest, session: AsyncSession = Depends(get_db_session)
 ) -> SignalStatusUpdateResponse:
-    """Not part of the original API_SPEC — added in Phase 6 as the hook a
-    live scanner loop calls to report a status transition it already
-    computed via app/engines/timing_engine.py (this endpoint never
-    re-derives the decision itself). Firing the alert exactly here, at the
-    single choke point every status change passes through, is what makes
+    """Not part of the original API_SPEC — added in Phase 6 as a manual
+    override hook. The live Scanner Loop (app/services/scanner_loop.py)
+    computes these transitions itself via app/engines/timing_engine.py and
+    now applies them directly via app.services.signal_lifecycle rather
+    than looping back through this HTTP endpoint; this route remains for
+    a human (or a test) to drive the same transition manually. Both paths
+    share the exact same `apply_signal_status_transition` — the single
+    choke point every status change passes through — so
     docs/OPERATIONAL_SPEC_V0.1.md §6 ("alert only on transition to ENTRY")
-    enforceable in one place instead of every future call site
-    remembering to do it.
+    and the INVALIDATED-is-terminal rule are enforced identically either way.
     """
     signal = await _get_signal_or_404(signal_id, session)
 
-    if signal.status == SignalStatus.INVALIDATED:
+    try:
+        await apply_signal_status_transition(session, signal, body.status)
+    except SignalTerminalError as exc:
         raise _error(
             409, "SIGNAL_INVALIDATED_TERMINAL",
             "INVALIDATED is terminal — a new Signal must be created instead of reverting this one",
-        )
-
-    previous_status = signal.status
-    signal.status = body.status
-    await session.commit()
-
-    if body.status == SignalStatus.ENTRY and previous_status != SignalStatus.ENTRY:
-        await notify_signal_entry(session, signal)
+        ) from exc
 
     return SignalStatusUpdateResponse(signal_id=signal.signal_id, status=signal.status)
 
