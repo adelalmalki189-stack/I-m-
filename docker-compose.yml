@@ -1,0 +1,92 @@
+# Local/VM deployment stack for the Options Trading Decision Support System.
+# See docs/DEPLOYMENT_V0.1.md for host-specific instructions (a free
+# always-on VM is the realistic option for the `scanner` service, which
+# must run continuously — see that doc for why a request-driven "free web
+# service" tier does not fit it).
+#
+# Bring the whole stack up:
+#   cp .env.example .env   # fill in real values, especially IBKR_HOST/PORT
+#   docker compose up -d --build
+#
+# The `scanner` service needs IBKR TWS/IB Gateway reachable at IBKR_HOST:IBKR_PORT
+# on the paper account — see docs/PAPER_TRADING_PLAN_V0.1.md §1. It is commented
+# out by default so `docker compose up` alone never tries to reach a broker that
+# isn't configured yet; uncomment once that prerequisite is met.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-options_trading}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-options_trading}
+      POSTGRES_DB: ${POSTGRES_DB:-options_trading}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-options_trading}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  migrate:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    command: ["alembic", "upgrade", "head"]
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    env_file: .env
+    ports:
+      - "8000:8000"
+
+  # Uncomment once IBKR_HOST/IBKR_PORT in .env point to a reachable TWS/IB
+  # Gateway logged into the PAPER account (docs/PAPER_TRADING_PLAN_V0.1.md §1).
+  # SCANNER_SYMBOLS is a space-separated list, e.g. "NVDA AMD SPY".
+  # scanner:
+  #   build: .
+  #   restart: unless-stopped
+  #   depends_on:
+  #     migrate:
+  #       condition: service_completed_successfully
+  #     redis:
+  #       condition: service_started
+  #   env_file: .env
+  #   entrypoint: ["sh", "-c"]
+  #   command:
+  #     - >
+  #       python -m app.scripts.run_live_scanner
+  #       $(for s in ${SCANNER_SYMBOLS:-NVDA}; do echo --symbol $s; done)
+
+  # Optional headless IB Gateway (community image, not maintained by this
+  # project) -- an alternative to running TWS/Gateway on your own machine.
+  # Requires your own IBKR paper credentials in .env; read that project's
+  # own docs before enabling: https://github.com/gnzsnz/ib-gateway-docker
+  # ib-gateway:
+  #   image: ghcr.io/gnzsnz/ib-gateway:stable
+  #   restart: unless-stopped
+  #   environment:
+  #     TWS_USERID: ${IBKR_USERID}
+  #     TWS_PASSWORD: ${IBKR_PASSWORD}
+  #     TRADING_MODE: paper
+  #   ports:
+  #     - "4002:4002"
+
+volumes:
+  db_data:
+  redis_data:
