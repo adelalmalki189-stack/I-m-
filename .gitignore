@@ -8,3 +8,6 @@ __pycache__/
 build/
 .env
 *.db
+
+# Uploaded documents - keep private
+app/static/uploads/
