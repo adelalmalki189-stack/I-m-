@@ -170,9 +170,49 @@ async def _seed_passing_signal(db_session) -> Signal:
 async def test_dashboard_page_loads():
     with TestClient(app) as client:
         response = client.get("/dashboard/")
+        requests_response = client.get("/dashboard/requests.html")
+        comparison_response = client.get("/dashboard/comparison.html")
+        clients_response = client.get("/dashboard/clients.html")
+        policies_response = client.get("/dashboard/policies.html")
+        claims_response = client.get("/dashboard/claims.html")
+        collections_response = client.get("/dashboard/collections.html")
+        insurers_response = client.get("/dashboard/insurers.html")
+        reports_response = client.get("/dashboard/reports.html")
+        settings_response = client.get("/dashboard/settings.html")
+        portal_response = client.get("/dashboard/portal.html")
     assert response.status_code == 200
-    assert "Top Opportunities" in response.text
-    assert "Why This Trade" in response.text
+    assert "BUD | بُعد للوساطة التأمينية" in response.text
+    assert "رحلة طلبات التأمين" in response.text
+    assert requests_response.status_code == 200
+    assert "صندوق الطلبات الرقمية" in requests_response.text
+    assert "مساعد بُعد الذكي" in requests_response.text
+    assert comparison_response.status_code == 200
+    assert "مقارنة التغطيات" in comparison_response.text
+    assert "أفضل توازن" in comparison_response.text
+    assert clients_response.status_code == 200
+    assert "ملفات العملاء" in clients_response.text
+    assert "اقتراح متابعة آلي" in clients_response.text
+    assert policies_response.status_code == 200
+    assert "الوثائق والتجديدات" in policies_response.text
+    assert "أولوية التجديد المقترحة" in policies_response.text
+    assert claims_response.status_code == 200
+    assert "متابعة المطالبات" in claims_response.text
+    assert "مساعدة فرز المطالبة" in claims_response.text
+    assert collections_response.status_code == 200
+    assert "التحصيلات والتسويات" in collections_response.text
+    assert "تسويات عمولات الشركات" in collections_response.text
+    assert insurers_response.status_code == 200
+    assert "شبكة شركات التأمين" in insurers_response.text
+    assert "مراقبة جودة الربط" in insurers_response.text
+    assert reports_response.status_code == 200
+    assert "التقارير والتحليلات" in reports_response.text
+    assert "رؤى تشغيلية" in reports_response.text
+    assert settings_response.status_code == 200
+    assert "الإعدادات والصلاحيات" in settings_response.text
+    assert "ضوابط التوصيات الذكية" in settings_response.text
+    assert portal_response.status_code == 200
+    assert "اطلب تأمينك من بُعد" in portal_response.text
+    assert "إرسال طلب المعاينة" in portal_response.text
 
 
 async def test_full_user_journey_see_opportunity_why_and_log_trade(db_session):

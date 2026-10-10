@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | صندوق الطلبات الرقمية</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+:root{--ink:#0A0A0B;--muted:#4A4A55;--line:#E6E9F2;--paper:#E6E9F2;--white:#FFFFFF;--black:#0A0A0B;--blue:#2D5BFF;--gray:#4A4A55;--pale:#E6E9F2}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;font-size:13px}button,input,select{font:inherit}button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}
+.side{position:sticky;top:0;height:100vh;padding:23px 15px 16px;background:var(--black);color:var(--white);display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:0 8px 28px}.brand-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--gray);border-radius:10px;color:var(--white);font-size:12px;font-weight:700}.brand-name{font-size:19px;font-weight:700}.brand-sub{margin-top:3px;color:var(--pale);font-size:10px}.nav-label{margin:8px 10px;color:var(--pale);font-size:10px}.nav{display:grid;gap:3px}.nav a{display:flex;align-items:center;gap:11px;min-height:40px;padding:0 11px;border-radius:5px;color:var(--pale);text-decoration:none;font-size:12px}.nav a:hover{background:var(--gray);color:var(--white)}.nav a.active{background:var(--blue);color:var(--white)}.nav-icon{width:18px;text-align:center}.user{margin-top:auto;border-top:1px solid var(--gray);padding:14px 7px 0;display:flex;align-items:center;gap:9px;font-size:11px}.avatar{display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:var(--pale);color:var(--black);font-weight:700}.user small{display:block;margin-top:3px;color:var(--pale);font-size:9px}
+main{min-width:0;padding:22px clamp(16px,2.7vw,35px) 35px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.crumb{font-size:11px;color:var(--muted)}.crumb a{color:var(--muted);text-decoration:none}.crumb b{color:var(--ink)}.top-actions{display:flex;gap:8px;align-items:center}.search{width:min(240px,26vw);height:35px;padding:0 10px;border:1px solid var(--line);border-radius:5px;background:var(--white);font-size:11px}.search:focus,select:focus,input:focus{outline:2px solid var(--blue);outline-offset:1px}.button{height:34px;padding:0 11px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--ink);font-size:10px}.button.primary{border-color:var(--blue);background:var(--blue);color:var(--white);font-weight:600}.button:hover{border-color:var(--blue)}.page-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:15px}.page-head h1{margin:0;font-size:22px}.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}.demo{display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:8px 11px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--gray);font-size:9px}.demo-mark{color:var(--blue)}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}.metric{padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--white)}.metric-label{color:var(--muted);font-size:9px}.metric-value{margin-top:5px;font-size:20px;font-weight:700}.metric-foot{margin-top:3px;color:var(--muted);font-size:8px}.blue-text{color:var(--blue)}
+.content{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(275px,.85fr);gap:13px;align-items:start}.panel{min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--white)}.panel-head{min-height:50px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}.panel-head h2{margin:0;font-size:12px}.muted{margin-top:3px;color:var(--muted);font-size:9px}.filter-row{display:flex;align-items:center;gap:5px;padding:10px 12px;border-bottom:1px solid var(--line);overflow:auto}.filter{flex:0 0 auto;padding:6px 9px;border:1px solid var(--line);border-radius:4px;background:var(--white);color:var(--gray);font-size:9px}.filter.active{border-color:var(--blue);background:var(--blue);color:var(--white)}.result-count{margin-right:auto;color:var(--muted);font-size:9px;white-space:nowrap}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:right;white-space:nowrap}th,td{padding:10px 11px;border-bottom:1px solid var(--line)}th{background:var(--pale);color:var(--gray);font-size:9px;font-weight:500}td{font-size:9px}tbody tr:last-child td{border-bottom:0}tbody tr:hover{background:#E6E9F2}.client{font-weight:600}.meta{margin-top:3px;color:var(--muted);font-size:8px}.id{color:var(--muted);font-size:8px}.status{display:inline-flex;padding:4px 7px;border-radius:4px;background:var(--pale);color:var(--gray);font-size:8px}.status.new,.status.recommend{background:#E6E9F2;color:var(--blue)}.status.info{background:#E6E9F2;color:var(--gray)}.status.review{background:#E6E9F2;color:var(--gray)}.select-row{padding:0;border:0;background:none;color:var(--ink);text-align:right;font-weight:600}.select-row:hover{color:var(--blue)}.empty{display:none;padding:22px;text-align:center;color:var(--muted);font-size:10px}
+.right-col{display:grid;gap:12px}.ai-panel{overflow:hidden}.ai-head{padding:13px 14px;background:var(--black);color:var(--white)}.ai-brand{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700}.ai-icon{display:grid;place-items:center;width:25px;height:25px;border-radius:6px;background:var(--blue);color:var(--white);font-size:13px}.ai-sub{margin-top:5px;color:var(--pale);font-size:8px}.ai-body{padding:13px}.recommend-title{font-size:11px;font-weight:700}.recommend-desc{margin-top:5px;color:var(--muted);font-size:9px;line-height:1.7}.score-row{display:flex;align-items:center;justify-content:space-between;margin:13px 0 6px;font-size:9px}.score{color:var(--blue);font-size:18px;font-weight:700}.progress{height:5px;border-radius:5px;background:var(--pale);overflow:hidden}.progress span{display:block;width:94%;height:100%;background:var(--blue)}.reason-list{display:grid;gap:7px;margin:12px 0;padding:0;list-style:none}.reason-list li{display:flex;gap:7px;color:var(--gray);font-size:9px;line-height:1.5}.reason-list li::before{content:'✓';color:var(--blue);font-weight:700}.provider-list{display:grid;gap:6px;margin-top:9px}.provider{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border:1px solid var(--line);border-radius:4px;font-size:9px}.provider em{color:var(--muted);font-size:8px;font-style:normal}.actions{display:grid;gap:7px;margin-top:12px}.actions .button{width:100%}.disclaimer{margin-top:10px;padding-top:9px;border-top:1px solid var(--line);color:var(--muted);font-size:8px;line-height:1.6}.automation{padding:12px 13px}.automation h2{margin:0;font-size:11px}.automation-step{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:9px}.automation-step:last-child{border:0}.step-dot{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--pale);color:var(--blue);font-size:8px}.step-dot.done{background:var(--blue);color:var(--white)}.step-state{margin-right:auto;color:var(--muted);font-size:8px}.toast{position:fixed;right:50%;bottom:18px;z-index:5;transform:translate(50%,10px);opacity:0;pointer-events:none;padding:9px 13px;border-radius:5px;background:var(--black);color:var(--white);font-size:10px;transition:.2s}.toast.show{transform:translate(50%,0);opacity:1}
+@media(max-width:1040px){.app{grid-template-columns:200px minmax(0,1fr)}.content{grid-template-columns:minmax(0,1.35fr) minmax(250px,.9fr)}.metrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.app{display:block}.side{position:relative;height:auto;padding:11px 13px}.brand{padding:0 3px 10px}.brand-icon{width:32px;height:32px}.nav-label,.user{display:none}.nav{display:flex;gap:4px;overflow:auto}.nav a{flex:0 0 auto;min-height:34px;padding:0 9px;font-size:10px}.nav-icon{display:none}main{padding:15px 13px 25px}.top{margin-bottom:17px}.content{grid-template-columns:1fr}.right-col{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.page-head{display:block}.page-head h1{font-size:20px}.page-head .button{margin-top:10px}.search{width:38px;padding:0 5px}.search:focus{position:absolute;top:60px;left:12px;z-index:2;width:calc(100% - 24px);padding:0 10px}.metrics{gap:7px}.metric{padding:10px}.metric-value{font-size:18px}.metric-label{font-size:8px}.right-col{grid-template-columns:1fr}.filter-row{padding:8px}.request-table th,.request-table td{padding:9px 8px}}
+</style>
+</head>
+<body><div class="app">
+<aside class="side"><div class="brand"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></div><div class="nav-label">مساحة العمل</div><nav class="nav" aria-label="القائمة الرئيسية"><a href="index.html"><span class="nav-icon">◫</span>نظرة عامة</a><a class="active" href="requests.html" aria-current="page"><span class="nav-icon">⌕</span>طلبات الأسعار <span class="result-count">12</span></a><a href="#" data-unavailable="العملاء"><span class="nav-icon">♙</span>العملاء</a><a href="#" data-unavailable="الوثائق"><span class="nav-icon">▤</span>الوثائق والتجديدات</a><a href="#" data-unavailable="المطالبات"><span class="nav-icon">◉</span>المطالبات</a><a href="#" data-unavailable="التحصيلات"><span class="nav-icon">↗</span>التحصيلات</a><div class="nav-label">الشبكة والإدارة</div><a href="#" data-unavailable="شركات التأمين"><span class="nav-icon">⌂</span>شركات التأمين</a><a href="#" data-unavailable="التقارير"><span class="nav-icon">▥</span>التقارير</a></nav><div class="user"><div class="avatar">عم</div><div>عمر المنصوري<small>مدير العمليات</small></div></div></aside>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>طلبات الأسعار</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث باسم العميل أو رقم الطلب" aria-label="ابحث باسم العميل أو رقم الطلب"><button id="export" class="button" type="button">تصدير القائمة</button></div></header>
+<section class="page-head"><div><h1>صندوق الطلبات الرقمية</h1><p class="subtitle">فرز الطلبات، متابعة اكتمالها، وتجهيز مقارنة التغطيات.</p></div><button class="button primary" id="refresh" type="button">تحديث الطلبات</button></section>
+<div class="demo"><span class="demo-mark">●</span><span>هذه معاينة تشغيلية. التوصيات والقائمة تجريبية وليست عروض أسعار حقيقية أو قرار اكتتاب.</span></div>
+<section class="metrics" aria-label="ملخص الطلبات"><article class="metric"><div class="metric-label">طلبات واردة اليوم</div><div class="metric-value" id="total-count">12</div><div class="metric-foot">من الموقع والتطبيق</div></article><article class="metric"><div class="metric-label">تحتاج استكمال بيانات</div><div class="metric-value">4</div><div class="metric-foot">تنبيه تلقائي بعد 20 دقيقة</div></article><article class="metric"><div class="metric-label">جاهزة للمقارنة</div><div class="metric-value">5</div><div class="metric-foot">ملفات مكتملة</div></article><article class="metric"><div class="metric-label">متوسط الفرز الأولي</div><div class="metric-value">4 <span class="metric-label">دقائق</span></div><div class="metric-foot">مؤشر تجريبي للواجهة</div></article></section>
+<div class="content"><section class="panel"><div class="panel-head"><div><h2>الطلبات الواردة</h2><div class="muted">الأحدث أولًا · اختر طلبًا لعرض التوصية</div></div><span class="muted" id="visible-count">5 طلبات</span></div><div class="filter-row" role="group" aria-label="تصفية حسب الحالة"><button class="filter active" data-filter="all">الكل</button><button class="filter" data-filter="new">جديد</button><button class="filter" data-filter="info">نواقص بيانات</button><button class="filter" data-filter="recommend">جاهز للمقارنة</button><button class="filter" data-filter="review">مراجعة موظف</button></div>
+<div class="table-wrap"><table class="request-table"><thead><tr><th>العميل / الطلب</th><th>الفرع</th><th>الوصول</th><th>الجاهزية</th><th>الحالة</th></tr></thead><tbody id="requests">
+<tr data-id="Q-2841" data-state="new" data-client="شركة روافد التقنية" data-type="طبي جماعي" data-score="94" data-reasons="بيانات المنشأة مكتملة|عدد الموظفين مناسب لمسارات الشركات|توجد شركات متعددة قابلة للمقارنة" data-providers="بوبا العربية|التعاونية|ميدغلف"><td><button class="select-row" type="button">شركة روافد التقنية</button><div class="meta">Q-2841 · 82 موظفًا</div></td><td>طبي جماعي</td><td>قبل 8 د</td><td><span class="blue-text">مكتمل</span></td><td><span class="status new">جديد</span></td></tr>
+<tr data-id="Q-2840" data-state="info" data-client="نورة القحطاني" data-type="مركبات" data-score="78" data-reasons="بيانات المركبة الأساسية متوفرة|تنقص سنة الصنع ورقم الهيكل|استكمال البيانات يسرع الحصول على عرض دقيق" data-providers="التعاونية|ميدغلف|ولاء"><td><button class="select-row" type="button">نورة القحطاني</button><div class="meta">Q-2840 · مركبة واحدة</div></td><td>مركبات</td><td>قبل 24 د</td><td>ناقص حقلان</td><td><span class="status info">بيانات ناقصة</span></td></tr>
+<tr data-id="Q-2838" data-state="recommend" data-client="مؤسسة أفق للمقاولات" data-type="ممتلكات" data-score="91" data-reasons="مواقع الخطر محددة في الطلب|قيمة الأصول ضمن نطاق المنتجات المتاحة|مقارنة حدود التغطية والاستثناءات قبل السعر" data-providers="التعاونية|ولاء|GIG الخليج"><td><button class="select-row" type="button">مؤسسة أفق للمقاولات</button><div class="meta">Q-2838 · 3 مواقع</div></td><td>ممتلكات</td><td>قبل ساعة</td><td><span class="blue-text">مكتمل</span></td><td><span class="status recommend">جاهز للمقارنة</span></td></tr>
+<tr data-id="Q-2835" data-state="review" data-client="مؤسسة نبراس للتجارة" data-type="أسطول مركبات" data-score="83" data-reasons="الأسطول يضم 16 مركبة|تحتاج حالة الاستخدام تحققًا من الوسيط|لا ترسل للشركات قبل اعتماد المراجعة" data-providers="التعاونية|ميدغلف|ولاء"><td><button class="select-row" type="button">مؤسسة نبراس للتجارة</button><div class="meta">Q-2835 · 16 مركبة</div></td><td>أسطول</td><td>قبل ساعتين</td><td>تحقق مطلوب</td><td><span class="status review">مراجعة موظف</span></td></tr>
+<tr data-id="Q-2829" data-state="new" data-client="شركة ألوان الإبداع" data-type="مسؤولية مهنية" data-score="88" data-reasons="نوع النشاط محدد|حدود المسؤولية المطلوبة موجودة|تحتاج مراجعة الاستثناءات قبل إرسال المقارنة" data-providers="GIG الخليج|التعاونية|ميدغلف"><td><button class="select-row" type="button">شركة ألوان الإبداع</button><div class="meta">Q-2829 · 24 موظفًا</div></td><td>مسؤولية مهنية</td><td>قبل 3 س</td><td><span class="blue-text">مكتمل</span></td><td><span class="status new">جديد</span></td></tr>
+</tbody></table><div id="empty" class="empty">ما فيه طلبات تطابق البحث أو التصفية.</div></div></section>
+<aside class="right-col"><section class="panel ai-panel"><div class="ai-head"><div class="ai-brand"><span class="ai-icon">✳</span>مساعد بُعد الذكي</div><div class="ai-sub">فرز أولي وتوصية قابلة للمراجعة</div></div><div class="ai-body"><div id="selected-client" class="recommend-title">شركة روافد التقنية</div><div id="recommend-desc" class="recommend-desc">اقتراح مبدئي لترتيب ملف الطلب. راجع بيانات العميل وشروط كل شركة قبل الإرسال.</div><div class="score-row"><span>اكتمال وملاءمة الطلب</span><span id="score" class="score">94%</span></div><div class="progress"><span id="score-bar"></span></div><ul id="reasons" class="reason-list"><li>بيانات المنشأة مكتملة</li><li>عدد الموظفين مناسب لمسارات الشركات</li><li>توجد شركات متعددة قابلة للمقارنة</li></ul><div class="muted">شركات مناسبة للمقارنة</div><div id="providers" class="provider-list"><div class="provider"><span>بوبا العربية</span><em>مرشح للمقارنة</em></div><div class="provider"><span>التعاونية</span><em>مرشح للمقارنة</em></div><div class="provider"><span>ميدغلف</span><em>مرشح للمقارنة</em></div></div><div class="actions"><button id="compare" class="button primary" type="button">تهيئة طلب مقارنة</button><button id="ask-info" class="button" type="button">تسجيل نواقص البيانات</button></div><div class="disclaimer">توصية تجريبية مبنية على قواعد واجهة ثابتة، وليست ناتج نموذج ذكاء اصطناعي أو اتصال حي بشركات التأمين. القرار النهائي للموظف.</div></div></section>
+<section class="panel automation"><h2>خطوات المعالجة</h2><div class="automation-step"><span class="step-dot done">✓</span>استلام الطلب الرقمي<span class="step-state">تم</span></div><div class="automation-step"><span class="step-dot done">✓</span>التحقق من الحقول الأساسية<span class="step-state">تم</span></div><div class="automation-step"><span class="step-dot">3</span>توصية شركات المقارنة<span class="step-state">مراجعة</span></div><div class="automation-step"><span class="step-dot">4</span>إرسال بعد اعتماد الموظف<span class="step-state">بانتظار</span></div></section></aside></div></main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+const demoRequests = [
+  { id: 'Q-2841', state: 'new', client: 'شركة روافد التقنية', type: 'طبي جماعي', score: 94, reasons: ['بيانات المنشأة مكتملة','عدد الموظفين مناسب لمسارات الشركات','توجد شركات متعددة قابلة للمقارنة'], providers: ['بوبا العربية','التعاونية','ميدغلف'] },
+  { id: 'Q-2840', state: 'info', client: 'نورة القحطاني', type: 'مركبات', score: 78, reasons: ['بيانات المركبة الأساسية متوفرة','تنقص سنة الصنع ورقم الهيكل','استكمال البيانات يسرع الحصول على عرض دقيق'], providers: ['التعاونية','ميدغلف','ولاء'] },
+  { id: 'Q-2838', state: 'recommend', client: 'مؤسسة أفق للمقاولات', type: 'ممتلكات', score: 91, reasons: ['مواقع الخطر محددة في الطلب','قيمة الأصول ضمن نطاق المنتجات المتاحة','مقارنة حدود التغطية والاستثناءات قبل السعر'], providers: ['التعاونية','ولاء','GIG الخليج'] },
+  { id: 'Q-2835', state: 'review', client: 'مؤسسة نبراس للتجارة', type: 'أسطول مركبات', score: 83, reasons: ['الأسطول يضم 16 مركبة','تحتاج حالة الاستخدام تحققًا من الوسيط','لا ترسل للشركات قبل اعتماد المراجعة'], providers: ['التعاونية','ميدغلف','ولاء'] },
+  { id: 'Q-2829', state: 'new', client: 'شركة ألوان الإبداع', type: 'مسؤولية مهنية', score: 88, reasons: ['نوع النشاط محدد','حدود المسؤولية المطلوبة موجودة','تحتاج مراجعة الاستثناءات قبل إرسال المقارنة'], providers: ['GIG الخليج','التعاونية','ميدغلف'] },
+];
+
+let rows = [];
+let activeFilter = 'all';
+let query = '';
+let selected = null;
+const toast = document.getElementById('toast');
+let toastTimer;
+
+function notify(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2400);
+}
+
+function mapStatus(status) {
+  if (status === 'new') return 'new';
+  if (status === 'needs_info' || status === 'needs_info') return 'info';
+  if (status === 'ready_for_quote') return 'recommend';
+  if (status === 'under_review') return 'review';
+  if (status === 'closed') return 'recommend';
+  return 'new';
+}
+
+function makeRowFromRequest(request) {
+  const row = document.createElement('tr');
+  const normalizedState = mapStatus(request.status);
+  const score = request.score || (normalizedState === 'new' ? 94 : normalizedState === 'info' ? 78 : normalizedState === 'recommend' ? 91 : 83);
+  const reasons = request.reasons || [
+    request.summary || 'بيانات الطلب مكتملة',
+    request.coverage_amount ? `التغطية: ${request.coverage_amount}` : 'التغطية: غير محددة',
+    request.preferred_insurers?.length ? `شركات مفضلة: ${request.preferred_insurers.join(', ')}` : 'تحتاج مقارنة بين الشركات',
+  ];
+  const providers = request.providers || ['التعاونية', 'ميدغلف', 'ولاء'];
+
+  row.dataset.id = request.request_number || request.request_id;
+  row.dataset.state = normalizedState;
+  row.dataset.client = request.customer_name || 'عميل';
+  row.dataset.type = request.insurance_type || 'تأمين';
+  row.dataset.score = String(score);
+  row.dataset.reasons = reasons.join('|');
+  row.dataset.providers = providers.join('|');
+
+  row.innerHTML = `
+    <td>
+      <button class="select-row" type="button">${request.customer_name || 'عميل'}</button>
+      <div class="meta">${request.request_number || request.request_id} · ${request.product_type || 'طلب جديد'}</div>
+    </td>
+    <td>${request.insurance_type || 'تأمين'}</td>
+    <td>${request.request_source || 'portal'}</td>
+    <td>${normalizedState === 'info' ? 'ناقص حقلان' : '<span class="blue-text">مكتمل</span>'}</td>
+    <td>
+      <span class="status ${normalizedState === 'new' ? 'new' : normalizedState === 'info' ? 'info' : normalizedState === 'recommend' ? 'recommend' : 'review'}">
+        ${normalizedState === 'new' ? 'جديد' : normalizedState === 'info' ? 'بيانات ناقصة' : normalizedState === 'recommend' ? 'جاهز للمقارنة' : 'مراجعة موظف'}
+      </span>
+    </td>
+  `;
+
+  row.querySelector('.select-row').addEventListener('click', () => selectRequest(row));
+  return row;
+}
+
+function updateRows() {
+  let count = 0;
+  rows.forEach(row => {
+    const visible = (activeFilter === 'all' || row.dataset.state === activeFilter) && (row.textContent || '').toLocaleLowerCase('ar').includes(query);
+    row.hidden = !visible;
+    if (visible) count += 1;
+  });
+  document.getElementById('visible-count').textContent = `${count} طلبات`;
+  document.getElementById('empty').style.display = count ? 'none' : 'block';
+}
+
+function selectRequest(row) {
+  selected = row;
+  document.querySelectorAll('.select-row').forEach(button => {
+    button.closest('tr')?.classList.toggle('selected', button.closest('tr') === row);
+  });
+
+  document.getElementById('selected-client').textContent = row.dataset.client;
+  document.getElementById('score').textContent = `${row.dataset.score}%`;
+  document.getElementById('score-bar').style.width = `${row.dataset.score}%`;
+
+  const reasons = document.getElementById('reasons');
+  reasons.replaceChildren(...(row.dataset.reasons || '').split('|').map(text => {
+    const item = document.createElement('li');
+    item.textContent = text;
+    return item;
+  }));
+
+  const providers = document.getElementById('providers');
+  providers.replaceChildren(...(row.dataset.providers || '').split('|').map(name => {
+    const item = document.createElement('div');
+    item.className = 'provider';
+    const label = document.createElement('span');
+    label.textContent = name;
+    const note = document.createElement('em');
+    note.textContent = 'مرشح للمقارنة';
+    item.append(label, note);
+    return item;
+  }));
+
+  document.getElementById('recommend-desc').textContent = `${row.dataset.type} · الطلب ${row.dataset.id}. راجع التوصية وملاءمة التغطية قبل المتابعة.`;
+  const compareButton = document.getElementById('compare');
+  compareButton.disabled = row.dataset.state === 'info' || row.dataset.state === 'review';
+  compareButton.textContent = compareButton.disabled ? 'أكمل المراجعة أولًا' : 'تهيئة طلب مقارنة';
+}
+
+async function hydrateRequests() {
+  const tbody = document.getElementById('requests');
+  const fallback = () => {
+    rows = demoRequests.map(makeRowFromRequest);
+    tbody.replaceChildren(...rows);
+    if (rows[0]) {
+      selected = rows[0];
+      selectRequest(rows[0]);
+    }
+    updateRows();
+  };
+
+  try {
+    const response = await fetch('/insurance/requests');
+    if (!response.ok) {
+      fallback();
+      return;
+    }
+
+    const requests = await response.json();
+    if (!Array.isArray(requests) || requests.length === 0) {
+      fallback();
+      return;
+    }
+
+    const enriched = await Promise.all(
+      requests.map(async (request) => {
+        let customer = null;
+        try {
+          const customerResponse = await fetch(`/insurance/customers/${request.customer_id}`);
+          if (customerResponse.ok) {
+            customer = await customerResponse.json();
+          }
+        } catch (error) {
+          customer = null;
+        }
+
+        const preferredInsurers = Array.isArray(request.preferred_insurers) ? request.preferred_insurers : [];
+        return {
+          request_id: request.request_id,
+          request_number: request.request_number,
+          customer_name: customer?.full_name || 'عميل',
+          product_type: request.product_type || 'طلب جديد',
+          insurance_type: request.insurance_type || 'تأمين',
+          status: request.status || 'new',
+          request_source: request.request_source || 'portal',
+          summary: request.summary || 'الطلب مستعد للمتابعة',
+          coverage_amount: request.coverage_amount || 'غير محدد',
+          preferred_insurers: preferredInsurers.length ? preferredInsurers : ['التعاونية', 'ميدغلف', 'ولاء'],
+          score: request.status === 'needs_info' ? 78 : request.status === 'under_review' ? 83 : request.status === 'ready_for_quote' ? 91 : 94,
+          reasons: [
+            request.summary || 'بيانات الطلب مكتملة',
+            request.coverage_amount ? `التغطية: ${request.coverage_amount}` : 'التغطية: غير محددة',
+            preferredInsurers.length ? `شركات مفضلة: ${preferredInsurers.join(', ')}` : 'تحتاج مقارنة بين الشركات',
+          ],
+          providers: preferredInsurers.length ? preferredInsurers : ['التعاونية', 'ميدغلف', 'ولاء'],
+        };
+      })
+    );
+
+    rows = enriched.map(makeRowFromRequest);
+    tbody.replaceChildren(...rows);
+    if (rows[0]) {
+      selected = rows[0];
+      selectRequest(rows[0]);
+    }
+    updateRows();
+  } catch (error) {
+    fallback();
+  }
+}
+
+function attachEvents() {
+  document.querySelectorAll('.filter').forEach(button =>
+    button.addEventListener('click', () => {
+      activeFilter = button.dataset.filter;
+      document.querySelectorAll('.filter').forEach(item => item.classList.toggle('active', item === button));
+      updateRows();
+    })
+  );
+
+  document.getElementById('search').addEventListener('input', event => {
+    query = (event.target.value || '').trim().toLocaleLowerCase('ar');
+    updateRows();
+  });
+
+  document.getElementById('compare').addEventListener('click', () => {
+    if (!selected || document.getElementById('compare').disabled) return;
+    window.location.href = `comparison.html?request=${encodeURIComponent(selected.dataset.id)}`;
+  });
+
+  document.getElementById('ask-info').addEventListener('click', () => {
+    if (!selected) return;
+    selected.dataset.state = 'info';
+    const status = selected.querySelector('.status');
+    status.className = 'status info';
+    status.textContent = 'بيانات ناقصة';
+    document.getElementById('compare').disabled = true;
+    document.getElementById('compare').textContent = 'أكمل المراجعة أولًا';
+    updateRows();
+    notify('سُجلت الحاجة لاستكمال البيانات محليًا');
+  });
+
+  document.getElementById('refresh').addEventListener('click', async () => {
+    notify('جارٍ تحديث بيانات الطلبات');
+    await hydrateRequests();
+  });
+
+  document.getElementById('export').addEventListener('click', () => notify('التصدير سيتاح بعد ربط بيانات الطلبات'));
+  document.querySelectorAll('[data-unavailable]').forEach(link =>
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      if (link.dataset.unavailable === 'العملاء') { window.location.href = 'clients.html'; return; }
+      if (link.dataset.unavailable === 'الوثائق') { window.location.href = 'policies.html'; return; }
+      if (link.dataset.unavailable === 'المطالبات') { window.location.href = 'claims.html'; return; }
+      if (link.dataset.unavailable === 'التحصيلات') { window.location.href = 'collections.html'; return; }
+      if (link.dataset.unavailable === 'شركات التأمين') { window.location.href = 'insurers.html'; return; }
+      notify(`صفحة ${link.dataset.unavailable} قيد البناء`);
+    })
+  );
+}
+
+attachEvents();
+hydrateRequests();
+</script></body></html>

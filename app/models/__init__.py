@@ -3,6 +3,19 @@
 Importing this package registers all models on `Base.metadata`, which is
 what Alembic autogenerate and the test-suite's `create_all` rely on.
 """
+from app.insurance.models import (
+    Customer,
+    EmailAuditLog,
+    Insurer,
+    InsurancePolicy,
+    InsuranceQuote,
+    InsuranceRequest,
+    InsuranceSubmission,
+    InsurerTemplate,
+    RequestDocument,
+    SalesEmployee,
+    UnderwritingAssignment,
+)
 from app.models.base import Base
 from app.models.candles import Candle5m
 from app.models.instruments import Instrument
@@ -36,4 +49,15 @@ __all__ = [
     "Outcome",
     "NotificationLog",
     "IVHistory",
+    "Customer",
+    "InsuranceRequest",
+    "RequestDocument",
+    "SalesEmployee",
+    "UnderwritingAssignment",
+    "Insurer",
+    "InsurerTemplate",
+    "InsuranceSubmission",
+    "InsuranceQuote",
+    "InsurancePolicy",
+    "EmailAuditLog",
 ]

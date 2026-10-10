@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | مقارنة التغطيات</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+:root{--ink:#0A0A0B;--muted:#4A4A55;--line:#E6E9F2;--paper:#E6E9F2;--white:#FFFFFF;--black:#0A0A0B;--blue:#2D5BFF;--gray:#4A4A55;--pale:#E6E9F2}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;font-size:13px}button,input{font:inherit}button{cursor:pointer}.app{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}
+.side{position:sticky;top:0;height:100vh;padding:23px 15px 16px;background:var(--black);color:var(--white);display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:0 8px 28px}.brand-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--gray);border-radius:10px;color:var(--white);font-size:12px;font-weight:700}.brand-name{font-size:19px;font-weight:700}.brand-sub{margin-top:3px;color:var(--pale);font-size:10px}.nav-label{margin:8px 10px;color:var(--pale);font-size:10px}.nav{display:grid;gap:3px}.nav a{display:flex;align-items:center;gap:11px;min-height:40px;padding:0 11px;border-radius:5px;color:var(--pale);text-decoration:none;font-size:12px}.nav a:hover{background:var(--gray);color:var(--white)}.nav a.active{background:var(--blue);color:var(--white)}.nav-icon{width:18px;text-align:center}.user{margin-top:auto;border-top:1px solid var(--gray);padding:14px 7px 0;display:flex;align-items:center;gap:9px;font-size:11px}.avatar{display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:var(--pale);color:var(--black);font-weight:700}.user small{display:block;margin-top:3px;color:var(--pale);font-size:9px}
+main{min-width:0;padding:22px clamp(16px,2.7vw,35px) 35px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}.crumb{color:var(--muted);font-size:10px}.crumb a{color:var(--muted);text-decoration:none}.crumb b{color:var(--ink)}.head-actions{display:flex;gap:8px}.button{min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--ink);font-size:10px}.button.primary{border-color:var(--blue);background:var(--blue);color:var(--white);font-weight:600}.button.primary:hover{filter:brightness(.92)}.button:disabled{opacity:.5;cursor:not-allowed}.heading{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:14px}.heading h1{margin:0;font-size:22px}.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}.demo{display:flex;gap:8px;align-items:center;margin-bottom:13px;padding:8px 11px;border:1px solid var(--line);border-radius:5px;background:var(--white);color:var(--gray);font-size:9px}.demo strong{color:var(--blue)}.request-strip{display:flex;align-items:center;gap:20px;flex-wrap:wrap;margin-bottom:13px;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--white)}.req-field{display:grid;gap:3px}.req-label{color:var(--muted);font-size:8px}.req-value{font-size:10px;font-weight:600}.req-id{margin-right:auto;color:var(--blue);font-size:9px;font-weight:700}
+.layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(260px,.8fr);gap:13px;align-items:start}.section-title{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 9px}.section-title h2{margin:0;font-size:13px}.section-title p{margin:3px 0 0;color:var(--muted);font-size:9px}.quote-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.quote{position:relative;min-width:0;padding:13px;border:1px solid var(--line);border-radius:6px;background:var(--white)}.quote.recommended{border:2px solid var(--blue);padding:12px}.recommend-badge{position:absolute;top:10px;left:10px;padding:4px 6px;border-radius:4px;background:var(--blue);color:var(--white);font-size:8px}.carrier{color:var(--muted);font-size:9px}.quote h3{margin:4px 0 12px;font-size:12px}.price{font-size:21px;font-weight:700;white-space:nowrap}.price small{font-size:9px;font-weight:400;color:var(--muted)}.price-note{margin:3px 0 12px;color:var(--muted);font-size:8px}.quote-metric{display:flex;align-items:baseline;justify-content:space-between;gap:5px;padding:7px 0;border-top:1px solid var(--line);font-size:9px}.quote-metric span{color:var(--muted)}.quote-metric b{font-size:9px}.score-line{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:9px}.score-line strong{color:var(--blue);font-size:16px}.select-offer{width:100%;margin-top:10px}.quote input{accent-color:var(--blue)}.choice{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:9px;font-weight:600}.matrix{margin-top:14px;border:1px solid var(--line);border-radius:6px;background:var(--white);overflow:hidden}.matrix-head{padding:11px 13px;border-bottom:1px solid var(--line)}.matrix-head h2{margin:0;font-size:11px}.matrix-head p{margin:3px 0 0;color:var(--muted);font-size:8px}.matrix table{width:100%;border-collapse:collapse;text-align:right}.matrix th,.matrix td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:9px}.matrix th{background:var(--pale);color:var(--gray);font-weight:600}.matrix tr:last-child td{border:0}.tick{color:var(--blue);font-weight:700}.warn{color:var(--gray)}
+.side-stack{display:grid;gap:12px}.ai-card,.info-card{border:1px solid var(--line);border-radius:6px;background:var(--white);overflow:hidden}.ai-head{padding:12px 13px;background:var(--black);color:var(--white)}.ai-title{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700}.ai-mark{display:grid;place-items:center;width:24px;height:24px;border-radius:5px;background:var(--blue);color:white}.ai-head small{display:block;margin-top:4px;color:var(--pale);font-size:8px}.ai-body{padding:13px}.winner-label{color:var(--muted);font-size:9px}.winner{margin-top:3px;font-size:14px;font-weight:700}.winner-score{margin-top:10px;padding:9px;border-radius:5px;background:var(--pale);display:flex;align-items:center;justify-content:space-between;font-size:9px}.winner-score strong{color:var(--blue);font-size:18px}.reasons{display:grid;gap:8px;margin:12px 0 0;padding:0;list-style:none}.reasons li{display:flex;gap:7px;font-size:9px;line-height:1.5}.reasons li::before{content:'✓';color:var(--blue);font-weight:700}.weights{margin-top:12px;padding-top:9px;border-top:1px solid var(--line)}.weights h3{margin:0 0 6px;font-size:9px}.weight{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);font-size:8px}.weight b{color:var(--ink)}.ai-disclaimer{margin-top:10px;color:var(--muted);font-size:8px;line-height:1.6}.info-card{padding:12px 13px}.info-card h2{margin:0 0 8px;font-size:10px}.info-row{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:8px}.info-row:last-child{border:0}.info-row span{color:var(--muted)}.toast{position:fixed;right:50%;bottom:18px;z-index:5;transform:translate(50%,10px);opacity:0;pointer-events:none;padding:9px 13px;border-radius:5px;background:var(--black);color:var(--white);font-size:10px;transition:.2s}.toast.show{transform:translate(50%,0);opacity:1}
+@media(max-width:1050px){.app{grid-template-columns:200px minmax(0,1fr)}.layout{grid-template-columns:minmax(0,1.4fr) minmax(245px,.85fr)}.quote-grid{gap:6px}.quote{padding:10px}.quote.recommended{padding:9px}}
+@media(max-width:780px){.app{display:block}.side{position:relative;height:auto;padding:11px 13px}.brand{padding:0 3px 10px}.brand-icon{width:32px;height:32px}.nav-label,.user{display:none}.nav{display:flex;gap:4px;overflow:auto}.nav a{flex:0 0 auto;min-height:34px;padding:0 9px;font-size:10px}.nav-icon{display:none}main{padding:15px 13px 25px}.layout{grid-template-columns:1fr}.side-stack{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.heading{display:block}.heading h1{font-size:20px}.head-actions{margin-top:10px}.request-strip{gap:12px}.req-id{margin-right:0}.quote-grid{grid-template-columns:1fr}.quote{padding:13px}.quote.recommended{padding:12px}.side-stack{grid-template-columns:1fr}.matrix table{min-width:570px}.matrix{overflow:auto}}
+</style>
+</head>
+<body><div class="app"><aside class="side"><div class="brand"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></div><div class="nav-label">مساحة العمل</div><nav class="nav" aria-label="القائمة الرئيسية"><a href="index.html"><span class="nav-icon">◫</span>نظرة عامة</a><a class="active" href="requests.html"><span class="nav-icon">⌕</span>طلبات الأسعار</a><a href="requests.html"><span class="nav-icon">⇄</span>مقارنة العروض</a><a href="#" data-soon="العملاء">♙ العملاء</a><a href="#" data-soon="الوثائق">▤ الوثائق والتجديدات</a><a href="#" data-soon="المطالبات">◉ المطالبات</a></nav><div class="user"><div class="avatar">عم</div><div>عمر المنصوري<small>مدير العمليات</small></div></div></aside>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <a href="requests.html">طلبات الأسعار</a> / <b>مقارنة العروض</b></div><div class="head-actions"><a class="button" href="requests.html">عودة للطلبات</a><button id="print" class="button" type="button">طباعة المقارنة</button></div></header>
+<section class="heading"><div><h1>مقارنة التغطيات</h1><p class="subtitle">قارن حدود الحماية والتحمل والسعر قبل ترشيح عرض للعميل.</p></div></section>
+<div class="demo"><strong>بيانات مباشرة</strong><span>تُحمّل العروض من النظام الحالي، مع احتفاظه بنسخة احتياطية عند فشل الاتصال.</span></div>
+<section class="request-strip" aria-label="تفاصيل الطلب"><div class="req-field"><span class="req-label">العميل</span><span id="client" class="req-value">شركة روافد التقنية</span></div><div class="req-field"><span class="req-label">فرع التأمين</span><span id="product" class="req-value">طبي جماعي</span></div><div class="req-field"><span class="req-label">بيانات الخطر</span><span id="exposure" class="req-value">82 موظفًا</span></div><span id="request-id" class="req-id">الطلب Q-2841</span></section>
+<div class="layout"><section><div class="section-title"><div><h2>العروض المستلمة</h2><p>رتّبها حسب مجموع الملاءمة، وراجع مكونات التغطية لكل عرض.</p></div><span class="muted">3 عروض تجريبية</span></div><div id="quotes" class="quote-grid"></div>
+<section class="matrix"><div class="matrix-head"><h2>تفاصيل التغطية</h2><p>الفروقات التي قد تؤثر في قرار العميل</p></div><div style="overflow-x:auto"><table><thead><tr><th>البند</th><th>الخطة A</th><th>الخطة B</th><th>الخطة C</th></tr></thead><tbody id="matrix-body"></tbody></table></div></section></section>
+<aside class="side-stack"><section class="ai-card"><div class="ai-head"><div class="ai-title"><span class="ai-mark">✳</span>توصية بُعد التوضيحية</div><small>ترتيب آلي قابل للتفسير، وليس قرار اكتتاب</small></div><div class="ai-body"><div class="winner-label">أفضل توازن وفق الأوزان الحالية</div><div id="winner" class="winner">الخطة C</div><div class="winner-score"><span>مجموع الملاءمة</span><strong id="winner-score">--</strong></div><ul id="reasons" class="reasons"></ul><div class="weights"><h3>أوزان التقييم</h3><div class="weight"><span>حدود التغطية</span><b>35%</b></div><div class="weight"><span>القسط</span><b>30%</b></div><div class="weight"><span>التحمل</span><b>15%</b></div><div class="weight"><span>مستوى الخدمة</span><b>10%</b></div><div class="weight"><span>المنافع الإضافية</span><b>10%</b></div></div><div class="ai-disclaimer">هذا ترتيب تجريبي بمعادلة ظاهرة وبيانات ثابتة، لا يستخدم نموذج AI حيًا. لا يغني عن مراجعة الشروط والاستثناءات ولا يختار العرض نيابةً عن العميل.</div></div></section>
+<section class="info-card"><h2>سير الإجراء</h2><div class="info-row"><span>التحقق من اكتمال الطلب</span><b>مكتمل</b></div><div class="info-row"><span>مطابقة حدود التغطية</span><b>للمراجعة</b></div><div class="info-row"><span>اعتماد موظف الوساطة</span><b>مطلوب</b></div><div class="info-row"><span>موافقة العميل</span><b>قبل الإصدار</b></div><button id="continue" class="button primary" style="width:100%;margin-top:10px" type="button">تسجيل ترشيح للمتابعة</button></section></aside></div>
+</main></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+const fallbackRequestData = {
+  'Q-2841': { client: 'شركة روافد التقنية', product: 'طبي جماعي', exposure: '82 موظفًا' },
+  'Q-2840': { client: 'نورة القحطاني', product: 'مركبات', exposure: 'مركبة واحدة' },
+  'Q-2838': { client: 'مؤسسة أفق للمقاولات', product: 'ممتلكات', exposure: '3 مواقع' },
+  'Q-2835': { client: 'مؤسسة نبراس للتجارة', product: 'أسطول مركبات', exposure: '16 مركبة' },
+  'Q-2829': { client: 'شركة ألوان الإبداع', product: 'مسؤولية مهنية', exposure: '24 موظفًا' }
+};
+
+const requestId = new URLSearchParams(location.search).get('request') || 'Q-2841';
+const quoteGrid = document.getElementById('quotes');
+const matrix = document.getElementById('matrix-body');
+const toast = document.getElementById('toast');
+let timer;
+
+function notify(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  clearTimeout(timer);
+  timer = setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function formatMoney(value) {
+  const numeric = Number(value ?? 0);
+  return Number.isFinite(numeric) ? numeric.toLocaleString('en-US') : '0';
+}
+
+function buildFallbackOffers() {
+  return [
+    { id: 'A', carrier: 'شركة افتراضية أ', premium: 7820, coverage: 500000, deductible: 1000, service: 88, benefits: 8 },
+    { id: 'B', carrier: 'شركة افتراضية ب', premium: 7100, coverage: 450000, deductible: 1500, service: 76, benefits: 7 },
+    { id: 'C', carrier: 'شركة افتراضية ج', premium: 8940, coverage: 650000, deductible: 500, service: 90, benefits: 9 }
+  ].map((offer) => ({ ...offer, score: 0 }));
+}
+
+function scoreOffer(offer, minPremium, maxCoverage, minDeductible, maxBenefits) {
+  return Math.round(
+    (offer.coverage / maxCoverage) * 35 +
+    (minPremium / offer.premium) * 30 +
+    (minDeductible / offer.deductible) * 15 +
+    (offer.service / 100) * 10 +
+    (offer.benefits / maxBenefits) * 10
+  );
+}
+
+function renderComparison(offers) {
+  const minPremium = Math.min(...offers.map((o) => Number(o.premium) || 0));
+  const maxCoverage = Math.max(...offers.map((o) => Number(o.coverage) || 0));
+  const minDeductible = Math.min(...offers.map((o) => Number(o.deductible) || 0));
+  const maxBenefits = Math.max(...offers.map((o) => Number(o.benefits) || 0));
+
+  offers = offers.map((offer) => ({
+    ...offer,
+    score: scoreOffer(offer, minPremium, maxCoverage, minDeductible, maxBenefits)
+  }));
+
+  offers.sort((a, b) => b.score - a.score);
+  const recommended = offers[0];
+
+  quoteGrid.innerHTML = '';
+  matrix.innerHTML = '';
+
+  offers.forEach((offer, index) => {
+    const card = document.createElement('article');
+    card.className = `quote${offer === recommended ? ' recommended' : ''}`;
+    if (offer === recommended) {
+      const badge = document.createElement('span');
+      badge.className = 'recommend-badge';
+      badge.textContent = 'أفضل توازن';
+      card.appendChild(badge);
+    }
+
+    const carrier = document.createElement('div');
+    carrier.className = 'carrier';
+    carrier.textContent = offer.carrier;
+
+    const title = document.createElement('h3');
+    title.textContent = `الخطة ${offer.id}`;
+
+    const price = document.createElement('div');
+    price.className = 'price';
+    price.textContent = formatMoney(offer.premium);
+    const unit = document.createElement('small');
+    unit.textContent = ' ر.س / سنوي';
+    price.appendChild(unit);
+
+    const priceNote = document.createElement('div');
+    priceNote.className = 'price-note';
+    priceNote.textContent = 'قسط من نتائج التقييم الحالي';
+
+    card.append(carrier, title, price, priceNote);
+
+    const metrics = [
+      ['حد التغطية', `${formatMoney(offer.coverage)} ر.س`],
+      ['التحمل', `${formatMoney(offer.deductible)} ر.س`],
+      ['مؤشر الخدمة', `${offer.service || 0}/100`],
+      ['المنافع الإضافية', `${offer.benefits || 0} منافع`]
+    ];
+
+    metrics.forEach(([label, value]) => {
+      const row = document.createElement('div');
+      row.className = 'quote-metric';
+      const key = document.createElement('span');
+      key.textContent = label;
+      const val = document.createElement('b');
+      val.textContent = value;
+      row.append(key, val);
+      card.appendChild(row);
+    });
+
+    const scoreLine = document.createElement('div');
+    scoreLine.className = 'score-line';
+    const scoreLabel = document.createElement('span');
+    scoreLabel.textContent = 'درجة الملاءمة';
+    const scoreValue = document.createElement('strong');
+    scoreValue.textContent = `${offer.score}%`;
+    scoreLine.append(scoreLabel, scoreValue);
+    card.appendChild(scoreLine);
+
+    const choice = document.createElement('label');
+    choice.className = 'choice';
+    const radio = document.createElement('input');
+    radio.type = 'radio';
+    radio.name = 'offer';
+    radio.value = offer.id;
+    radio.checked = index === 0;
+    const text = document.createElement('span');
+    text.textContent = 'ترشيح هذه الخطة';
+    choice.append(radio, text);
+    card.appendChild(choice);
+
+    quoteGrid.appendChild(card);
+  });
+
+  const comparisons = [
+    ['حد التغطية', ...offers.map((offer) => `${formatMoney(offer.coverage)} ر.س`)],
+    ['التحمل', ...offers.map((offer) => `${formatMoney(offer.deductible)} ر.س`)],
+    ['مستوى الخدمة', ...offers.map((offer) => `${offer.service || 0}/100`)],
+    ['المنافع الإضافية', ...offers.map((offer) => `${offer.benefits || 0} منافع`)]
+  ];
+
+  comparisons.forEach((row) => {
+    const tr = document.createElement('tr');
+    row.forEach((value, idx) => {
+      const cell = document.createElement(idx === 0 ? 'th' : 'td');
+      cell.textContent = value;
+      tr.appendChild(cell);
+    });
+    matrix.appendChild(tr);
+  });
+
+  document.getElementById('winner').textContent = `الخطة ${recommended.id} · ${recommended.carrier}`;
+  document.getElementById('winner-score').textContent = `${recommended.score}%`;
+
+  const reasons = [];
+  if (recommended.coverage === maxCoverage) reasons.push('أعلى حد تغطية بين الخيارات المتاحة');
+  if (recommended.deductible === minDeductible) reasons.push('أقل قيمة تحمّل');
+  if (recommended.service === Math.max(...offers.map((offer) => offer.service || 0))) reasons.push('أعلى مستوى خدمة في المقارنة');
+  if (recommended.premium > minPremium) reasons.push('القسط أعلى من الأرخص لكنه متوازن مع قيمة التغطية');
+
+  const reasonList = document.getElementById('reasons');
+  reasonList.innerHTML = '';
+  reasons.forEach((reason) => {
+    const item = document.createElement('li');
+    item.textContent = reason;
+    reasonList.appendChild(item);
+  });
+}
+
+async function loadComparison() {
+  const fallbackRequest = fallbackRequestData[requestId] || fallbackRequestData['Q-2841'];
+  document.getElementById('client').textContent = fallbackRequest.client;
+  document.getElementById('product').textContent = fallbackRequest.product;
+  document.getElementById('exposure').textContent = fallbackRequest.exposure;
+  document.getElementById('request-id').textContent = `الطلب ${requestId}`;
+
+  try {
+    const reqResponse = await fetch(`/insurance/requests/${requestId}`);
+    if (reqResponse.ok) {
+      const request = await reqResponse.json();
+      if (request.customer_id) document.getElementById('client').textContent = request.customer_id;
+      if (request.insurance_type) document.getElementById('product').textContent = request.insurance_type;
+      if (request.coverage_amount) document.getElementById('exposure').textContent = request.coverage_amount;
+      if (request.request_number) document.getElementById('request-id').textContent = `الطلب ${request.request_number}`;
+    }
+
+    const quotesResponse = await fetch(`/insurance/requests/${requestId}/quotes`);
+    if (quotesResponse.ok) {
+      const quotes = await quotesResponse.json();
+      if (Array.isArray(quotes) && quotes.length > 0) {
+        const mapped = await Promise.all(quotes.map(async (quote) => {
+          let insurerName = 'شركـة تأمين';
+          try {
+            const submissionResponse = await fetch(`/insurance/submissions/${quote.submission_id}`);
+            if (submissionResponse.ok) {
+              const submission = await submissionResponse.json();
+              const insurerResponse = await fetch(`/insurance/insurers/${submission.insurer_id}`);
+              if (insurerResponse.ok) {
+                const insurer = await insurerResponse.json();
+                insurerName = insurer.name || insurerName;
+              }
+            }
+          } catch (error) {
+            insurerName = 'شركـة تأمين';
+          }
+
+          const premium = Number(quote.premium || 0);
+          const coverage = Number(quote.coverage_limit || 0);
+          return {
+            id: quote.quote_id.slice(-2).toUpperCase(),
+            carrier: insurerName,
+            premium: premium || 0,
+            coverage: coverage || 0,
+            deductible: Math.max(500, Math.round((premium || 0) * 0.12)),
+            service: 80 + (quote.quote_id.length % 20),
+            benefits: 5 + (quote.quote_id.length % 5),
+          };
+        }));
+
+        renderComparison(mapped);
+        return;
+      }
+    }
+  } catch (error) {
+    // ignore and use demo fallback
+  }
+
+  renderComparison(buildFallbackOffers());
+}
+
+document.getElementById('continue').addEventListener('click', () => {
+  const chosen = document.querySelector('input[name="offer"]:checked');
+  if (!chosen) {
+    notify('اختر خطة أولًا');
+    return;
+  }
+  notify(`تم تسجيل ترشيح الخطة ${chosen.value} محليًا فقط`);
+});
+
+document.getElementById('print').addEventListener('click', () => window.print());
+const financeLink = document.createElement('a');
+financeLink.href = 'collections.html';
+financeLink.textContent = '↗ التحصيلات والعمولات';
+document.querySelector('.nav').appendChild(financeLink);
+const networkLink = document.createElement('a');
+networkLink.href = 'insurers.html';
+networkLink.textContent = '⌂ شركات التأمين';
+document.querySelector('.nav').appendChild(networkLink);
+
+document.querySelectorAll('[data-soon]').forEach((link) => {
+  link.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (link.dataset.soon === 'العملاء') { window.location.href = 'clients.html'; return; }
+    if (link.dataset.soon === 'الوثائق') { window.location.href = 'policies.html'; return; }
+    if (link.dataset.soon === 'المطالبات') { window.location.href = 'claims.html'; return; }
+    notify(`صفحة ${link.dataset.soon} قيد البناء`);
+  });
+});
+
+loadComparison();
+</script></body></html>

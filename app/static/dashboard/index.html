@@ -1,305 +1,67 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Options Trading — Dashboard</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | بُعد للوساطة التأمينية</title>
 <style>
-  :root {
-    color-scheme: light dark;
-    --bg: #0f1115;
-    --panel: #171a21;
-    --border: #2a2f3a;
-    --text: #e6e8ec;
-    --muted: #8b93a3;
-    --green: #3ecf6b;
-    --yellow: #e0b13c;
-    --red: #e0503c;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 16px;
-  }
-  h1 { font-size: 18px; margin: 0 0 12px; }
-  h2 { font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 24px 0 8px; }
-  .banner {
-    background: var(--red); color: #fff; padding: 10px 14px; border-radius: 8px;
-    margin-bottom: 12px; font-weight: 600; display: none;
-  }
-  .banner.show { display: block; }
-  .market-bar { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px; background: var(--panel);
-    border: 1px solid var(--border); border-radius: 10px; }
-  .market-item { display: flex; align-items: center; gap: 8px; font-size: 14px; }
-  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: var(--muted); }
-  .dot.BULLISH, .dot.SUPPORTIVE, .dot.NORMAL { background: var(--green); }
-  .dot.NEUTRAL, .dot.ELEVATED { background: var(--yellow); }
-  .dot.BEARISH, .dot.RESTRICTIVE, .dot.HIGH, .dot.EXTREME { background: var(--red); }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 500; }
-  tr.opportunity-row { cursor: pointer; }
-  tr.opportunity-row:hover { background: rgba(255,255,255,0.04); }
-  .status-pill { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-  .status-ENTRY { background: var(--green); color: #04240f; }
-  .status-READY { background: var(--yellow); color: #2b2003; }
-  .status-WAIT { background: var(--border); color: var(--muted); }
-  .status-INVALIDATED { background: var(--red); color: #2b0603; }
-  #why-panel { display: none; background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
-    padding: 16px; margin-top: 12px; }
-  #why-panel.show { display: block; }
-  .gate-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
-  .gate-PASS { color: var(--green); }
-  .gate-FAIL { color: var(--red); }
-  .cond-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 13px; color: var(--muted); }
-  .cond-row.passed { color: var(--text); }
-  form.log-trade { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: end; }
-  form.log-trade label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 4px; }
-  input, button, select { background: #0c0e12; border: 1px solid var(--border); color: var(--text);
-    padding: 6px 8px; border-radius: 6px; font-size: 13px; }
-  button { background: var(--green); color: #04240f; font-weight: 600; cursor: pointer; border: none; }
-  button:hover { opacity: 0.9; }
-  .empty { color: var(--muted); font-size: 13px; padding: 12px 0; }
-  .close-why { float: right; cursor: pointer; color: var(--muted); }
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
+:root{--ink:#0A0A0B;--muted:#4A4A55;--line:#E6E9F2;--paper:#E6E9F2;--white:#FFFFFF;--pine:#0A0A0B;--teal:#2D5BFF;--lime:#FFFFFF;--aqua:#E6E9F2;--blue:#E6E9F2;--orange:#E6E9F2;--red:#4A4A55}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;font-size:13px}button,input,select{font:inherit}button{cursor:pointer}
+.app{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}.side{position:sticky;top:0;height:100vh;padding:23px 15px 16px;background:var(--pine);color:#FFFFFF;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:0 8px 28px}.brand-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid #4A4A55;border-radius:11px;background:#0A0A0B;color:var(--lime);font-size:13px;font-weight:700;letter-spacing:1px}.brand-name{font-size:19px;font-weight:700;line-height:1.1}.brand-sub{margin-top:4px;color:#E6E9F2;font-size:10px}.nav-label{margin:8px 10px;color:#4A4A55;font-size:10px}.nav{display:grid;gap:3px}.nav button{display:flex;align-items:center;gap:11px;min-height:41px;width:100%;padding:0 11px;border:0;border-radius:5px;background:transparent;color:#E6E9F2;text-align:right;font-size:12px}.nav button:hover{background:#4A4A55;color:#FFFFFF}.nav button.active{background:#2D5BFF;color:#FFFFFF;box-shadow:inset -3px 0 var(--lime)}.nav-icon{display:grid;place-items:center;width:19px;color:#E6E9F2;font-size:15px}.nav button.active .nav-icon{color:var(--lime)}.count{margin-right:auto;padding:2px 6px;border-radius:4px;background:#4A4A55;color:#FFFFFF;font-size:9px}.user{margin-top:auto;border-top:1px solid #4A4A55;padding:14px 7px 0;display:flex;align-items:center;gap:9px}.avatar{display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:#E6E9F2;color:var(--pine);font-weight:700}.user b{display:block;font-size:11px}.user small{display:block;margin-top:3px;color:#E6E9F2;font-size:9px}.user button{margin-right:auto;border:0;background:none;color:#E6E9F2;font-size:17px}
+main{min-width:0;padding:23px clamp(17px,3vw,38px) 35px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:25px}.crumb{color:var(--muted);font-size:11px}.crumb b{color:var(--ink)}.top-actions{display:flex;align-items:center;gap:8px}.search{width:min(245px,28vw);height:36px;padding:0 11px;border:1px solid var(--line);border-radius:5px;background:#FFFFFF;color:var(--ink);font-size:11px}.search:focus,input:focus,select:focus{outline:2px solid #2D5BFF;outline-offset:1px}.icon-button{position:relative;width:37px;height:36px;border:1px solid var(--line);border-radius:5px;background:#FFFFFF;color:var(--ink);font-size:16px}.notify-dot{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#2D5BFF}.heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:17px}.heading h1{margin:0;font-size:23px}.subtitle{margin:4px 0 0;color:var(--muted);font-size:11px}.heading-actions{display:flex;align-items:center;gap:8px}.period{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:6px;background:#FFFFFF}.period button{padding:6px 9px;border:0;border-radius:4px;background:none;color:var(--muted);font-size:10px}.period button.selected{background:#E6E9F2;color:#2D5BFF;font-weight:600}.primary{height:35px;padding:0 12px;border:0;border-radius:5px;background:var(--teal);color:white;font-size:11px;font-weight:600}.primary:hover{background:#2D5BFF}.primary .plus{margin-left:5px;font-size:16px;vertical-align:-1px}
+.demo{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 12px;border:1px solid #E6E9F2;border-radius:5px;background:#E6E9F2;color:#4A4A55;font-size:10px}.demo-mark{color:#2D5BFF;font-weight:700}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:14px}.metric{min-width:0;padding:14px 15px;border:1px solid var(--line);border-radius:7px;background:white}.metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:10px}.metric-symbol{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;font-size:14px}.sym-teal{background:var(--aqua);color:var(--teal)}.sym-lime{background:#E6E9F2;color:#4A4A55}.sym-blue{background:var(--blue);color:#2D5BFF}.sym-orange{background:var(--orange);color:#4A4A55}.metric-value{margin-top:10px;font-size:23px;font-weight:700;line-height:1.1}.metric-note{margin-top:7px;color:var(--muted);font-size:9px}.positive{color:#2D5BFF;font-weight:600}.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.85fr);gap:13px;align-items:start}.stack{display:grid;gap:13px}.panel{min-width:0;border:1px solid var(--line);border-radius:7px;background:white}.panel-head{min-height:51px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E6E9F2}.panel-title{margin:0;font-size:12px;font-weight:700}.panel-sub{margin-top:3px;color:var(--muted);font-size:9px}.plain-button{border:0;background:none;color:var(--teal);font-size:10px;font-weight:600;white-space:nowrap}.plain-button:hover{text-decoration:underline}.funnel{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:14px}.stage{position:relative;min-height:73px;padding:10px;border-radius:5px;background:#E6E9F2}.stage:not(:last-child)::after{content:'←';position:absolute;left:-8px;top:28px;z-index:1;color:#4A4A55;font-size:11px}.stage-label{color:var(--muted);font-size:9px}.stage strong{display:block;margin-top:5px;font-size:19px}.stage small{display:block;margin-top:2px;color:var(--muted);font-size:8px}.stage.current{background:#E6E9F2}.stage.current strong{color:var(--teal)}
+.request-list{padding:0 13px}.request{min-height:56px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #E6E9F2}.request:last-child{border:0}.request-avatar{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:7px;background:#E6E9F2;color:#4A4A55;font-size:10px;font-weight:700}.request-info{flex:1;min-width:0}.request-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:600}.request-meta{margin-top:4px;color:var(--muted);font-size:8px}.product-tag{padding:4px 7px;border-radius:4px;background:#E6E9F2;color:#4A4A55;font-size:8px;white-space:nowrap}.status-tag{padding:4px 7px;border-radius:4px;background:#E6E9F2;color:#2D5BFF;font-size:8px;white-space:nowrap}.status-tag.wait{background:#E6E9F2;color:#2D5BFF}.status-tag.review{background:#E6E9F2;color:#2D5BFF}.pipeline-foot{display:flex;justify-content:center;padding:9px;border-top:1px solid #E6E9F2}.chart-area{padding:13px 15px 11px}.chart-summary{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}.chart-value{font-size:20px;font-weight:700}.chart-delta{color:#2D5BFF;font-size:9px}.chart{height:110px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));align-items:end;gap:7px;padding:7px 3px 0;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,#E6E9F2 28px)}.bar{height:var(--h);width:min(19px,72%);margin:0 auto;border-radius:3px 3px 0 0;background:#E6E9F2}.bar:last-child{background:var(--teal)}.months{display:grid;grid-template-columns:repeat(12,1fr);gap:7px;padding:5px 3px 0;text-align:center;color:var(--muted);font-size:8px}.task{display:flex;align-items:center;gap:9px;min-height:53px;margin:0 13px;border-bottom:1px solid #E6E9F2}.task:last-child{border:0}.task-check{accent-color:var(--teal)}.task-text{flex:1;min-width:0}.task-text b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.task-text small{display:block;margin-top:3px;color:var(--muted);font-size:8px}.task-time{color:var(--muted);font-size:8px;white-space:nowrap}.task.done b{color:#4A4A55;text-decoration:line-through}.automation{padding:13px 14px}.auto-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #E6E9F2;font-size:10px}.auto-row:last-child{border:0}.auto-value{color:var(--teal);font-weight:700}.progress{height:5px;margin:6px 0 1px;border-radius:6px;background:#E6E9F2;overflow:hidden}.progress span{display:block;width:78%;height:100%;border-radius:6px;background:var(--teal)}
+.toast{position:fixed;bottom:20px;right:50%;z-index:4;transform:translate(50%,10px);opacity:0;pointer-events:none;padding:9px 13px;border-radius:5px;background:#0A0A0B;color:white;font-size:11px;transition:.2s}.toast.show{transform:translate(50%,0);opacity:1}.modal-backdrop{position:fixed;inset:0;z-index:5;display:none;place-items:center;padding:16px;background:#0A0A0B80}.modal-backdrop.open{display:grid}.modal{width:min(440px,100%);padding:19px;border-radius:8px;background:white;box-shadow:0 14px 40px #0A0A0B35}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modal-head h2{margin:0;font-size:16px}.close{width:30px;height:30px;border:0;border-radius:4px;background:#E6E9F2;color:var(--ink)}.field{display:grid;gap:5px;margin:12px 0}.field label{font-size:10px;font-weight:600}.field input,.field select{height:37px;padding:0 10px;border:1px solid var(--line);border-radius:5px;background:white;color:var(--ink);font-size:11px}.modal-actions{display:flex;justify-content:flex-start;gap:8px;margin-top:16px}.secondary{height:35px;padding:0 12px;border:1px solid var(--line);border-radius:5px;background:white;color:var(--ink);font-size:11px}
+@media(max-width:1080px){.app{grid-template-columns:205px minmax(0,1fr)}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:minmax(0,1.35fr) minmax(240px,.9fr)}}
+@media(max-width:760px){.app{display:block}.side{position:relative;height:auto;padding:11px 13px}.brand{padding:0 3px 10px}.brand-icon{width:32px;height:32px}.nav-label,.user{display:none}.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}.nav button{flex:0 0 auto;width:auto;min-height:34px;padding:0 9px;font-size:10px}.nav-icon{display:none}.nav button.active{box-shadow:inset 0 -2px var(--lime)}main{padding:16px 14px 27px}.top{margin-bottom:19px}.dashboard-grid{grid-template-columns:1fr}.stack{display:contents}.quote-panel{order:1}.chart-panel{order:2}.task-panel{order:3}.automation-panel{order:4}}
+@media(max-width:480px){.heading{display:block}.heading h1{font-size:21px}.heading-actions{justify-content:space-between;margin-top:12px}.search{width:38px;padding:0 5px}.search:focus{position:absolute;top:61px;left:14px;z-index:2;width:calc(100% - 28px);padding:0 10px}.metrics{gap:8px}.metric{padding:11px}.metric-head{font-size:9px}.metric-value{font-size:19px}.metric-note{font-size:8px}.funnel{gap:5px;padding:10px}.stage{min-height:66px;padding:8px 6px}.stage-label{font-size:8px}.stage strong{font-size:17px}.stage small{font-size:7px}.stage:not(:last-child)::after{left:-7px}.chart{gap:4px}}
 </style>
 </head>
 <body>
-  <h1>Options Trading — Decision Support</h1>
-
-  <div id="degraded-banner" class="banner">⚠️ Data Feed Degraded — signals may be stale</div>
-
-  <h2>Market</h2>
-  <div id="market-bar" class="market-bar">
-    <span class="empty">Loading market context…</span>
-  </div>
-
-  <h2>Top Opportunities</h2>
-  <table id="opportunities-table">
-    <thead><tr><th>Symbol</th><th>Direction</th><th>Score</th><th>R:R</th><th>Status</th></tr></thead>
-    <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
-  </table>
-
-  <div id="why-panel">
-    <span class="close-why" onclick="closeWhy()">✕ close</span>
-    <h2 style="margin-top:0">Why This Trade?</h2>
-    <div id="why-content"></div>
-
-    <h2>Log Manual Trade</h2>
-    <form class="log-trade" onsubmit="return submitTrade(event)">
-      <input type="hidden" id="log-signal-id">
-      <label>Entry time <input type="datetime-local" id="log-entry-time" required></label>
-      <label>Entry price <input type="number" step="0.01" id="log-entry-price" required></label>
-      <label>Quantity <input type="number" id="log-quantity" value="1" min="1" required></label>
-      <button type="submit">Log Trade</button>
-    </form>
-    <div id="log-result" class="empty"></div>
-  </div>
-
-  <h2>Trade Journal</h2>
-  <table id="trades-table">
-    <thead><tr><th>Entry Time</th><th>Entry Price</th><th>Qty</th><th>Exit Price</th><th>Realized P&L</th></tr></thead>
-    <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
-  </table>
-
+<div class="app">
+<aside class="side"><div class="brand"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></div>
+<div class="nav-label">مساحة العمل</div><nav class="nav" aria-label="القائمة الرئيسية">
+<button class="active" data-section="نظرة عامة"><span class="nav-icon">◫</span>نظرة عامة</button><button data-section="طلبات الأسعار"><span class="nav-icon">⌕</span>طلبات الأسعار <span class="count">12</span></button><button data-section="العملاء"><span class="nav-icon">♙</span>العملاء</button><button data-section="الوثائق"><span class="nav-icon">▤</span>الوثائق والتجديدات</button><button data-section="المطالبات"><span class="nav-icon">◉</span>المطالبات</button><button data-section="التحصيلات"><span class="nav-icon">↗</span>التحصيلات</button>
+<div class="nav-label">الشبكة والإدارة</div><button data-section="شركات التأمين"><span class="nav-icon">⌂</span>شركات التأمين</button><button data-section="التقارير"><span class="nav-icon">▥</span>التقارير</button><button data-section="الإعدادات"><span class="nav-icon">⚙</span>الإعدادات</button></nav>
+<div class="user"><div class="avatar">عم</div><div><b>عمر المنصوري</b><small>مدير العمليات</small></div><button aria-label="قائمة الحساب">···</button></div></aside>
+<main><header class="top"><div class="crumb">بُعد <span aria-hidden="true">/</span> <b>مركز العمليات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث عن عميل أو طلب" aria-label="ابحث عن عميل أو طلب"><button id="notify" class="icon-button" aria-label="الإشعارات" title="الإشعارات">♧<span class="notify-dot"></span></button></div></header>
+<section class="heading"><div><h1>صباح الخير، عمر</h1><p class="subtitle">كل رحلة التأمين الرقمية لفريقك، في مكان واحد.</p></div><div class="heading-actions"><div class="period" aria-label="الفترة"><button>أسبوع</button><button class="selected" aria-pressed="true">هذا الشهر</button><button>السنة</button></div><button id="open-modal" class="primary"><span class="plus">+</span> طلب عرض جديد</button></div></section>
+<div class="demo"><span class="demo-mark">●</span><span>بيانات توضيحية للواجهة. أرقام العملاء والأسعار غير مرتبطة ببيانات إنتاجية.</span></div>
+<section class="metrics" aria-label="مؤشرات التشغيل"><article class="metric"><div class="metric-head"><span>أقساط مكتتبة</span><span class="metric-symbol sym-teal">↗</span></div><div class="metric-value">1.28 <span class="unit">مليون ر.س</span></div><div class="metric-note"><span class="positive">↑ 12.8%</span> عن الشهر السابق</div></article><article class="metric"><div class="metric-head"><span>طلبات عروض جديدة اليوم</span><span class="metric-symbol sym-lime">＋</span></div><div class="metric-value">12</div><div class="metric-note">4 تنتظر مقارنة الأسعار</div></article><article class="metric"><div class="metric-head"><span>وثائق تحتاج تجديدًا</span><span class="metric-symbol sym-orange">◷</span></div><div class="metric-value">28</div><div class="metric-note">خلال 30 يومًا</div></article><article class="metric"><div class="metric-head"><span>عروض تحولت لوثائق</span><span class="metric-symbol sym-blue">✓</span></div><div class="metric-value">76%</div><div class="metric-note">معدل التحويل هذا الشهر</div></article></section>
+<div class="dashboard-grid"><div class="stack">
+<section class="panel quote-panel"><div class="panel-head"><div><h2 class="panel-title">رحلة طلبات التأمين</h2><div class="panel-sub">من الطلب الرقمي حتى إصدار الوثيقة</div></div><button class="plain-button" data-section="طلبات الأسعار">كل الطلبات ←</button></div>
+<div class="funnel"><div class="stage current"><span class="stage-label">طلبات جديدة</span><strong id="new-count">12</strong><small>وصلت اليوم</small></div><div class="stage"><span class="stage-label">مقارنة الأسعار</span><strong>8</strong><small>قيد المعالجة</small></div><div class="stage"><span class="stage-label">بانتظار العميل</span><strong>5</strong><small>عروض مرسلة</small></div><div class="stage"><span class="stage-label">إصدار الوثيقة</span><strong>3</strong><small>جاهزة للإصدار</small></div></div>
+<div class="panel-head"><div><h2 class="panel-title">أحدث الطلبات الرقمية</h2><div class="panel-sub">طلبات وصلت عبر قنوات بُعد</div></div><button class="plain-button" data-section="طلبات الأسعار">عرض الكل ←</button></div>
+<div id="request-list" class="request-list"><div class="request"><div class="request-avatar">ر</div><div class="request-info"><div class="request-name">شركة روافد التقنية</div><div class="request-meta">قبل 8 دقائق · 3 شركات للمقارنة</div></div><span class="product-tag">طبي جماعي</span><span class="status-tag review">مقارنة</span></div><div class="request"><div class="request-avatar">ن</div><div class="request-info"><div class="request-name">نورة القحطاني</div><div class="request-meta">قبل 24 دقيقة · طلب عبر الموقع</div></div><span class="product-tag">مركبات</span><span class="status-tag wait">مراجعة</span></div><div class="request"><div class="request-avatar">أ</div><div class="request-info"><div class="request-name">مؤسسة أفق للمقاولات</div><div class="request-meta">قبل ساعة · 4 شركات للمقارنة</div></div><span class="product-tag">ممتلكات</span><span class="status-tag">عرض جاهز</span></div><div class="request"><div class="request-avatar">م</div><div class="request-info"><div class="request-name">مؤسسة نبراس للتجارة</div><div class="request-meta">قبل ساعتين · طلب عبر التطبيق</div></div><span class="product-tag">أسطول</span><span class="status-tag wait">مراجعة</span></div></div><div class="pipeline-foot"><button class="plain-button" data-section="طلبات الأسعار">فتح صندوق الطلبات الرقمية ←</button></div></section>
+<section class="panel chart-panel"><div class="panel-head"><div><h2 class="panel-title">حجم الأقساط عبر المنصة</h2><div class="panel-sub">إجمالي الأقساط المكتتبة · آخر 12 شهرًا</div></div><button class="plain-button" data-section="التقارير">التقرير التفصيلي ←</button></div><div class="chart-area"><div class="chart-summary"><span class="chart-value">1.28 مليون ر.س</span><span class="chart-delta">↑ 12.8%</span></div><div class="chart" role="img" aria-label="مخطط توضيحي لحجم الأقساط الشهري"><span class="bar" style="--h:36%"></span><span class="bar" style="--h:48%"></span><span class="bar" style="--h:41%"></span><span class="bar" style="--h:57%"></span><span class="bar" style="--h:50%"></span><span class="bar" style="--h:64%"></span><span class="bar" style="--h:58%"></span><span class="bar" style="--h:73%"></span><span class="bar" style="--h:67%"></span><span class="bar" style="--h:82%"></span><span class="bar" style="--h:75%"></span><span class="bar" style="--h:92%"></span></div><div class="months"><span>أكت</span><span>نوف</span><span>ديس</span><span>ينا</span><span>فبر</span><span>مار</span><span>أبر</span><span>ماي</span><span>يون</span><span>يول</span><span>أغس</span><span>سبت</span></div></div></section></div>
+<div class="stack"><section class="panel task-panel"><div class="panel-head"><div><h2 class="panel-title">مهام تحتاج متابعة</h2><div class="panel-sub">مرتبة حسب أولوية العميل</div></div><button class="plain-button" data-section="المهام">كل المهام ←</button></div><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>إرسال مقارنة التأمين الطبي</b><small>شركة روافد التقنية</small></span><span class="task-time">الآن</span></label><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>استكمال بيانات طلب المركبة</b><small>نورة القحطاني</small></span><span class="task-time">10:30</span></label><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>اعتماد عرض تجديد الممتلكات</b><small>مؤسسة أفق للمقاولات</small></span><span class="task-time">12:00</span></label><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>متابعة إصدار وثيقة الأسطول</b><small>مؤسسة نبراس للتجارة</small></span><span class="task-time">14:15</span></label></section>
+<section class="panel automation-panel"><div class="panel-head"><div><h2 class="panel-title">عمليات رقمية</h2><div class="panel-sub">مؤشرات تجربة العميل</div></div><span class="metric-symbol sym-lime">✳</span></div><div class="automation"><div class="auto-row"><span>طلبات عبر القنوات الرقمية</span><span class="auto-value">84%</span></div><div class="progress"><span></span></div><div class="auto-row"><span>متوسط تجهيز المقارنة</span><span class="auto-value">4 دقائق</span></div><div class="auto-row"><span>شركات متصلة</span><span class="auto-value">6 شركات</span></div></div></section></div></div>
+</main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form id="request-form" class="modal"><div class="modal-head"><h2 id="modal-title">إضافة طلب عرض</h2><button id="close-modal" class="close" type="button" aria-label="إغلاق">×</button></div><div class="field"><label for="client-name">اسم العميل</label><input id="client-name" name="client" required maxlength="70" placeholder="اسم العميل أو المنشأة"></div><div class="field"><label for="product">نوع التأمين</label><select id="product" name="product"><option>مركبات</option><option>طبي جماعي</option><option>ممتلكات</option><option>مسؤولية مهنية</option><option>سفر</option></select></div><div class="modal-actions"><button class="primary" type="submit">إضافة للطابور التجريبي</button><button id="cancel-modal" class="secondary" type="button">إلغاء</button></div></form></div>
 <script>
-async function fetchJSON(url, opts) {
-  const res = await fetch(url, opts);
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body?.detail?.message || res.statusText);
-  }
-  return res.json();
-}
-
-async function loadSystemStatus() {
-  try {
-    const status = await fetchJSON('/system/status');
-    document.getElementById('degraded-banner').classList.toggle('show', !!status.degraded_mode);
-  } catch (e) { /* system status is best-effort on the dashboard */ }
-}
-
-async function loadMarketContext() {
-  const el = document.getElementById('market-bar');
-  try {
-    const ctx = await fetchJSON('/market/context');
-    el.innerHTML = `
-      <span class="market-item"><span class="dot ${ctx.spy.regime}"></span>SPY ${ctx.spy.regime}</span>
-      <span class="market-item"><span class="dot ${ctx.qqq.regime}"></span>QQQ ${ctx.qqq.regime}</span>
-      <span class="market-item"><span class="dot ${ctx.vix.regime}"></span>VIX ${ctx.vix.value} (${ctx.vix.regime})</span>
-      <span class="market-item"><span class="dot ${ctx.overall_market_regime}"></span>Overall: ${ctx.overall_market_regime}</span>
-    `;
-  } catch (e) {
-    el.innerHTML = '<span class="empty">Market context not available yet</span>';
-  }
-}
-
-async function loadOpportunities() {
-  const tbody = document.querySelector('#opportunities-table tbody');
-  try {
-    const signals = await fetchJSON('/signals?status=ENTRY,READY&limit=20');
-    if (!signals.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No opportunities right now</td></tr>';
-      return;
-    }
-    tbody.innerHTML = signals.map(s => `
-      <tr class="opportunity-row" onclick="openWhy('${s.signal_id}')">
-        <td>${s.symbol}</td>
-        <td>${s.direction}</td>
-        <td>${s.final_score ?? '—'}</td>
-        <td>${s.risk_reward ?? '—'}</td>
-        <td><span class="status-pill status-${s.status}">${s.status}</span></td>
-      </tr>
-    `).join('');
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty">Could not load signals: ${e.message}</td></tr>`;
-  }
-}
-
-async function openWhy(signalId) {
-  const panel = document.getElementById('why-panel');
-  const content = document.getElementById('why-content');
-  document.getElementById('log-signal-id').value = signalId;
-  panel.classList.add('show');
-  content.innerHTML = '<span class="empty">Loading…</span>';
-
-  try {
-    const [detail, why] = await Promise.all([
-      fetchJSON(`/signals/${signalId}`),
-      fetchJSON(`/signals/${signalId}/why`).catch(() => null),
-    ]);
-
-    let html = `<p><strong>${detail.symbol} ${detail.direction}</strong> — Score ${detail.final_score ?? '—'}/100</p>`;
-    html += `<p>Entry zone: ${detail.entry_zone_low ?? '—'} – ${detail.entry_zone_high ?? '—'} &nbsp; `
-          + `Invalidation: ${detail.invalidation ?? '—'} &nbsp; Target: ${detail.target ?? '—'} &nbsp; `
-          + `R:R ${detail.risk_reward ?? '—'}</p>`;
-
-    if (why) {
-      html += '<h3 style="margin-bottom:4px">Hard Gates</h3>';
-      html += Object.entries(why.hard_gates).map(([k, v]) =>
-        `<div class="gate-row"><span>${k}</span><span class="gate-${v}">${v}</span></div>`
-      ).join('');
-
-      html += '<h3 style="margin-bottom:4px">Conditions</h3>';
-      html += why.conditions.map(c =>
-        `<div class="cond-row ${c.passed ? 'passed' : ''}">
-           <span>${c.rule}${c.threshold != null ? ' (threshold ' + c.threshold + ')' : ''}</span>
-           <span>${c.value}</span>
-         </div>`
-      ).join('');
-    } else {
-      html += '<p class="empty">No condition/hard-gate breakdown recorded for this signal.</p>';
-    }
-
-    content.innerHTML = html;
-  } catch (e) {
-    content.innerHTML = `<span class="empty">Could not load details: ${e.message}</span>`;
-  }
-}
-
-function closeWhy() {
-  document.getElementById('why-panel').classList.remove('show');
-}
-
-async function submitTrade(evt) {
-  evt.preventDefault();
-  const signalId = document.getElementById('log-signal-id').value;
-  const entryTime = document.getElementById('log-entry-time').value;
-  const entryPrice = document.getElementById('log-entry-price').value;
-  const quantity = document.getElementById('log-quantity').value;
-  const resultEl = document.getElementById('log-result');
-
-  try {
-    await fetchJSON('/trades', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        signal_id: signalId,
-        entry_time: new Date(entryTime).toISOString(),
-        entry_price: entryPrice,
-        quantity: parseInt(quantity, 10),
-      }),
-    });
-    resultEl.textContent = 'Trade logged.';
-    loadTrades();
-  } catch (e) {
-    resultEl.textContent = `Could not log trade: ${e.message}`;
-  }
-  return false;
-}
-
-async function loadTrades() {
-  const tbody = document.querySelector('#trades-table tbody');
-  try {
-    const trades = await fetchJSON('/trades');
-    if (!trades.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="empty">No trades logged yet</td></tr>';
-      return;
-    }
-    tbody.innerHTML = trades.map(t => `
-      <tr>
-        <td>${new Date(t.user_entry_time).toLocaleString()}</td>
-        <td>${t.user_entry_price}</td>
-        <td>${t.quantity}</td>
-        <td>${t.user_exit_price ?? '—'}</td>
-        <td>${t.realized_pnl ?? '—'}</td>
-      </tr>
-    `).join('');
-  } catch (e) {
-    tbody.innerHTML = `<tr><td colspan="5" class="empty">Could not load trades: ${e.message}</td></tr>`;
-  }
-}
-
-async function refreshAll() {
-  await Promise.all([loadSystemStatus(), loadMarketContext(), loadOpportunities(), loadTrades()]);
-}
-
-// docs/OPERATIONAL_SPEC_V0.1.md §6: PUSH + SOUND minimum, fired only on
-// transition into ENTRY. This is the "PUSH" side — a connected tab reacts
-// to app/api/ws.py's broadcast instead of waiting for the next poll.
-function playAlertSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.4);
-  } catch (e) { /* audio isn't critical to the alert — never block on it */ }
-}
-
-function connectLiveUpdates() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${location.host}/ws/live-updates`);
-
-  ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.type === 'SIGNAL_STATUS_CHANGE' && message.new_status === 'ENTRY') {
-      playAlertSound();
-      if (window.Notification && Notification.permission === 'granted') {
-        new Notification('New ENTRY signal', { body: `Signal ${message.signal_id} is now ENTRY` });
-      }
-      loadOpportunities();
-    }
-    if (message.type === 'SYSTEM_DEGRADED') {
-      document.getElementById('degraded-banner').classList.toggle('show', !!message.degraded_mode);
-    }
-  };
-  ws.onclose = () => setTimeout(connectLiveUpdates, 5000); // reconnect on drop
-}
-
-if (window.Notification && Notification.permission === 'default') {
-  Notification.requestPermission();
-}
-
-refreshAll();
-setInterval(refreshAll, 15000);
-connectLiveUpdates();
+const toast=document.getElementById('toast');let toastTimer;
+function notify(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2500)}
+const modal=document.getElementById('modal');
+function closeModal(){modal.classList.remove('open')}
+document.getElementById('open-modal').addEventListener('click',()=>{modal.classList.add('open');document.getElementById('client-name').focus()});
+document.getElementById('close-modal').addEventListener('click',closeModal);document.getElementById('cancel-modal').addEventListener('click',closeModal);
+modal.addEventListener('click',event=>{if(event.target===modal)closeModal()});
+document.addEventListener('keydown',event=>{if(event.key==='Escape')closeModal()});
+document.getElementById('request-form').addEventListener('submit',event=>{event.preventDefault();const form=new FormData(event.currentTarget);const name=String(form.get('client')).trim();const product=String(form.get('product'));const row=document.createElement('div');row.className='request';const avatar=document.createElement('div');avatar.className='request-avatar';avatar.textContent=name.slice(0,1);const info=document.createElement('div');info.className='request-info';const client=document.createElement('div');client.className='request-name';client.textContent=name;const meta=document.createElement('div');meta.className='request-meta';meta.textContent='الآن · طلب أضيف محليًا للتجربة';info.append(client,meta);const tag=document.createElement('span');tag.className='product-tag';tag.textContent=product;const status=document.createElement('span');status.className='status-tag wait';status.textContent='جديد';row.append(avatar,info,tag,status);document.getElementById('request-list').prepend(row);const count=document.getElementById('new-count');count.textContent=String(Number(count.textContent)+1);event.currentTarget.reset();closeModal();notify('أضيف الطلب محليًا للمعاينة فقط')});
+document.getElementById('notify').addEventListener('click',()=>notify('ما عندك إشعارات جديدة'));
+document.querySelectorAll('.nav [data-section],.plain-button[data-section]').forEach(button=>button.addEventListener('click',()=>{const section=button.dataset.section;document.querySelectorAll('.nav button').forEach(item=>item.classList.toggle('active',item.dataset.section===section));if(section!=='نظرة عامة')notify(`قسم ${section} غير مربوط بعد`)}));
+document.getElementById('search').addEventListener('input',event=>{const query=event.target.value.trim().toLocaleLowerCase('ar');document.querySelectorAll('.request').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('ar').includes(query)})});
+document.querySelectorAll('.period button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.period button').forEach(item=>{item.classList.toggle('selected',item===button);item.setAttribute('aria-pressed',item===button?'true':'false')});notify('تغيير الفترة للعرض فقط؛ البيانات التجريبية ثابتة')}));
+document.querySelectorAll('.task-check').forEach(check=>check.addEventListener('change',()=>check.closest('.task').classList.toggle('done',check.checked)));
+document.querySelectorAll('[data-section="طلبات الأسعار"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='requests.html'}));
+document.querySelectorAll('[data-section="العملاء"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='clients.html'}));
+document.querySelectorAll('[data-section="الوثائق"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='policies.html'}));
+document.querySelectorAll('[data-section="المطالبات"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='claims.html'}));
+document.querySelectorAll('[data-section="التحصيلات"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='collections.html'}));
+document.querySelectorAll('[data-section="شركات التأمين"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='insurers.html'}));
+document.querySelectorAll('[data-section="التقارير"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='reports.html'}));
+document.querySelectorAll('[data-section="الإعدادات"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='settings.html'}));
+const portalLink=document.createElement('a');portalLink.href='portal.html';portalLink.textContent='بوابة العميل';portalLink.style.cssText='align-self:center;padding:7px 9px;border-radius:5px;background:#2D5BFF;color:#FFFFFF;font-size:10px;text-decoration:none;white-space:nowrap';document.querySelector('.top-actions').prepend(portalLink);
 </script>
-</body>
-</html>
+</body></html>

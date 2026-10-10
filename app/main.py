@@ -14,7 +14,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api import ws
-from app.api.routes import events, market, risk, scanner, signals, strategy_parameters, system, trades
+from app.api.routes import events, insurance, market, risk, scanner, signals, strategy_parameters, system, trades
 
 app = FastAPI(
     title="Options Trading Decision Support System",
@@ -29,6 +29,7 @@ app.include_router(trades.router)
 app.include_router(risk.router)
 app.include_router(events.router)
 app.include_router(strategy_parameters.router)
+app.include_router(insurance.router)
 app.include_router(ws.router)
 
 DASHBOARD_DIR = Path(__file__).parent / "static" / "dashboard"

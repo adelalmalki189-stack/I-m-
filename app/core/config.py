@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/options_trading"
     redis_url: str = "redis://localhost:6379/0"
 
+    email_delivery_enabled: bool = False
+    smtp_host: str = "localhost"
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str = "noreply@broker.local"
+    smtp_use_tls: bool = True
+
     # IBKR TWS/Gateway connection (Paper account per docs/IMPLEMENTATION_PLAN_V0.1.md Phase 0)
     ibkr_host: str = "127.0.0.1"
     ibkr_port: int = 7497  # 7497 = TWS paper trading, 4002 = IB Gateway paper
