@@ -78,3 +78,40 @@ class AutomationSetting(Base, TimestampMixin):
 
     key: Mapped[str] = mapped_column(String(50), primary_key=True)
     value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class InboundStatus(StrEnum):
+    UNMATCHED = "unmatched"  # no request number / insurer recognised — needs a person
+    MATCHED = "matched"  # linked to a submission, waiting for extraction
+    QUOTE_CREATED = "quote_created"  # AI extracted a quote (pending review)
+    DECLINED = "declined"  # insurer said they won't quote
+    NO_QUOTE = "no_quote"  # a reply without a price (question, acknowledgement…)
+    FAILED = "failed"  # extraction error; can be retried
+    SKIPPED = "skipped"  # AI extraction is switched off
+
+
+class InboundEmail(Base, TimestampMixin):
+    """An email received in the quotes mailbox."""
+
+    __tablename__ = "automation_inbound_emails"
+
+    inbound_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    message_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    from_address: Mapped[str] = mapped_column(String(255), nullable=False)
+    subject: Mapped[str] = mapped_column(String(500), nullable=False, default="")
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    body_text: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    attachments: Mapped[str] = mapped_column(Text, nullable=False, default="[]")  # JSON list of stored files
+    status: Mapped[InboundStatus] = mapped_column(
+        Enum(
+            InboundStatus, native_enum=False, values_callable=lambda e: [m.value for m in e], name="inbound_status"
+        ),
+        nullable=False,
+        default=InboundStatus.UNMATCHED,
+        index=True,
+    )
+    request_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    submission_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    extraction: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON of what the AI returned
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

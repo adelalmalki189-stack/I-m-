@@ -213,7 +213,8 @@ function renderAutomation(data) {
   const f = document.getElementById('channel-form');
   f.messaging_mode.value = data.messaging_mode; f.customer_channel.value = data.customer_channel;
   const cfg = data.configured_channels;
-  document.getElementById('channel-status').textContent = `بيانات المزوّد على الخادم: واتساب ${cfg.whatsapp ? '✓ موجودة' : '✗ غير موجودة'} · SMS ${cfg.sms ? '✓ موجودة' : '✗ غير موجودة'}`;
+  document.getElementById('channel-status').textContent = `بيانات المزوّد على الخادم: واتساب ${cfg.whatsapp ? '✓ موجودة' : '✗ غير موجودة'} · SMS ${cfg.sms ? '✓ موجودة' : '✗ غير موجودة'}`
+    + ` · صندوق ردود الشركات (IMAP): ${data.mailbox_configured ? '✓ متصل' : '✗ غير مهيأ'} · استخراج العروض بالذكاء الاصطناعي: ${data.ai_extraction_enabled ? '✓ مفعّل' : '✗ متوقف'}`;
   document.getElementById('rules').replaceChildren(...data.rules.map(ruleCard));
 }
 

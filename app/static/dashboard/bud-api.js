@@ -152,7 +152,7 @@ const BUD = (() => {
   const date = value => (value ? dateFmt.format(new Date(value)) : '—');
   const money = value => {
     const n = Number(String(value ?? '').replace(/,/g, ''));
-    return value == null || value === '' || Number.isNaN(n) ? '—' : `${n.toLocaleString('en-US')} ر.س`;
+    return value == null || value === '' || Number.isNaN(n) ? '—' : `${n.toLocaleString('en-US', { maximumFractionDigits: 2 })} ر.س`;
   };
 
   return { api, ApiError, catalog, pill, el, notify, run, date, money, REQUEST_STATUS, SUBMISSION_STATUS };

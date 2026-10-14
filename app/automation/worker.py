@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 
+from app.automation import inbound
 from app.automation.jobs import run_daily_jobs
 from app.automation.service import dispatch_outbox
 from app.core.database import get_session
@@ -24,9 +25,21 @@ from app.core.database import get_session
 log = logging.getLogger("bud.worker")
 DISPATCH_EVERY = 30  # seconds
 JOBS_EVERY = timedelta(hours=1)
+MAILBOX_EVERY = timedelta(minutes=2)
 
 
-async def cycle(client: httpx.AsyncClient, run_jobs: bool) -> None:
+async def poll_mailbox() -> None:
+    raw = await asyncio.to_thread(inbound.fetch_unseen)
+    if not raw:
+        return
+    async with get_session() as session:
+        counts = await inbound.process_mailbox(session, raw)
+    log.info("mailbox: %s", counts)
+
+
+async def cycle(client: httpx.AsyncClient, run_jobs: bool, poll: bool = False) -> None:
+    if poll:
+        await poll_mailbox()
     if run_jobs:
         async with get_session() as session:
             summary = await run_daily_jobs(session)
@@ -43,14 +56,18 @@ async def main(once: bool) -> None:
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, stop.set)
     last_jobs: datetime | None = None
+    last_poll: datetime | None = None
     async with httpx.AsyncClient() as client:
         while not stop.is_set():
             now = datetime.now(UTC)
             run_jobs = last_jobs is None or now - last_jobs >= JOBS_EVERY
+            poll = last_poll is None or now - last_poll >= MAILBOX_EVERY
             try:
-                await cycle(client, run_jobs)
+                await cycle(client, run_jobs, poll)
                 if run_jobs:
                     last_jobs = now
+                if poll:
+                    last_poll = now
             except Exception:  # keep the worker alive; the next cycle retries
                 log.exception("worker cycle failed")
             if once:

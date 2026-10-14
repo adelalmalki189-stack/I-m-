@@ -69,6 +69,7 @@ from app.insurance.schemas import (
     PortalDocumentResponse,
     PortalRequestCreate,
     PortalRequestResponse,
+    QuoteReviewRequest,
     RequestDocumentResponse,
     SalesEmployeeCreateRequest,
     SalesEmployeeResponse,
@@ -1367,6 +1368,59 @@ async def create_quote(
     return InsuranceQuoteResponse.model_validate(quote)
 
 
+@router.post("/quotes/{quote_id}/confirm", response_model=InsuranceQuoteResponse)
+async def confirm_quote(
+    quote_id: str,
+    body: QuoteReviewRequest,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> InsuranceQuoteResponse:
+    """An underwriter checks an AI-extracted quote against the insurer's email, corrects it, and confirms."""
+    quote = await _get_or_404(session, InsuranceQuote, quote_id, "QUOTE_NOT_FOUND", "quote")
+    if not quote.needs_review:
+        raise _error(409, "QUOTE_ALREADY_CONFIRMED", "This quote is already confirmed")
+    changes = body.model_dump(exclude_unset=True)
+    for key, value in changes.items():
+        setattr(quote, key, str(value) if key in ("premium", "coverage_limit") and value is not None else value)
+    quote.needs_review = False
+    submission = await session.get(InsuranceSubmission, quote.submission_id)
+    audit(
+        session,
+        staff,
+        "quote_confirmed",
+        "request",
+        submission.request_id if submission else None,
+        quote_id=quote_id,
+        corrected=sorted(changes),
+    )
+    await session.commit()
+    await session.refresh(quote)
+    return InsuranceQuoteResponse.model_validate(quote)
+
+
+@router.delete("/quotes/{quote_id}", status_code=204)
+async def reject_extracted_quote(
+    quote_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> None:
+    """Discard an AI-extracted quote that was read wrongly (confirmed quotes can't be deleted)."""
+    quote = await _get_or_404(session, InsuranceQuote, quote_id, "QUOTE_NOT_FOUND", "quote")
+    if not quote.needs_review:
+        raise _error(409, "QUOTE_ALREADY_CONFIRMED", "Confirmed quotes cannot be deleted")
+    submission = await session.get(InsuranceSubmission, quote.submission_id)
+    audit(
+        session,
+        staff,
+        "quote_rejected",
+        "request",
+        submission.request_id if submission else None,
+        quote_id=quote_id,
+    )
+    await session.delete(quote)
+    await session.commit()
+
+
 @router.get("/submissions/{submission_id}/quotes", response_model=list[InsuranceQuoteResponse])
 async def list_quotes_for_submission(
     submission_id: str,
@@ -1404,7 +1458,7 @@ async def get_best_quote_for_request(
     session: AsyncSession = Depends(get_db_session),
 ) -> InsuranceQuoteResponse:
     await _get_request_or_404(session, request_id)
-    quotes = await _quotes_for_request(session, request_id)
+    quotes = [q for q in await _quotes_for_request(session, request_id) if not q.needs_review]
     if not quotes:
         raise _error(404, "QUOTES_NOT_FOUND", f"No quotes found for request '{request_id}'")
 
@@ -1431,6 +1485,8 @@ async def select_quote_for_request(
     submission = await session.get(InsuranceSubmission, quote.submission_id)
     if submission is None or submission.request_id != request_id:
         raise _error(400, "QUOTE_NOT_FOR_REQUEST", "This quote does not belong to the selected request")
+    if quote.needs_review:
+        raise _error(409, "QUOTE_NEEDS_REVIEW", "Confirm this AI-extracted quote before selecting it")
     if request.status not in workflow.OPEN_STATUSES:
         raise _error(409, "REQUEST_NOT_OPEN", "A quote can only be selected for an open request")
 

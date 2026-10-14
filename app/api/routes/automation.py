@@ -7,16 +7,24 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import MANAGERS, UNDERWRITING, audit, get_current_staff, require_roles
 from app.api.deps import get_db_session
-from app.automation import channels, jobs, service
-from app.automation.models import AutomationRule, CustomerNotification, NotificationStatus
+from app.core.config import settings
+from app.automation import channels, inbound, jobs, service
+from app.automation.models import (
+    AutomationRule,
+    CustomerNotification,
+    InboundEmail,
+    InboundStatus,
+    NotificationStatus,
+)
 from app.automation.rules import RULES, get_rule, unknown_variables
-from app.insurance.models import Customer, SalesEmployee
+from app.insurance.models import Customer, InsuranceRequest, InsuranceSubmission, Insurer, SalesEmployee
 
 router = APIRouter(prefix="/insurance", tags=["automation"], dependencies=[Depends(get_current_staff)])
 
@@ -42,6 +50,8 @@ class AutomationView(BaseModel):
     messaging_mode: str
     customer_channel: str
     configured_channels: dict[str, bool]
+    mailbox_configured: bool
+    ai_extraction_enabled: bool
     rules: list[RuleView]
 
 
@@ -133,6 +143,8 @@ async def _view(session: AsyncSession) -> AutomationView:
         messaging_mode=await service.get_setting(session, "messaging_mode"),
         customer_channel=await service.get_setting(session, "customer_channel"),
         configured_channels=channels.configured_channels(),
+        mailbox_configured=bool(settings.imap_host and settings.imap_username and settings.imap_password),
+        ai_extraction_enabled=settings.ai_quote_extraction_enabled,
         rules=rules,
     )
 
@@ -281,3 +293,126 @@ async def send_manual_message(
     audit(session, staff, "manual_message", "customer", customer_id, at=datetime.now(UTC))
     await session.commit()
     return (await _notification_views(session, [row]))[0]
+
+
+# --- Insurer replies (quotes mailbox) ---------------------------------------------------
+
+
+class InboundView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    inbound_id: str
+    from_address: str
+    subject: str
+    received_at: datetime | None
+    body_text: str
+    attachments: list[dict[str, Any]]
+    status: InboundStatus
+    request_id: str | None
+    request_number: str | None = None
+    submission_id: str | None
+    insurer_name: str | None = None
+    quote_id: str | None
+    extraction: dict[str, Any] | None
+    error: str | None
+    created_at: datetime
+
+
+class InboundLink(BaseModel):
+    submission_id: str
+
+
+async def _inbound_views(session: AsyncSession, rows: list[InboundEmail]) -> list[InboundView]:
+    views = []
+    for row in rows:
+        data = {c: getattr(row, c) for c in InboundView.model_fields if hasattr(row, c)}
+        data["attachments"] = [
+            {k: v for k, v in item.items() if k != "path"} | {"index": i}
+            for i, item in enumerate(json.loads(row.attachments or "[]"))
+        ]
+        data["extraction"] = json.loads(row.extraction) if row.extraction else None
+        view = InboundView(**data)
+        if row.request_id and (request := await session.get(InsuranceRequest, row.request_id)):
+            view.request_number = request.request_number
+        if row.submission_id and (submission := await session.get(InsuranceSubmission, row.submission_id)):
+            insurer = await session.get(Insurer, submission.insurer_id)
+            view.insurer_name = insurer.name if insurer else None
+        views.append(view)
+    return views
+
+
+async def _inbound_or_404(session: AsyncSession, inbound_id: str) -> InboundEmail:
+    row = await session.get(InboundEmail, inbound_id)
+    if row is None:
+        raise _error(404, "INBOUND_NOT_FOUND", "Email not found")
+    return row
+
+
+@router.get("/inbound", response_model=list[InboundView])
+async def list_inbound(
+    status: InboundStatus | None = None,
+    request_id: str | None = None,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> list[InboundView]:
+    stmt = select(InboundEmail).order_by(InboundEmail.created_at.desc()).limit(200)
+    if status:
+        stmt = stmt.where(InboundEmail.status == status)
+    if request_id:
+        stmt = stmt.where(InboundEmail.request_id == request_id)
+    return await _inbound_views(session, list((await session.execute(stmt)).scalars()))
+
+
+@router.post("/inbound/{inbound_id}/link", response_model=InboundView)
+async def link_inbound(
+    inbound_id: str,
+    body: InboundLink,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> InboundView:
+    """Attach an unmatched email to the right insurer submission, then extract it."""
+    row = await _inbound_or_404(session, inbound_id)
+    submission = await session.get(InsuranceSubmission, body.submission_id)
+    if submission is None:
+        raise _error(404, "SUBMISSION_NOT_FOUND", "Submission not found")
+    if row.quote_id:
+        raise _error(409, "INBOUND_ALREADY_PROCESSED", "A quote was already created from this email")
+    row.submission_id, row.request_id = submission.submission_id, submission.request_id
+    row.status = InboundStatus.MATCHED
+    audit(session, staff, "inbound_linked", "request", submission.request_id, inbound_id=inbound_id)
+    await inbound.extract(session, row)
+    await session.commit()
+    return (await _inbound_views(session, [row]))[0]
+
+
+@router.post("/inbound/{inbound_id}/extract", response_model=InboundView)
+async def retry_extraction(
+    inbound_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> InboundView:
+    row = await _inbound_or_404(session, inbound_id)
+    if row.quote_id:
+        raise _error(409, "INBOUND_ALREADY_PROCESSED", "A quote was already created from this email")
+    if not row.submission_id:
+        raise _error(409, "INBOUND_NOT_LINKED", "Link the email to a submission first")
+    await inbound.extract(session, row)
+    await session.commit()
+    return (await _inbound_views(session, [row]))[0]
+
+
+@router.get("/inbound/{inbound_id}/attachments/{index}")
+async def inbound_attachment(
+    inbound_id: str,
+    index: int,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> FileResponse:
+    row = await _inbound_or_404(session, inbound_id)
+    items = json.loads(row.attachments or "[]")
+    if not 0 <= index < len(items) or not items[index].get("path"):
+        raise _error(404, "ATTACHMENT_NOT_FOUND", "Attachment not found")
+    path = inbound.PROJECT_ROOT / items[index]["path"]
+    if not path.is_file():
+        raise _error(404, "ATTACHMENT_NOT_FOUND", "Attachment file is missing")
+    return FileResponse(path, media_type=items[index]["mime"], filename=items[index]["name"])

@@ -282,6 +282,7 @@ class InsuranceRequestPreferenceResponse(BaseModel):
             insurers = data.get("preferred_insurers")
             if isinstance(insurers, str):
                 import json
+
                 try:
                     data["preferred_insurers"] = json.loads(insurers)
                 except Exception:
@@ -485,8 +486,22 @@ class InsuranceQuoteResponse(BaseModel):
     currency: str
     source_channel: str
     commission_rate: Decimal | None = None
+    needs_review: bool = False
+    inbound_email_id: str | None = None
+    extraction_notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class QuoteReviewRequest(BaseModel):
+    """Corrections an underwriter makes while confirming an AI-extracted quote."""
+
+    premium: Decimal | None = Field(default=None, gt=0)
+    coverage_limit: Decimal | None = Field(default=None, ge=0)
+    exclusions: str | None = None
+    conditions: str | None = None
+    validity_date: datetime | None = None
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=100)
 
 
 _NON_DIGITS = re.compile(r"\D")
@@ -497,7 +512,7 @@ def normalize_saudi_mobile(raw: str) -> str:
     digits = _NON_DIGITS.sub("", raw)
     for prefix in ("00966", "966", "0"):
         if digits.startswith(prefix):
-            digits = digits[len(prefix):]
+            digits = digits[len(prefix) :]
             break
     if len(digits) != 9 or not digits.startswith("5"):
         raise ValueError("رقم الجوال غير صحيح؛ استخدم صيغة 05XXXXXXXX")

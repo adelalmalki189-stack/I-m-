@@ -39,5 +39,16 @@ class Settings(BaseSettings):
     unifonic_sender_id: str | None = None
     unifonic_api_url: str = "https://el.cloud.unifonic.com/rest/SMS/messages"
 
+    # Insurer replies: the quotes mailbox read over IMAP (SSL). Empty host = feature off.
+    imap_host: str | None = None
+    imap_port: int = 993
+    imap_username: str | None = None
+    imap_password: str | None = None
+    imap_folder: str = "INBOX"
+    # AI quote extraction sends the insurer's email and attachments (which can contain
+    # customer data) to the Anthropic API. Off unless explicitly enabled.
+    ai_quote_extraction_enabled: bool = False
+    ai_model: str = "claude-opus-5-5"
+
 
 settings = Settings()

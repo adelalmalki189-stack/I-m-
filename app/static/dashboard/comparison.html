@@ -45,7 +45,10 @@ let insurers = {};
 
 async function loadRequest(requestId) {
   history.replaceState(null, '', `?request=${requestId}`);
-  const [request, quotes, submissions] = await Promise.all([api(`/requests/${requestId}`), api(`/requests/${requestId}/quotes`), api(`/submissions?request_id=${requestId}`)]);
+  const [request, allQuotes, submissions] = await Promise.all([api(`/requests/${requestId}`), api(`/requests/${requestId}/quotes`), api(`/submissions?request_id=${requestId}`)]);
+  // AI-extracted quotes stay out of the comparison until an underwriter confirms them.
+  const quotes = allQuotes.filter(q => !q.needs_review);
+  const pendingReview = allQuotes.length - quotes.length;
   const insurerOf = Object.fromEntries(submissions.map(s => [s.submission_id, insurers[s.insurer_id] || 'شركة']));
   document.getElementById('summary').hidden = false;
   document.getElementById('status').replaceChildren(pill(REQUEST_STATUS, request.status));
@@ -79,7 +82,9 @@ async function loadRequest(requestId) {
       q.quote_id === request.selected_quote_id ? el('span', { class: 'muted', text: 'العرض المختار' })
         : el('button', { class: 'button primary', type: 'button', text: 'اختيار هذا العرض',
           onclick: e => run(e.currentTarget, () => api(`/requests/${requestId}/quotes/${q.quote_id}/select`, { method: 'POST' }), 'تم اختيار العرض').then(() => loadRequest(requestId)) }))))] : []));
-  document.getElementById('no-quotes').hidden = quotes.length > 0;
+  const noQuotes = document.getElementById('no-quotes');
+  noQuotes.hidden = quotes.length > 0 && !pendingReview;
+  noQuotes.textContent = pendingReview ? `${pendingReview} عرض مستخرج آليًا بانتظار التحقق في صفحة الاكتتاب قبل ظهوره هنا.` : 'لا توجد عروض مسجلة لهذا الطلب بعد.';
 
   document.getElementById('issue-panel').hidden = request.status !== 'quote_selected';
   const policyPanel = document.getElementById('policy-panel');

@@ -450,6 +450,10 @@ class InsuranceQuote(Base, TimestampMixin):
     currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
     # Broker commission percent offered by the insurer in this quote.
     commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    # Quotes read from an insurer's email by AI wait for an underwriter to confirm them.
+    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    inbound_email_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    extraction_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     source_channel: Mapped[str] = mapped_column(
         String(30), nullable=False, default=InsurerCommunicationChannel.EMAIL.value
     )
