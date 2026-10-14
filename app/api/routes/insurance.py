@@ -19,7 +19,7 @@ from app.api.deps import get_db_session
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
-from app.insurance import aftersales, catalog, mailer, workflow
+from app.insurance import aftersales, catalog, documents, mailer, workflow
 from app.insurance.models import (
     AuditEvent,
     Customer,
@@ -161,19 +161,8 @@ def _details(request: InsuranceRequest) -> dict:
         return {}
 
 
-def _document_storage_root() -> Path:
-    return PROJECT_ROOT / "app" / "static" / "uploads"
-
-
 PORTAL_UPLOAD_WINDOW = timedelta(hours=2)
 PORTAL_MAX_DOCUMENTS = 10
-STAFF_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
-# Public uploads must really be PDF/JPEG/PNG — checked by the file's first bytes, not its name.
-PORTAL_FILE_SIGNATURES = {
-    b"%PDF": "application/pdf",
-    b"\xff\xd8\xff": "image/jpeg",
-    b"\x89PNG\r\n\x1a\n": "image/png",
-}
 portal_limiter = RateLimiter(settings.portal_requests_per_hour, 3600)
 
 
@@ -186,45 +175,10 @@ async def _store_document(
     max_bytes: int,
     allowed: dict[bytes, str] | None = None,
 ) -> RequestDocument:
-    # Keep only the final path component so a crafted name like "../../x" can't escape the uploads folder.
-    file_name = Path(file.filename or "").name
-    if not file_name:
-        raise _error(400, "INVALID_FILE", "A file name is required")
-    content = await file.read(max_bytes + 1)
-    if len(content) > max_bytes:
-        raise _error(413, "FILE_TOO_LARGE", f"Files must be at most {max_bytes // (1024 * 1024)} MB")
-    mime_type = file.content_type or "application/octet-stream"
-    if allowed is not None:
-        detected = next((mime for magic, mime in allowed.items() if content.startswith(magic)), None)
-        if detected is None:
-            raise _error(415, "UNSUPPORTED_FILE_TYPE", "Only PDF, JPEG and PNG files are accepted")
-        mime_type = detected
-
-    storage_root = _document_storage_root() / request_id
-    storage_root.mkdir(parents=True, exist_ok=True)
-    storage_path = storage_root / f"{uuid4().hex}-{file_name}"
-    storage_path.write_bytes(content)
-    document = RequestDocument(
-        request_id=request_id,
-        document_type=document_type,
-        file_name=file_name,
-        mime_type=mime_type,
-        size_bytes=len(content),
-        storage_key=str(storage_path.relative_to(PROJECT_ROOT)),
-        uploaded_by_employee_id=uploader_id,
-    )
-    session.add(document)
-    await session.flush()
-    return document
-
-
-def _resolve_document_path(storage_key: str | None) -> Path | None:
-    if not storage_key:
-        return None
-    candidate = Path(storage_key)
-    if not candidate.is_absolute():
-        candidate = PROJECT_ROOT / candidate
-    return candidate if candidate.exists() else None
+    try:
+        return await documents.store(session, request_id, file, document_type, uploader_id, max_bytes, allowed)
+    except documents.DocumentRejected as exc:
+        raise _error(exc.status, exc.code, str(exc)) from exc
 
 
 # --- Response builders -------------------------------------------------------
@@ -765,7 +719,7 @@ async def upload_portal_document(
         "customer_upload",
         None,
         max_bytes=settings.portal_max_upload_mb * 1024 * 1024,
-        allowed=PORTAL_FILE_SIGNATURES,
+        allowed=documents.PDF_AND_IMAGES,
     )
     audit(session, None, "portal_document_uploaded", "request", request_id, file_name=document.file_name)
     await session.commit()
@@ -890,7 +844,7 @@ async def upload_document(
         file,
         document_type,
         uploaded_by_employee_id or staff.employee_id,
-        max_bytes=STAFF_MAX_UPLOAD_BYTES,
+        max_bytes=documents.STAFF_MAX_UPLOAD_BYTES,
     )
     audit(session, staff, "document_uploaded", "request", request_id, file_name=document.file_name)
     await session.commit()
@@ -906,7 +860,7 @@ async def download_document(
 ) -> FileResponse:
     """Customer documents are never served statically; staff fetch them here (and it's audited)."""
     document = await _get_or_404(session, RequestDocument, document_id, "DOCUMENT_NOT_FOUND", "document")
-    path = _resolve_document_path(document.storage_key)
+    path = documents.resolve_path(document.storage_key)
     if path is None or not path.is_file():
         raise _error(404, "DOCUMENT_FILE_MISSING", "The stored file is missing")
     audit(session, staff, "document_downloaded", "request", document.request_id, document_id=document_id)
@@ -1256,7 +1210,7 @@ def _build_insurer_email_message(
     message.set_content(submission.email_body)
 
     for document in attachment_documents:
-        file_path = _resolve_document_path(document.storage_key)
+        file_path = documents.resolve_path(document.storage_key)
         if file_path is None or not file_path.is_file():
             continue
         if "/" in (document.mime_type or ""):

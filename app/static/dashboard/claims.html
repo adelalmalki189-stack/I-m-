@@ -34,6 +34,8 @@
 
 <section id="detail" class="panel" hidden><div class="panel-head"><div><h2 id="d-title"></h2><div id="d-sub" class="muted"></div></div><span id="d-status"></span></div>
 <div class="panel-body"><dl id="d-kv" class="kv"></dl>
+<div class="section-title">المستندات</div><div id="d-docs" class="actions" style="margin-bottom:8px"></div>
+<form id="doc-form" class="actions"><select name="document_type" class="search" style="width:auto"><option value="claim_evidence">صور الحادث</option><option value="najm_report">تقرير نجم / الشرطة</option><option value="estimate">تقدير الإصلاح / فاتورة</option><option value="medical_report">تقرير طبي</option><option value="other">مستند آخر</option></select><input name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" required style="font-size:10px"><button class="button" type="submit">رفع</button></form>
 <div id="d-move"><div class="section-title">نقل المطالبة إلى</div>
 <form id="move-form"><div class="form-grid">
 <label class="field"><span>الحالة الجديدة</span><select name="status"></select></label>
@@ -95,6 +97,7 @@ function select(id) {
     .filter(([, v]) => v && v !== '—');
   document.getElementById('d-kv').replaceChildren(...kv.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })]),
     el('dt', { text: 'الوثيقة' }), el('dd', {}, el('a', { href: `policies.html?policy=${c.policy_id}`, text: c.policy_number })));
+  loadDocs(id);
   const canMove = ['underwriter', 'manager'].includes(role) && c.allowed_transitions.length;
   document.getElementById('d-move').hidden = !canMove;
   moveForm.reset();
@@ -102,6 +105,19 @@ function select(id) {
   if (c.approved_amount) moveForm.paid_amount.value = c.approved_amount;
   syncMoveFields();
 }
+
+const DOC_LABELS = { claim_evidence: 'صور الحادث', najm_report: 'تقرير نجم', estimate: 'تقدير/فاتورة', medical_report: 'تقرير طبي', other: 'مستند' };
+async function loadDocs(id) {
+  const docs = await api(`/claims/${id}/documents`);
+  document.getElementById('d-docs').replaceChildren(...(docs.length ? docs.map(d => el('a', { class: 'pill blue', target: '_blank', rel: 'noopener',
+    href: `/insurance/documents/${d.document_id}/download`, text: `${DOC_LABELS[d.document_type] || d.document_type}: ${d.file_name}` })) : [el('span', { class: 'muted', text: 'لا توجد مستندات' })]));
+}
+document.getElementById('doc-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const data = new FormData(form);
+  run(e.submitter, () => api(`/claims/${selectedId}/documents`, { method: 'POST', form: data }), 'رُفع المستند').then(() => { form.reset(); loadDocs(selectedId); });
+});
 
 function syncMoveFields() {
   moveForm.querySelectorAll('[data-for]').forEach(f => { f.hidden = f.dataset.for !== moveForm.status.value; });

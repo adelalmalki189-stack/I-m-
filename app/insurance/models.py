@@ -155,6 +155,8 @@ class RequestDocument(Base, TimestampMixin):
     request_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("insurance_requests.request_id"), nullable=False
     )
+    # Set when the file belongs to a claim (accident photos, reports); still filed under the policy's request.
+    claim_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     document_type: Mapped[str] = mapped_column(String(80), nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(120), nullable=False, default="application/octet-stream")

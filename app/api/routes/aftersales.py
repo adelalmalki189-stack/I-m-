@@ -9,14 +9,14 @@ from decimal import Decimal
 from typing import Any, overload
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import UNDERWRITING, audit, get_current_staff, require_roles
 from app.api.deps import get_db_session
 from app.automation import service as notifications
-from app.insurance import aftersales, catalog
+from app.insurance import aftersales, catalog, documents
 from app.insurance.aftersales_schemas import (
     ClaimCreateRequest,
     ClaimStatusUpdateRequest,
@@ -46,8 +46,10 @@ from app.insurance.models import (
     InsuranceRequestStatus,
     Insurer,
     PremiumInstallment,
+    RequestDocument,
     SalesEmployee,
 )
+from app.insurance.schemas import RequestDocumentResponse
 from app.insurance.workflow import OPEN_STATUSES
 
 router = APIRouter(prefix="/insurance", tags=["after-sales"], dependencies=[Depends(get_current_staff)])
@@ -761,3 +763,44 @@ async def report_summary(
         },
         "active_policies": len(live),
     }
+
+
+@router.post("/claims/{claim_id}/documents", response_model=RequestDocumentResponse, status_code=201)
+async def upload_claim_document(
+    claim_id: str,
+    file: UploadFile = File(...),
+    document_type: str = Form("claim_evidence"),
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
+) -> RequestDocumentResponse:
+    """Accident photos, police/Najm reports, invoices — PDF or images."""
+    claim = await _get(session, InsuranceClaim, claim_id, "CLAIM_NOT_FOUND")
+    policy = await _get(session, InsurancePolicy, claim.policy_id, "POLICY_NOT_FOUND")
+    try:
+        document = await documents.store(
+            session,
+            policy.request_id,
+            file,
+            document_type,
+            staff.employee_id,
+            max_bytes=documents.STAFF_MAX_UPLOAD_BYTES,
+            allowed=documents.PDF_AND_IMAGES,
+            claim_id=claim_id,
+        )
+    except documents.DocumentRejected as exc:
+        raise _error(exc.status, exc.code, str(exc)) from exc
+    audit(session, staff, "claim_document_uploaded", "claim", claim_id, file_name=document.file_name)
+    await session.commit()
+    await session.refresh(document)
+    return RequestDocumentResponse.model_validate(document)
+
+
+@router.get("/claims/{claim_id}/documents", response_model=list[RequestDocumentResponse])
+async def list_claim_documents(
+    claim_id: str, session: AsyncSession = Depends(get_db_session)
+) -> list[RequestDocumentResponse]:
+    await _get(session, InsuranceClaim, claim_id, "CLAIM_NOT_FOUND")
+    result = await session.execute(
+        select(RequestDocument).where(RequestDocument.claim_id == claim_id).order_by(RequestDocument.created_at)
+    )
+    return [RequestDocumentResponse.model_validate(d) for d in result.scalars()]

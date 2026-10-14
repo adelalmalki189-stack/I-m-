@@ -290,3 +290,29 @@ async def test_sales_cannot_touch_money(db_session):
         assert client.post("/insurance/installments/x/pay", json={"payment_method": "cash"}).status_code == 403
         assert client.get("/insurance/portfolio/policies").status_code == 200
         assert client.get("/insurance/portfolio/installments").status_code == 200
+
+
+async def test_claim_documents(db_session):
+    with TestClient(app) as client:
+        policy, _, _ = _issue(client, start=date.today() - timedelta(days=5))
+        claim = client.post(
+            "/insurance/claims",
+            json={
+                "policy_id": policy["policy_id"],
+                "incident_date": date.today().isoformat(),
+                "description": "حادث تصادم",
+            },
+        ).json()
+        url = f"/insurance/claims/{claim['claim_id']}/documents"
+        ok = client.post(
+            url,
+            files={"file": ("najm.pdf", b"%PDF-1.4 najm", "application/pdf")},
+            data={"document_type": "najm_report"},
+        )
+        assert ok.status_code == 201 and ok.json()["claim_id"] == claim["claim_id"]
+        bad = client.post(url, files={"file": ("x.exe", b"MZ...", "application/octet-stream")})
+        assert bad.status_code == 415
+        docs = client.get(url).json()
+        assert [d["file_name"] for d in docs] == ["najm.pdf"]
+        download = client.get(f"/insurance/documents/{docs[0]['document_id']}/download")
+        assert download.content == b"%PDF-1.4 najm"

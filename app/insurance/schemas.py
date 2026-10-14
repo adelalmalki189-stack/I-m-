@@ -141,6 +141,7 @@ class RequestDocumentResponse(BaseModel):
     storage_key: str
     is_verified: bool
     uploaded_by_employee_id: str | None = None
+    claim_id: str | None = None
     created_at: datetime
 
 
