@@ -4,6 +4,7 @@ Revision ID: 0004
 Revises: 0003
 Create Date: 2026-10-09
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -35,8 +36,13 @@ def upgrade() -> None:
 
     op.add_column("insurance_requests", sa.Column("sales_employee_id", sa.String(length=36), nullable=True))
     op.add_column("insurance_requests", sa.Column("underwriter_id", sa.String(length=36), nullable=True))
-    op.add_column("insurance_requests", sa.Column("underwriter_status", sa.String(length=30), nullable=False, server_default="new"))
-    op.add_column("insurance_requests", sa.Column("preferred_insurers", sa.Text(), nullable=True, server_default="[]"))
+    op.add_column(
+        "insurance_requests",
+        sa.Column("underwriter_status", sa.String(length=30), nullable=False, server_default="new"),
+    )
+    op.add_column(
+        "insurance_requests", sa.Column("preferred_insurers", sa.Text(), nullable=True, server_default="[]")
+    )
     op.add_column("insurance_requests", sa.Column("premium_budget", sa.String(length=50), nullable=True))
     op.add_column("insurance_requests", sa.Column("coverage_limit", sa.String(length=50), nullable=True))
     op.add_column("insurance_requests", sa.Column("customer_priority", sa.String(length=30), nullable=True))
@@ -55,7 +61,9 @@ def upgrade() -> None:
         ["employee_id"],
     )
 
-    op.add_column("insurance_request_documents", sa.Column("uploaded_by_employee_id", sa.String(length=36), nullable=True))
+    op.add_column(
+        "insurance_request_documents", sa.Column("uploaded_by_employee_id", sa.String(length=36), nullable=True)
+    )
     op.create_foreign_key(
         "fk_insurance_documents_uploaded_by",
         "insurance_request_documents",

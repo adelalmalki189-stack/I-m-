@@ -3,10 +3,10 @@
 from app.insurance.models import (
     Customer,
     EmailAuditLog,
-    Insurer,
     InsuranceQuote,
     InsuranceRequest,
     InsuranceSubmission,
+    Insurer,
     InsurerTemplate,
     RequestDocument,
     SalesEmployee,
