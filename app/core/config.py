@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
 
     environment: str = "development"  # "development" | "test" | "production"
+    sentry_dsn: str | None = None  # error tracking; empty = off
+    public_base_url: str = "http://localhost:8000"  # used in links sent to customers
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/bud"
 
