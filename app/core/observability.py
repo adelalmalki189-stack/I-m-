@@ -109,13 +109,24 @@ async def liveness() -> dict:
     return {"status": "ok"}
 
 
-def _migration_head() -> str | None:
+def _migration_state(current: str | None) -> str:
+    """"ok", "ok (database newer)" after a rollback to an older release, or a problem description."""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     config = Config(str(PROJECT_ROOT / "alembic.ini"))
     config.set_main_option("script_location", str(PROJECT_ROOT / "alembic"))
-    return ScriptDirectory.from_config(config).get_current_head()
+    scripts = ScriptDirectory.from_config(config)
+    head = scripts.get_current_head()
+    if current == head:
+        return "ok"
+    if current is None:
+        return f"at None, expected {head}"
+    known = {rev.revision for rev in scripts.walk_revisions()}
+    if current not in known:
+        # Migrations are additive, so an older release keeps working on a newer schema.
+        return "ok (database newer)"
+    return f"at {current}, expected {head}"
 
 
 @health.get("/health/ready", include_in_schema=False)
@@ -130,11 +141,10 @@ async def readiness() -> JSONResponse:
                 current = (await session.execute(text("SELECT version_num FROM alembic_version"))).scalar()
             except Exception:
                 current = None
-            head = _migration_head()
-            checks["migrations"] = "ok" if current == head else f"at {current}, expected {head}"
+            checks["migrations"] = _migration_state(current)
     except Exception as exc:
         checks["database"] = f"error: {type(exc).__name__}"
-    healthy = all(v == "ok" for v in checks.values())
+    healthy = all(v.startswith("ok") for v in checks.values())
     return JSONResponse(
         status_code=200 if healthy else 503, content={"status": "ok" if healthy else "degraded", **checks}
     )

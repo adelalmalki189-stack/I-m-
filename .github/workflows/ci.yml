@@ -8,12 +8,23 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bud
+          POSTGRES_PASSWORD: bud
+          POSTGRES_DB: bud
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U bud" --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install dependencies
         run: |
@@ -29,4 +40,22 @@ jobs:
       - name: Unit + integration tests
         env:
           ENVIRONMENT: test
-        run: pytest -v
+        run: pytest -q
+
+      - name: Migrations apply, match the models, and roll back (PostgreSQL)
+        env:
+          DATABASE_URL: postgresql+asyncpg://bud:bud@localhost:5432/bud
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade 0001
+          alembic upgrade head
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the container image
+        run: docker build -t bud:ci .
+      - name: Smoke test the image
+        run: docker run --rm bud:ci python -c "import app.main; print('import ok')"
