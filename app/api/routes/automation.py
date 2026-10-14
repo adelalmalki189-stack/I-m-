@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import MANAGERS, UNDERWRITING, audit, get_current_staff, require_roles
 from app.api.deps import get_db_session
-from app.core.config import settings
 from app.automation import channels, inbound, jobs, service
 from app.automation.models import (
     AutomationRule,
@@ -24,6 +23,7 @@ from app.automation.models import (
     NotificationStatus,
 )
 from app.automation.rules import RULES, get_rule, unknown_variables
+from app.core.config import settings
 from app.insurance.models import Customer, InsuranceRequest, InsuranceSubmission, Insurer, SalesEmployee
 
 router = APIRouter(prefix="/insurance", tags=["automation"], dependencies=[Depends(get_current_staff)])

@@ -276,7 +276,8 @@ async def extract(
 ) -> InboundEmail:
     """Run AI extraction on a matched email and record the result (draft quote / decline)."""
     if not settings.ai_quote_extraction_enabled and extractor is None:
-        inbound.status, inbound.error = InboundStatus.SKIPPED, "استخراج العروض بالذكاء الاصطناعي متوقف (AI_QUOTE_EXTRACTION_ENABLED)"
+        inbound.status = InboundStatus.SKIPPED
+        inbound.error = "استخراج العروض بالذكاء الاصطناعي متوقف (AI_QUOTE_EXTRACTION_ENABLED)"
         return inbound
     if len(inbound.body_text) > MAX_BODY_CHARS:
         inbound.status, inbound.error = InboundStatus.FAILED, "نص الرسالة أطول من أن يُعالج آليًا؛ أدخل العرض يدويًا"
