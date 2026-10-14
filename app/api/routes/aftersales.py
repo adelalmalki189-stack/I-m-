@@ -10,18 +10,16 @@ from typing import Any, overload
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import MANAGERS, UNDERWRITING, audit, get_current_staff, require_roles
+from app.api.auth import UNDERWRITING, audit, get_current_staff, require_roles
 from app.api.deps import get_db_session
 from app.insurance import aftersales, catalog
 from app.insurance.aftersales_schemas import (
     ClaimCreateRequest,
     ClaimStatusUpdateRequest,
     ClaimView,
-    CommissionRate,
-    CommissionRatesPayload,
     CommissionReceivedRequest,
     CommissionRow,
     CustomerProfile,
@@ -46,7 +44,6 @@ from app.insurance.models import (
     InsuranceRequest,
     InsuranceRequestStatus,
     Insurer,
-    InsurerCommissionRate,
     PremiumInstallment,
     SalesEmployee,
 )
@@ -370,7 +367,7 @@ async def commission_received(
 ) -> PolicyDetail:
     policy = await _get(session, InsurancePolicy, policy_id, "POLICY_NOT_FOUND")
     if policy.commission_amount is None:
-        raise _error(409, "NO_COMMISSION", "No commission rate was set for this policy's insurer and line")
+        raise _error(409, "NO_COMMISSION", "The selected quote had no commission rate")
     if policy.commission_received_at is not None:
         raise _error(409, "COMMISSION_ALREADY_RECEIVED", "Commission already recorded as received")
     policy.commission_received_at = body.received_at or datetime.now(UTC)
@@ -378,52 +375,6 @@ async def commission_received(
     audit(session, staff, "commission_received", "policy", policy_id, amount=policy.commission_amount)
     await session.commit()
     return (await _policy_views(session, [policy]))[0]
-
-
-@router.get("/insurers/{insurer_id}/commission-rates", response_model=CommissionRatesPayload)
-async def get_commission_rates(
-    insurer_id: str, session: AsyncSession = Depends(get_db_session)
-) -> CommissionRatesPayload:
-    insurer = await _get(session, Insurer, insurer_id, "INSURER_NOT_FOUND")
-    result = await session.execute(
-        select(InsurerCommissionRate)
-        .where(InsurerCommissionRate.insurer_id == insurer_id)
-        .order_by(InsurerCommissionRate.line)
-    )
-    return CommissionRatesPayload(
-        default_rate=insurer.default_commission_rate,
-        rates=[CommissionRate(line=r.line, rate=r.rate) for r in result.scalars()],
-    )
-
-
-@router.put("/insurers/{insurer_id}/commission-rates", response_model=CommissionRatesPayload)
-async def set_commission_rates(
-    insurer_id: str,
-    body: CommissionRatesPayload,
-    session: AsyncSession = Depends(get_db_session),
-    staff: SalesEmployee = Depends(require_roles(*MANAGERS)),
-) -> CommissionRatesPayload:
-    """Replace the insurer's commission rates. Applies to policies issued from now on."""
-    insurer = await _get(session, Insurer, insurer_id, "INSURER_NOT_FOUND")
-    unknown = [r.line for r in body.rates if r.line not in catalog.LINES_BY_KEY]
-    if unknown:
-        raise _error(422, "UNKNOWN_LINE", f"Unknown insurance lines: {', '.join(unknown)}")
-    if len({r.line for r in body.rates}) != len(body.rates):
-        raise _error(422, "DUPLICATE_LINE", "Each line may appear once")
-    insurer.default_commission_rate = body.default_rate
-    await session.execute(delete(InsurerCommissionRate).where(InsurerCommissionRate.insurer_id == insurer_id))
-    session.add_all(InsurerCommissionRate(insurer_id=insurer_id, line=r.line, rate=r.rate) for r in body.rates)
-    audit(
-        session,
-        staff,
-        "commission_rates_updated",
-        "insurer",
-        insurer_id,
-        default_rate=body.default_rate,
-        rates={r.line: r.rate for r in body.rates},
-    )
-    await session.commit()
-    return await get_commission_rates(insurer_id, session)
 
 
 # --- Claims ---------------------------------------------------------------------

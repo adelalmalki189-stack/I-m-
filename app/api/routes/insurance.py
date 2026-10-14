@@ -1335,6 +1335,7 @@ async def create_quote(
         conditions=body.conditions,
         validity_date=body.validity_date,
         currency=body.currency,
+        commission_rate=body.commission_rate,
         source_channel=body.source_channel or "email",
     )
     session.add(quote)
@@ -1491,7 +1492,7 @@ async def issue_policy(
         issued_at=datetime.now(UTC),
         notes=body.notes,
     )
-    rate = await aftersales.commission_rate_for(session, submission.insurer_id, request.insurance_type)
+    rate = quote.commission_rate  # the commission is part of what the insurer offered
     policy.commission_rate = rate
     policy.commission_amount = aftersales.commission_amount(premium, rate)
     session.add(policy)

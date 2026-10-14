@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum as PyEnum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, new_uuid
@@ -353,7 +353,6 @@ class Insurer(Base, TimestampMixin):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    default_commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)  # percent
 
     templates: Mapped[list[InsurerTemplate]] = relationship(back_populates="insurer")
     submissions: Mapped[list[InsuranceSubmission]] = relationship(back_populates="insurer")
@@ -419,6 +418,8 @@ class InsuranceQuote(Base, TimestampMixin):
     conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
     validity_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Broker commission percent offered by the insurer in this quote.
+    commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     source_channel: Mapped[str] = mapped_column(String(30), nullable=False, default=InsurerCommunicationChannel.EMAIL.value)
 
     submission: Mapped[InsuranceSubmission] = relationship(back_populates="quotes")
@@ -470,18 +471,6 @@ class AuditEvent(Base, TimestampMixin):
     entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
-
-
-class InsurerCommissionRate(Base, TimestampMixin):
-    """Commission percent an insurer pays the broker for one insurance line."""
-
-    __tablename__ = "insurance_commission_rates"
-    __table_args__ = (UniqueConstraint("insurer_id", "line", name="uq_commission_rate_insurer_line"),)
-
-    rate_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    insurer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False)
-    line: Mapped[str] = mapped_column(String(80), nullable=False)
-    rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
 
 
 class PremiumInstallment(Base, TimestampMixin):

@@ -165,6 +165,7 @@ function quoteBlock(s, quotes) {
   const form = el('form', { class: 'form-grid', style: 'margin-top:10px' },
     el('label', { class: 'field' }, el('span', { text: 'القسط (ر.س)' }), el('input', { name: 'premium', type: 'number', min: 0, step: '0.01', required: true })),
     el('label', { class: 'field' }, el('span', { text: 'حد التغطية (ر.س)' }), el('input', { name: 'coverage_limit', type: 'number', min: 0, step: '0.01' })),
+    el('label', { class: 'field' }, el('span', { text: 'نسبة العمولة في العرض (%)' }), el('input', { name: 'commission_rate', type: 'number', min: 0, max: 100, step: '0.01' })),
     el('label', { class: 'field' }, el('span', { text: 'صلاحية العرض حتى' }), el('input', { name: 'validity_date', type: 'date' })),
     el('label', { class: 'field' }, el('span', { text: 'الشروط والتحمل' }), el('input', { name: 'conditions' })),
     el('label', { class: 'field full' }, el('span', { text: 'الاستثناءات' }), el('input', { name: 'exclusions' })),
@@ -172,13 +173,13 @@ function quoteBlock(s, quotes) {
   form.addEventListener('submit', e => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(form));
-    const body = { premium: data.premium, coverage_limit: data.coverage_limit || null, conditions: data.conditions || null, exclusions: data.exclusions || null,
+    const body = { premium: data.premium, coverage_limit: data.coverage_limit || null, commission_rate: data.commission_rate || null, conditions: data.conditions || null, exclusions: data.exclusions || null,
       validity_date: data.validity_date ? `${data.validity_date}T23:59:59Z` : null };
     run(form.querySelector('button'), () => api(`/submissions/${s.submission_id}/quotes`, { method: 'POST', body }), 'سُجل العرض').then(renderEmails);
   });
   return el('div', {},
     el('div', { class: 'section-title', text: `العروض المستلمة (${quotes.length})` }),
-    quotes.map(q => el('div', { class: 'quote-row' }, el('span', { class: 'strong', text: money(q.premium) }), el('span', { text: `تغطية ${money(q.coverage_limit)}` }), el('span', { class: 'muted', text: q.validity_date ? `صالح حتى ${date(q.validity_date)}` : '' }))),
+    quotes.map(q => el('div', { class: 'quote-row' }, el('span', { class: 'strong', text: money(q.premium) }), el('span', { text: `تغطية ${money(q.coverage_limit)}` }), el('span', { class: 'muted', text: q.commission_rate != null ? `عمولة ${Number(q.commission_rate)}%` : 'بدون نسبة عمولة' }), el('span', { class: 'muted', text: q.validity_date ? `صالح حتى ${date(q.validity_date)}` : '' }))),
     form);
 }
 

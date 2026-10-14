@@ -1,4 +1,4 @@
-"""Phase 3 after-sales: claims, premium installments, commission rates, renewals.
+"""Phase 3 after-sales: claims, premium installments, quote commission rates, renewals.
 
 Revision ID: 0008
 Revises: 0007
@@ -28,7 +28,7 @@ def _timestamps() -> list[sa.Column]:
 
 
 def upgrade() -> None:
-    op.add_column("insurance_insurers", sa.Column("default_commission_rate", sa.Numeric(5, 2), nullable=True))
+    op.add_column("insurance_quotes", sa.Column("commission_rate", sa.Numeric(5, 2), nullable=True))
     op.add_column("insurance_policies", sa.Column("commission_rate", sa.Numeric(5, 2), nullable=True))
     op.add_column("insurance_policies", sa.Column("commission_amount", sa.Numeric(14, 2), nullable=True))
     op.add_column(
@@ -38,17 +38,6 @@ def upgrade() -> None:
     op.add_column("insurance_requests", sa.Column("renewal_of_policy_id", sa.String(length=36), nullable=True))
     op.create_index("ix_insurance_requests_renewal_of_policy_id", "insurance_requests", ["renewal_of_policy_id"])
 
-    op.create_table(
-        "insurance_commission_rates",
-        sa.Column("rate_id", sa.String(length=36), primary_key=True),
-        sa.Column(
-            "insurer_id", sa.String(length=36), sa.ForeignKey("insurance_insurers.insurer_id"), nullable=False
-        ),
-        sa.Column("line", sa.String(length=80), nullable=False),
-        sa.Column("rate", sa.Numeric(5, 2), nullable=False),
-        *_timestamps(),
-        sa.UniqueConstraint("insurer_id", "line", name="uq_commission_rate_insurer_line"),
-    )
     op.create_table(
         "insurance_premium_installments",
         sa.Column("installment_id", sa.String(length=36), primary_key=True),
@@ -107,9 +96,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_table("insurance_claims")
     op.drop_table("insurance_premium_installments")
-    op.drop_table("insurance_commission_rates")
     op.drop_index("ix_insurance_requests_renewal_of_policy_id", table_name="insurance_requests")
     op.drop_column("insurance_requests", "renewal_of_policy_id")
     for column in ("commission_reference", "commission_received_at", "commission_amount", "commission_rate"):
         op.drop_column("insurance_policies", column)
-    op.drop_column("insurance_insurers", "default_commission_rate")
+    op.drop_column("insurance_quotes", "commission_rate")

@@ -70,8 +70,11 @@ async function loadRequest(requestId) {
     q.quote_id === best?.quote_id && el('span', { class: 'pill blue badge', text: 'أفضل توازن' }),
     q.quote_id === request.selected_quote_id && el('span', { class: 'pill dark badge', text: 'المختار' }))));
   const cellClass = q => (q.quote_id === best?.quote_id ? 'best' : '');
+  // Broker-only row: the commission each quote carries (hidden when the comparison is printed for the customer).
+  const commission = q => (q.commission_rate == null ? '—' : `${Number(q.commission_rate)}% · ${money(Number(q.premium) * Number(q.commission_rate) / 100)}`);
   document.getElementById('matrix').replaceChildren(
     ...rows.map(([label, fn]) => el('tr', {}, el('td', { class: 'strong', text: label }), ...quotes.map(q => el('td', { class: cellClass(q), text: fn(q) })))),
+    el('tr', { class: 'no-print' }, el('td', { class: 'strong', text: 'عمولة الوساطة' }), ...quotes.map(q => el('td', { class: `muted ${cellClass(q)}`, text: commission(q) }))),
     ...(selectable && quotes.length ? [el('tr', { class: 'no-print' }, el('td', {}), ...quotes.map(q => el('td', {},
       q.quote_id === request.selected_quote_id ? el('span', { class: 'muted', text: 'العرض المختار' })
         : el('button', { class: 'button primary', type: 'button', text: 'اختيار هذا العرض',

@@ -91,16 +91,6 @@ class RenewalResponse(BaseModel):
     request_number: str
 
 
-class CommissionRate(BaseModel):
-    line: str = Field(..., max_length=80)
-    rate: Money = Field(..., ge=0, le=100)
-
-
-class CommissionRatesPayload(BaseModel):
-    default_rate: Money | None = Field(default=None, ge=0, le=100)
-    rates: list[CommissionRate] = Field(default_factory=list)
-
-
 class ClaimCreateRequest(BaseModel):
     policy_id: str
     incident_date: date

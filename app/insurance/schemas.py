@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
@@ -436,6 +437,7 @@ class InsuranceQuoteCreateRequest(BaseModel):
     validity_date: datetime | None = None
     currency: str = Field(default="SAR", max_length=10)
     source_channel: str = Field(default="email", max_length=30)
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=100)  # percent offered in this quote
 
 
 class InsurancePolicyCreateRequest(BaseModel):
@@ -482,6 +484,7 @@ class InsuranceQuoteResponse(BaseModel):
     validity_date: datetime | None = None
     currency: str
     source_channel: str
+    commission_rate: Decimal | None = None
     created_at: datetime
     updated_at: datetime
 

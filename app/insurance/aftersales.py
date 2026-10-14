@@ -5,14 +5,9 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.insurance.models import (
     ClaimStatus,
     InsurancePolicy,
-    Insurer,
-    InsurerCommissionRate,
     PremiumInstallment,
 )
 
@@ -28,24 +23,6 @@ def to_money(value: object) -> Decimal | None:
         return Decimal(str(value).replace(",", "").strip()).quantize(CENT, rounding=ROUND_HALF_UP)
     except InvalidOperation:
         return None
-
-
-async def commission_rate_for(session: AsyncSession, insurer_id: str, line: str) -> Decimal | None:
-    """The insurer's rate for this line, else its default rate, else None."""
-    result = await session.execute(
-        select(InsurerCommissionRate.rate).where(
-            InsurerCommissionRate.insurer_id == insurer_id, InsurerCommissionRate.line == line
-        )
-    )
-    rate = result.scalar_one_or_none()
-    if rate is not None:
-        return Decimal(rate)
-    insurer = await session.get(Insurer, insurer_id)
-    return (
-        Decimal(insurer.default_commission_rate)
-        if insurer and insurer.default_commission_rate is not None
-        else None
-    )
 
 
 def commission_amount(premium: Decimal | None, rate: Decimal | None) -> Decimal | None:

@@ -41,16 +41,12 @@ def _issue(
     insurer = client.post(
         "/insurance/insurers", json={"name": f"شركة {mobile}", "email": f"q{mobile}@ins.example"}
     ).json()
-    if rate is not None:
-        client.put(
-            f"/insurance/insurers/{insurer['insurer_id']}/commission-rates",
-            json={"default_rate": "5", "rates": [{"line": "motor", "rate": rate}]},
-        )
     submission = client.post(
         f"/insurance/requests/{request['request_id']}/submissions", json={"insurer_ids": [insurer["insurer_id"]]}
     ).json()[0]
     quote = client.post(
-        f"/insurance/submissions/{submission['submission_id']}/quotes", json={"premium": premium}
+        f"/insurance/submissions/{submission['submission_id']}/quotes",
+        json={"premium": premium, "commission_rate": rate},
     ).json()
     client.post(f"/insurance/requests/{request['request_id']}/quotes/{quote['quote_id']}/select")
     body = {"installments": installments}
@@ -86,26 +82,26 @@ async def test_uneven_split_puts_rounding_on_last_installment(db_session):
         assert bad.status_code == 404
 
 
-async def test_default_rate_used_when_no_line_rate_and_no_rate_means_no_commission(db_session):
+async def test_commission_comes_from_the_selected_quote(db_session):
     with TestClient(app) as client:
         no_rate, _, _ = _issue(client)
         assert (
             client.get(f"/insurance/portfolio/policies/{no_rate['policy_id']}").json()["commission_amount"] is None
         )
-        assert (
-            client.post(f"/insurance/policies/{no_rate['policy_id']}/commission-received", json={}).status_code
-            == 409
-        )
+        url = f"/insurance/policies/{no_rate['policy_id']}/commission-received"
+        assert client.post(url, json={}).status_code == 409
 
-        rates = client.put("/insurance/insurers/missing/commission-rates", json={"rates": []})
-        assert rates.status_code == 404
-        _, _, insurer_id = _issue(client, mobile="0559999999")
-        url = f"/insurance/insurers/{insurer_id}/commission-rates"
-        assert client.put(url, json={"rates": [{"line": "nope", "rate": 3}]}).status_code == 422
-        dup = {"rates": [{"line": "motor", "rate": 3}, {"line": "motor", "rate": 4}]}
-        assert client.put(url, json=dup).status_code == 422
-        saved = client.put(url, json={"default_rate": "7.5", "rates": [{"line": "medical", "rate": 4}]}).json()
-        assert Decimal(saved["default_rate"]) == Decimal("7.5")
+        with_rate, request_id, _ = _issue(client, premium="8000", rate="7.5", mobile="0559999999")
+        view = client.get(f"/insurance/portfolio/policies/{with_rate['policy_id']}").json()
+        assert Decimal(view["commission_rate"]) == Decimal("7.5")
+        assert Decimal(view["commission_amount"]) == Decimal("600.00")
+        quotes = client.get(f"/insurance/requests/{request_id}/quotes").json()
+        assert Decimal(quotes[0]["commission_rate"]) == Decimal("7.5")
+        submission_id = quotes[0]["submission_id"]
+        bad = client.post(
+            f"/insurance/submissions/{submission_id}/quotes", json={"premium": "1", "commission_rate": 150}
+        )
+        assert bad.status_code == 422
 
 
 async def test_commission_received_once(db_session):
@@ -292,6 +288,5 @@ async def test_sales_cannot_touch_money(db_session):
         assert client.get("/insurance/reports/summary").status_code == 403
         assert client.get("/insurance/portfolio/commissions").status_code == 403
         assert client.post("/insurance/installments/x/pay", json={"payment_method": "cash"}).status_code == 403
-        assert client.put("/insurance/insurers/x/commission-rates", json={"rates": []}).status_code == 403
         assert client.get("/insurance/portfolio/policies").status_code == 200
         assert client.get("/insurance/portfolio/installments").status_code == 200
