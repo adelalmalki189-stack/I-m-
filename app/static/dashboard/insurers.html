@@ -13,7 +13,7 @@
 <div class="layout">
 <section class="panel"><div class="panel-head"><div><h2>الشركات المسجلة</h2><div class="muted">اختر شركة لتعديل بياناتها</div></div><span id="count" class="muted"></span></div>
 <div class="table-wrap"><table><thead><tr><th>الشركة</th><th>بريد طلبات التسعير</th><th>القوالب الخاصة</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا توجد شركات مسجلة بعد. أضف أول شركة لبدء إرسال طلبات التسعير.</div></div></section>
-<section class="panel"><div class="panel-head"><div><h2 id="form-title">إضافة شركة</h2><div class="muted">تُستخدم هذه البيانات في كل رسالة تسعير</div></div></div>
+<section class="stack"><section class="panel"><div class="panel-head"><div><h2 id="form-title">إضافة شركة</h2><div class="muted">تُستخدم هذه البيانات في كل رسالة تسعير</div></div></div>
 <form id="form" class="panel-body">
 <label class="field"><span>اسم الشركة</span><input name="name" required minlength="2" maxlength="200"></label>
 <label class="field"><span>بريد طلبات التسعير</span><input name="email" type="email" required dir="ltr"></label>
@@ -22,12 +22,20 @@
 <label class="field" style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="is_active" checked style="width:auto;min-height:0"> <span>مفعّلة (تظهر عند تجهيز رسائل التسعير)</span></label>
 <div class="actions"><button class="button primary" type="submit">حفظ</button><a id="tpl-link" class="button" href="underwriting.html?tab=templates" hidden>قوالب هذه الشركة ←</a></div>
 </form></section>
+<section id="rates" class="panel" hidden><div class="panel-head"><div><h2>نسب العمولة</h2><div class="muted">تُطبق على الوثائق التي تصدر بعد الحفظ</div></div></div>
+<form id="rates-form" class="panel-body">
+<label class="field"><span>النسبة الافتراضية للشركة (%) <span class="hint">— تُستخدم لأي فرع ليس له نسبة خاصة</span></span><input name="default_rate" type="number" min="0" max="100" step="0.01"></label>
+<div id="line-rates" class="form-grid"></div>
+<button class="button primary" type="submit">حفظ النسب</button></form></section>
+</section>
 </div>
 </main></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="bud-api.js"></script>
 <script>
 const { api, el, run } = BUD;
+const ratesForm = document.getElementById('rates-form');
+let cat, isManager = false;
 const form = document.getElementById('form');
 let insurers = [], templates = [], selected = null, query = '';
 
@@ -52,6 +60,7 @@ function edit(insurer) {
   form.is_active.checked = insurer ? insurer.is_active : true;
   document.getElementById('tpl-link').hidden = !insurer;
   render();
+  loadRates(insurer);
   form.name.focus();
 }
 
@@ -69,7 +78,24 @@ form.addEventListener('submit', e => {
   run(e.submitter, () => save, 'حُفظت بيانات الشركة').then(async saved => { await load(); edit(insurers.find(i => i.insurer_id === saved.insurer_id)); });
 });
 document.getElementById('add').addEventListener('click', () => edit(null));
+
+async function loadRates(insurer) {
+  const panel = document.getElementById('rates');
+  panel.hidden = !(insurer && isManager);
+  if (panel.hidden) return;
+  const data = await api(`/insurers/${insurer.insurer_id}/commission-rates`);
+  const byLine = Object.fromEntries(data.rates.map(r => [r.line, r.rate]));
+  ratesForm.default_rate.value = data.default_rate ?? '';
+  document.getElementById('line-rates').replaceChildren(...cat.lines.map(l => el('label', { class: 'field' }, el('span', { text: `${l.label} (%)` }),
+    el('input', { name: `rate_${l.key}`, type: 'number', min: 0, max: 100, step: '0.01', placeholder: 'الافتراضية', value: byLine[l.key] ?? '' }))));
+}
+ratesForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const rates = cat.lines.map(l => ({ line: l.key, rate: ratesForm.elements[`rate_${l.key}`].value })).filter(r => r.rate !== '');
+  const body = { default_rate: ratesForm.default_rate.value || null, rates };
+  run(e.submitter, () => api(`/insurers/${selected.insurer_id}/commission-rates`, { method: 'PUT', body }), 'حُفظت نسب العمولة');
+});
 document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(); });
-load();
+Promise.all([BUD.catalog(), BUD_ME]).then(([c, me]) => { cat = c; isManager = me?.role === 'manager'; load(); });
 </script>
 </body></html>

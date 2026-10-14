@@ -4,285 +4,116 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
 <title>BUD | الوثائق والتجديدات</title>
 <link rel="stylesheet" href="bud.css">
-<style>
-.page-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
-.page-head h1{margin:0;font-size:22px}
-.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}
-.metric{padding:11px 13px;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.metric-label{color:var(--muted);font-size:9px}
-.metric-value{margin-top:5px;font-size:19px;font-weight:700}
-.metric-note{margin-top:3px;color:var(--muted);font-size:8px}
-.blue{color:var(--blue)}
-.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(265px,.85fr);gap:12px;align-items:start}
-.panel{min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.panel-head{min-height:49px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
-.panel-head h2{margin:0;font-size:11px}
-.hint{margin-top:3px;color:var(--muted);font-size:8px}
-.filters{display:flex;align-items:center;gap:5px;padding:9px 11px;border-bottom:1px solid var(--line);overflow:auto}
-.filter{flex:0 0 auto;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--white);color:var(--gray);font-size:8px}
-.filter.active{border-color:var(--blue);background:var(--blue);color:var(--white)}
-.count{margin-right:auto;color:var(--muted);font-size:8px;white-space:nowrap}
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse;text-align:right;white-space:nowrap}
-th,td{padding:9px 10px;border-bottom:1px solid var(--line)}
-th{background:var(--pale);color:var(--gray);font-size:8px;font-weight:600}
-td{font-size:8px}
-tbody tr:last-child td{border:0}
-tbody tr:hover,tbody tr.selected{background:#E6E9F2}
-.policy-button{padding:0;border:0;background:none;color:var(--ink);text-align:right;font-size:9px;font-weight:600}
-.policy-button:hover{color:var(--blue)}
-.subline{margin-top:3px;color:var(--muted);font-size:8px}
-.state{display:inline-block;padding:4px 6px;border-radius:4px;background:var(--pale);color:var(--gray);font-size:8px}
-.state.due{color:var(--blue)}
-.empty{display:none;padding:20px;text-align:center;color:var(--muted);font-size:9px}
-.detail{overflow:hidden}
-.detail-head{padding:13px;border-bottom:1px solid var(--line)}
-.detail-top{display:flex;align-items:center;gap:9px}
-.detail-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:8px;background:var(--pale);color:var(--blue);font-size:13px;font-weight:700}
-.detail-title{font-size:11px;font-weight:700}
-.detail-sub{margin-top:3px;color:var(--muted);font-size:8px}
-.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:11px 13px;border-bottom:1px solid var(--line)}
-.detail-item span{display:block;color:var(--muted);font-size:8px}
-.detail-item b{display:block;margin-top:4px;font-size:9px}
-.section{padding:11px 13px;border-bottom:1px solid var(--line)}
-.section:last-child{border:0}
-.section h3{margin:0 0 8px;font-size:9px}
-.recommend{padding:10px;border:1px solid var(--line);border-radius:5px;background:var(--white)}
-.rec-head{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:700}
-.rec-icon{display:grid;place-items:center;width:19px;height:19px;border-radius:4px;background:var(--blue);color:var(--white)}
-.rec-title{margin-top:7px;font-size:9px;font-weight:600}
-.rec-body{margin-top:4px;color:var(--muted);font-size:8px;line-height:1.6}
-.rec-actions{display:grid;gap:6px;margin-top:10px}
-.rec-actions .button{width:100%}
-.disclaimer{margin-top:7px;color:var(--muted);font-size:7px;line-height:1.5}
-.automation{padding:11px 13px}
-.automation h2{margin:0 0 5px;font-size:10px}
-.automation-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:8px}
-.automation-row:last-child{border:0}
-.auto-dot{display:grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--pale);color:var(--blue);font-size:8px}
-.auto-label{flex:1}
-.auto-state{color:var(--muted);font-size:7px}
-.settings{display:grid;gap:7px;padding:11px 13px}
-.setting{display:flex;align-items:center;gap:7px;font-size:8px}
-.setting input{accent-color:var(--blue)}
-.setting span{flex:1}
-.setting small{color:var(--muted);font-size:7px}
-@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:minmax(0,1.3fr) minmax(245px,.9fr)}}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.right-stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}}
-@media(max-width:520px){.page-head{display:block}.page-head .button{margin-top:9px}.metrics{gap:7px}.metric{padding:9px}.metric-label{font-size:8px}.metric-value{font-size:17px}.right-stack{grid-template-columns:1fr}th,td{padding:8px}}
-</style>
+<style>.section-title{margin:14px 0 7px;font-size:11px;font-weight:700}.section-title:first-child{margin-top:0}
+.inst{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:10px}.inst:last-child{border:0}.inst .grow{flex:1}</style>
 </head>
-<body><div class="app"><aside class="side"></aside><script src="bud-shell.js"></script>
-<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>الوثائق والتجديدات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث برقم الوثيقة أو العميل" aria-label="ابحث برقم الوثيقة أو العميل"><button id="export" class="button" type="button">تصدير</button></div></header>
-<section class="page-head"><div><h1>الوثائق والتجديدات</h1><p class="subtitle">تابع صلاحية التغطيات وابدأ التجديد في الوقت المناسب.</p></div><button id="refresh" class="button primary" type="button">تحديث الوثائق</button></section>
-<div class="demo"><b>بيانات مباشرة</b><span>يُحمّل سجل الوثائق من النظام الحالي، مع احتفاظه بنسخة احتياطية عند فشل الربط. التواصل مع شركات التأمين يتم عبر البريد الإلكتروني فقط.</span></div>
-<section class="metrics" aria-label="ملخص الوثائق"><article class="metric"><div class="metric-label">وثائق نشطة</div><div class="metric-value">936</div><div class="metric-note">تغطية قائمة</div></article><article class="metric"><div class="metric-label">تنتهي خلال 30 يومًا</div><div class="metric-value">28</div><div class="metric-note">ابدأ مقارنة التجديد</div></article><article class="metric"><div class="metric-label">تنتهي خلال 7 أيام</div><div class="metric-value">6</div><div class="metric-note">أولوية متابعة عالية</div></article><article class="metric"><div class="metric-label">بانتظار الإصدار</div><div class="metric-value">9</div><div class="metric-note">بعد اعتماد العميل</div></article></section>
-<div class="layout"><section class="panel"><div class="panel-head"><div><h2>سجل الوثائق</h2><div class="hint">مرتبة حسب أقرب تاريخ انتهاء</div></div><span id="visible-count" class="count">5 وثائق</span></div><div class="filters" role="group" aria-label="تصفية الوثائق"><button class="filter active" data-filter="all">الكل</button><button class="filter" data-filter="due">تجديد قريب</button><button class="filter" data-filter="active">سارية</button><button class="filter" data-filter="pending">بانتظار الإصدار</button></div><div class="table-wrap"><table><thead><tr><th>الوثيقة / العميل</th><th>الفرع</th><th>القسط السنوي</th><th>الانتهاء</th><th>الحالة</th></tr></thead><tbody id="policies">
-<tr data-id="BUD-P-9941" data-state="due" data-client="مؤسسة نبراس للتجارة" data-type="أسطول مركبات" data-company="جهة افتراضية أ" data-premium="96,000" data-expiry="14 أكتوبر 2026" data-days="6" data-lines="16 مركبة|تغطية مسؤولية وأضرار|طلب عروض التجديد الآن"><td><button class="policy-button" type="button">BUD-P-9941</button><div class="subline">مؤسسة نبراس للتجارة</div></td><td>أسطول</td><td>96,000 ر.س</td><td><span class="blue">بعد 6 أيام</span></td><td><span class="state due">تجديد عاجل</span></td></tr>
-<tr data-id="BUD-P-9938" data-state="due" data-client="شركة روافد التقنية" data-type="طبي جماعي" data-company="جهة افتراضية ب" data-premium="284,500" data-expiry="20 أكتوبر 2026" data-days="12" data-lines="82 موظفًا|شبكة طبية موسعة|اطلب عروضًا قبل إرسال التجديد"><td><button class="policy-button" type="button">BUD-P-9938</button><div class="subline">شركة روافد التقنية</div></td><td>طبي جماعي</td><td>284,500 ر.س</td><td><span class="blue">بعد 12 يومًا</span></td><td><span class="state due">تجديد قريب</span></td></tr>
-<tr data-id="BUD-P-9934" data-state="due" data-client="نورة القحطاني" data-type="مركبات" data-company="جهة افتراضية ج" data-premium="4,280" data-expiry="1 نوفمبر 2026" data-days="24" data-lines="مركبة واحدة|تغطية شاملة|راجع بيانات المركبة قبل المقارنة"><td><button class="policy-button" type="button">BUD-P-9934</button><div class="subline">نورة القحطاني</div></td><td>مركبات</td><td>4,280 ر.س</td><td>بعد 24 يومًا</td><td><span class="state due">تجديد قريب</span></td></tr>
-<tr data-id="BUD-P-9928" data-state="active" data-client="مؤسسة أفق للمقاولات" data-type="ممتلكات" data-company="جهة افتراضية أ" data-premium="438,000" data-expiry="1 ديسمبر 2026" data-days="54" data-lines="3 مواقع مؤمنة|تغطية ممتلكات|موعد التجديد بعد 30 يومًا"><td><button class="policy-button" type="button">BUD-P-9928</button><div class="subline">مؤسسة أفق للمقاولات</div></td><td>ممتلكات</td><td>438,000 ر.س</td><td>بعد 54 يومًا</td><td><span class="state">سارية</span></td></tr>
-<tr data-id="BUD-P-9921" data-state="pending" data-client="شركة ألوان الإبداع" data-type="مسؤولية مهنية" data-company="جهة افتراضية ب" data-premium="12,400" data-expiry="بانتظار الإصدار" data-days="0" data-lines="حد مسؤولية 1 مليون ر.س|اعتماد العميل مسجل|تابع إصدار الوثيقة مع الشركة"><td><button class="policy-button" type="button">BUD-P-9921</button><div class="subline">شركة ألوان الإبداع</div></td><td>مسؤولية مهنية</td><td>12,400 ر.س</td><td>—</td><td><span class="state">بانتظار الإصدار</span></td></tr>
-</tbody></table><div id="empty" class="empty">ما فيه وثائق تطابق البحث أو التصفية.</div></div></section>
-<aside class="right-stack"><section class="panel detail"><div class="panel-head"><div><h2>ملف الوثيقة</h2><div class="hint">اختر وثيقة لعرض تفاصيلها</div></div></div><div class="detail-head"><div class="detail-top"><div class="detail-icon">▤</div><div><div id="detail-id" class="detail-title">BUD-P-9941</div><div id="detail-client" class="detail-sub">مؤسسة نبراس للتجارة</div></div></div></div><div class="detail-grid"><div class="detail-item"><span>نوع التأمين</span><b id="detail-type">أسطول مركبات</b></div><div class="detail-item"><span>شركة التأمين</span><b id="detail-company">جهة افتراضية أ</b></div><div class="detail-item"><span>القسط السنوي</span><b id="detail-premium">96,000 ر.س</b></div><div class="detail-item"><span>تاريخ الانتهاء</span><b id="detail-expiry">14 أكتوبر 2026</b></div></div><div class="section"><h3>معلومات التغطية</h3><div id="coverage-list"></div></div><div class="section"><div class="recommend"><div class="rec-head"><span class="rec-icon">✳</span>أولوية التجديد المقترحة</div><div id="rec-title" class="rec-title">ابدأ الآن، متبقي 6 أيام</div><div id="rec-body" class="rec-body">أرسل طلب مقارنة بعد مراجعة بيانات الخطر، واترك وقتًا لموافقة العميل وإصدار الوثيقة.</div><div class="rec-actions"><button id="renew" class="button primary" type="button">تهيئة التجديد</button><button id="remind" class="button" type="button">تسجيل إرسال تذكير</button></div><div class="disclaimer">توصية توضيحية بقواعد ثابتة، وليست نموذج AI حيًا أو إجراءً محفوظًا.</div></div></div></section>
-<section class="panel automation"><h2>أتمتة التذكيرات</h2><div class="automation-row"><span class="auto-dot">30</span><span class="auto-label">قبل 30 يومًا</span><span class="auto-state">افتراضي</span></div><div class="automation-row"><span class="auto-dot">14</span><span class="auto-label">قبل 14 يومًا</span><span class="auto-state">افتراضي</span></div><div class="automation-row"><span class="auto-dot">7</span><span class="auto-label">قبل 7 أيام</span><span class="auto-state">أولوية</span></div><div class="settings"><label class="setting"><input id="reminders" type="checkbox" checked><span>تفعيل قائمة التذكير التجريبية</span><small id="reminder-state">مفعّل</small></label></div></section></aside></div>
-</main></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<body class="ui"><div class="app">
+<aside class="side"></aside><script src="bud-shell.js"></script>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>الوثائق والتجديدات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث برقم الوثيقة أو العميل" aria-label="ابحث برقم الوثيقة أو العميل"></div></header>
+<section class="page-head"><div><h1>الوثائق والتجديدات</h1><p class="subtitle">كل الوثائق الصادرة، حالتها، أقساطها، وما يقترب من الانتهاء.</p></div></section>
+<div id="error" class="notice error" hidden></div>
+<section class="metrics">
+<article class="metric"><div class="metric-label">وثائق سارية</div><div id="m-live" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">تنتهي خلال 60 يومًا</div><div id="m-renew" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">أقساط متأخرة</div><div id="m-overdue" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">مطالبات مفتوحة</div><div id="m-claims" class="metric-value">—</div></article>
+</section>
+<div class="layout">
+<section class="panel"><div class="panel-head"><div><h2>الوثائق</h2><div class="muted">مرتبة حسب أقرب انتهاء</div></div><span id="count" class="muted"></span></div>
+<div id="filters" class="filters"></div>
+<div class="table-wrap"><table><thead><tr><th>الوثيقة / العميل</th><th>الشركة والفرع</th><th>القسط</th><th>الانتهاء</th><th>التحصيل</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا توجد وثائق تطابق التصفية.</div></div></section>
+<section id="detail" class="panel" hidden><div class="panel-head"><div><h2 id="d-title"></h2><div id="d-sub" class="muted"></div></div><span id="d-status"></span></div>
+<div class="panel-body"><dl id="d-kv" class="kv"></dl>
+<div class="section-title">الأقساط</div><div id="d-inst"></div>
+<div class="section-title">الإجراءات</div><div id="d-actions" class="actions"></div></div></section>
+<section id="detail-empty" class="panel"><div class="empty">اختر وثيقة من القائمة.</div></section>
+</div></main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="bud-api.js"></script>
 <script>
-const demoPolicies = [
-  { id: 'BUD-P-9941', state: 'due', client: 'مؤسسة نبراس للتجارة', type: 'أسطول مركبات', company: 'جهة افتراضية أ', premium: '96,000', expiry: '14 أكتوبر 2026', days: 6, lines: ['16 مركبة','تغطية مسؤولية وأضرار','طلب عروض التجديد الآن'] },
-  { id: 'BUD-P-9938', state: 'due', client: 'شركة روافد التقنية', type: 'طبي جماعي', company: 'جهة افتراضية ب', premium: '284,500', expiry: '20 أكتوبر 2026', days: 12, lines: ['82 موظفًا','شبكة طبية موسعة','اطلب عروضًا قبل إرسال التجديد'] },
-  { id: 'BUD-P-9934', state: 'due', client: 'نورة القحطاني', type: 'مركبات', company: 'جهة افتراضية ج', premium: '4,280', expiry: '1 نوفمبر 2026', days: 24, lines: ['مركبة واحدة','تغطية شاملة','راجع بيانات المركبة قبل المقارنة'] },
-  { id: 'BUD-P-9928', state: 'active', client: 'مؤسسة أفق للمقاولات', type: 'ممتلكات', company: 'جهة افتراضية أ', premium: '438,000', expiry: '1 ديسمبر 2026', days: 54, lines: ['3 مواقع مؤمنة','تغطية ممتلكات','موعد التجديد بعد 30 يومًا'] },
-  { id: 'BUD-P-9921', state: 'pending', client: 'شركة ألوان الإبداع', type: 'مسؤولية مهنية', company: 'جهة افتراضية ب', premium: '12,400', expiry: 'بانتظار الإصدار', days: 0, lines: ['حد مسؤولية 1 مليون ر.س','اعتماد العميل مسجل','تابع إصدار الوثيقة مع الشركة'] },
-];
+const { api, el, run, date, money } = BUD;
+const STATUS = { issued: ['صادرة', 'blue'], active: ['سارية', 'blue'], expired: ['منتهية', ''], cancelled: ['ملغاة', 'red'], draft: ['مسودة', ''] };
+const FILTERS = [['all', 'الكل'], ['live', 'سارية'], ['renew', 'تنتهي خلال 60 يومًا'], ['overdue', 'عليها متأخرات'], ['expired', 'منتهية'], ['cancelled', 'ملغاة']];
+const METHODS = { bank_transfer: 'تحويل بنكي', card: 'بطاقة', cash: 'نقدًا', sadad: 'سداد', other: 'أخرى' };
+let policies = [], filter = 'all', query = '', selectedId = new URLSearchParams(location.search).get('policy'), role = '';
+const isLive = p => ['issued', 'active'].includes(p.effective_status);
+const statusPill = p => { const [label, tone] = STATUS[p.effective_status] || [p.effective_status, '']; return el('span', { class: `pill ${tone}`, text: label }); };
+const canUW = () => ['underwriter', 'manager'].includes(role);
 
-let rows = [];
-let filter = 'all';
-let query = '';
-let selected = null;
-const toast = document.getElementById('toast');
-let timer;
-
-function notify(text) {
-  toast.textContent = text;
-  toast.classList.add('show');
-  clearTimeout(timer);
-  timer = setTimeout(() => toast.classList.remove('show'), 2400);
+function matches(p) {
+  if (filter === 'live' && !isLive(p)) return false;
+  if (filter === 'renew' && !(isLive(p) && p.days_to_expiry <= 60)) return false;
+  if (filter === 'overdue' && !(Number(p.overdue_amount) > 0)) return false;
+  if (filter === 'expired' && p.effective_status !== 'expired') return false;
+  if (filter === 'cancelled' && p.status !== 'cancelled') return false;
+  return `${p.policy_number} ${p.customer_name} ${p.insurer_name}`.toLowerCase().includes(query);
 }
 
-function makeRowFromPolicy(policy) {
-  const row = document.createElement('tr');
-  row.dataset.id = policy.id;
-  row.dataset.state = policy.state;
-  row.dataset.client = policy.client;
-  row.dataset.type = policy.type;
-  row.dataset.company = policy.company;
-  row.dataset.premium = policy.premium;
-  row.dataset.expiry = policy.expiry;
-  row.dataset.days = String(policy.days ?? 0);
-  row.dataset.lines = (policy.lines || []).join('|');
-  row.innerHTML = `
-    <td>
-      <button class="policy-button" type="button">${policy.id}</button>
-      <div class="subline">${policy.client}</div>
-    </td>
-    <td>${policy.type}</td>
-    <td>${policy.premium} ر.س</td>
-    <td>${policy.days > 0 ? '<span class="blue">بعد ' + policy.days + ' يومًا</span>' : '—'}</td>
-    <td><span class="state ${policy.state === 'due' ? 'due' : ''}">${policy.state === 'due' ? 'تجديد قريب' : policy.state === 'active' ? 'سارية' : 'بانتظار الإصدار'}</span></td>
-  `;
-  row.querySelector('.policy-button').addEventListener('click', () => selectPolicy(row));
-  return row;
+function render() {
+  const live = policies.filter(isLive);
+  document.getElementById('m-live').textContent = live.length;
+  document.getElementById('m-renew').textContent = live.filter(p => p.days_to_expiry <= 60).length;
+  document.getElementById('m-overdue').textContent = money(policies.reduce((s, p) => s + Number(p.overdue_amount), 0));
+  document.getElementById('m-claims').textContent = policies.reduce((s, p) => s + p.open_claims, 0);
+  document.getElementById('filters').replaceChildren(...FILTERS.map(([k, label]) => el('button', { class: `filter${k === filter ? ' active' : ''}`, type: 'button', text: label, onclick: () => { filter = k; render(); } })));
+  const visible = policies.filter(matches);
+  document.getElementById('rows').replaceChildren(...visible.map(p => el('tr', { class: `clickable${p.policy_id === selectedId ? ' selected' : ''}`, onclick: () => select(p.policy_id) },
+    el('td', {}, el('div', { class: 'strong', text: p.policy_number }), el('div', { class: 'sub', text: p.customer_name })),
+    el('td', {}, el('div', { text: p.insurer_name }), el('div', { class: 'sub', text: `${p.insurance_type_label} · ${p.product_type_label}` })),
+    el('td', { text: money(p.premium_amount) }),
+    el('td', {}, el('div', { text: date(p.effective_to).split('،')[0] }), isLive(p) && el('div', { class: `sub${p.days_to_expiry <= 30 ? ' strong' : ''}`, text: `بعد ${p.days_to_expiry} يومًا` })),
+    el('td', {}, el('div', { text: `${p.installments_paid}/${p.installments_total}` }), Number(p.overdue_amount) > 0 && el('span', { class: 'pill red', text: `متأخر ${money(p.overdue_amount)}` })),
+    el('td', {}, statusPill(p)))));
+  document.getElementById('empty').hidden = visible.length > 0;
+  document.getElementById('count').textContent = `${visible.length} وثيقة`;
 }
 
-function updateRows() {
-  let count = 0;
-  rows.forEach(row => {
-    const text = (row.textContent || '').toLocaleLowerCase('ar');
-    const visible = (filter === 'all' || row.dataset.state === filter) && text.includes(query);
-    row.hidden = !visible;
-    if (visible) count += 1;
-  });
-  document.getElementById('visible-count').textContent = `${count} وثائق`;
-  document.getElementById('empty').style.display = count ? 'none' : 'block';
-}
+async function select(id) {
+  selectedId = id;
+  history.replaceState(null, '', `?policy=${id}`);
+  const p = await api(`/portfolio/policies/${id}`);
+  policies = policies.map(x => (x.policy_id === id ? { ...x, ...p } : x));
+  render();
+  document.getElementById('detail').hidden = false;
+  document.getElementById('detail-empty').hidden = true;
+  document.getElementById('d-title').textContent = p.policy_number;
+  document.getElementById('d-sub').textContent = `${p.customer_name} · ${p.insurer_name}`;
+  document.getElementById('d-status').replaceChildren(statusPill(p));
+  const kv = [['الفرع والمنتج', `${p.insurance_type_label} · ${p.product_type_label}`], ['القسط', money(p.premium_amount)], ['مبلغ التغطية', money(p.coverage_amount)],
+    ['من', date(p.effective_from)], ['إلى', date(p.effective_to)], ['الطلب الأصلي', p.request_number],
+    ['العمولة', p.commission_amount ? `${money(p.commission_amount)} (${Number(p.commission_rate)}%)${p.commission_received_at ? ' — مستلمة' : ' — لم تُستلم'}` : 'لم تُحدد نسبة للشركة'],
+    ['مطالبات مفتوحة', p.open_claims], ['ملاحظات', p.notes]].filter(([, v]) => v != null && v !== '');
+  document.getElementById('d-kv').replaceChildren(...kv.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
 
-function selectPolicy(row) {
-  selected = row;
-  rows.forEach(item => item.classList.toggle('selected', item === row));
-  for (const [id, key] of [['detail-id', 'id'], ['detail-client', 'client'], ['detail-type', 'type'], ['detail-company', 'company'], ['detail-premium', 'premium'], ['detail-expiry', 'expiry']]) {
-    const value = row.dataset[key] || '';
-    document.getElementById(id).textContent = key === 'premium' ? `${value} ر.س` : value;
-  }
-
-  const lines = (row.dataset.lines || '').split('|').filter(Boolean);
-  document.getElementById('coverage-list').replaceChildren(...lines.map(text => {
-    const line = document.createElement('div');
-    line.className = 'automation-row';
-    const dot = document.createElement('span');
-    dot.className = 'auto-dot';
-    dot.textContent = '•';
-    const label = document.createElement('span');
-    label.className = 'auto-label';
-    label.textContent = text;
-    line.append(dot, label);
-    return line;
+  document.getElementById('d-inst').replaceChildren(...p.installments.map(i => {
+    const tone = i.status === 'paid' ? 'blue' : i.is_overdue ? 'red' : i.status === 'cancelled' ? '' : '';
+    const label = i.status === 'paid' ? `مدفوع ${METHODS[i.payment_method] || ''}` : i.status === 'cancelled' ? 'ملغى' : i.is_overdue ? 'متأخر' : 'مستحق';
+    return el('div', { class: 'inst' }, el('span', { class: 'strong', text: `#${i.sequence}` }), el('span', { class: 'grow', text: `${money(i.amount)} · يستحق ${i.due_date}` }),
+      el('span', { class: `pill ${tone}`, text: label }),
+      i.status === 'due' && canUW() && el('a', { class: 'button', href: `collections.html?installment=${i.installment_id}`, text: 'تسجيل سداد' }));
   }));
 
-  const days = Number(row.dataset.days || 0);
-  const title = days <= 7 && days > 0 ? `أولوية عالية، متبقي ${days} أيام` : days <= 30 && days > 0 ? `ابدأ التجديد، متبقي ${days} يومًا` : days > 30 ? `متبقي ${days} يومًا، جهز المراجعة لاحقًا` : 'تابع إصدار الوثيقة';
-  document.getElementById('rec-title').textContent = title;
-  document.getElementById('rec-body').textContent = days > 0 && days <= 14 ? 'ابدأ جمع عروض التجديد الآن، وراجع حدود التغطية قبل التواصل مع العميل.' : days > 14 ? 'جهز بيانات التجديد وفعّل التذكير قبل موعد الانتهاء.' : 'تحقق من موافقة العميل وحالة الإصدار مع شركة التأمين.';
-  document.getElementById('renew').disabled = row.dataset.state === 'pending';
+  const actions = [];
+  if (p.renewal_request_id) actions.push(el('a', { class: 'button', href: `underwriting.html?request=${p.renewal_request_id}`, text: 'فتح طلب التجديد ←' }));
+  else if (p.status !== 'cancelled') actions.push(el('button', { class: 'button primary', type: 'button', text: 'بدء تجديد',
+    onclick: e => run(e.currentTarget, () => BUD.api(`/policies/${id}/renew`, { method: 'POST' }), 'فُتح طلب التجديد').then(() => select(id)) }));
+  if (isLive(p)) actions.push(el('a', { class: 'button', href: `claims.html?policy=${id}`, text: 'تسجيل مطالبة' }));
+  if (canUW() && p.commission_amount && !p.commission_received_at) actions.push(el('button', { class: 'button', type: 'button', text: 'تسجيل استلام العمولة',
+    onclick: e => { const ref = prompt('مرجع التحويل من الشركة (اختياري):') ?? null; if (ref === null) return; run(e.currentTarget, () => api(`/policies/${id}/commission-received`, { method: 'POST', body: { reference: ref || null } }), 'سُجل استلام العمولة').then(() => select(id)); } }));
+  if (canUW() && p.status !== 'cancelled') actions.push(el('button', { class: 'button', type: 'button', text: 'إلغاء الوثيقة',
+    onclick: e => { const reason = prompt('سبب الإلغاء:'); if (!reason || reason.trim().length < 3) return; run(e.currentTarget, () => api(`/policies/${id}/cancel`, { method: 'POST', body: { reason: reason.trim() } }), 'أُلغيت الوثيقة').then(() => select(id)); } }));
+  actions.push(el('a', { class: 'button', href: `clients.html?customer=${p.customer_id}`, text: 'ملف العميل' }));
+  document.getElementById('d-actions').replaceChildren(...actions);
 }
 
-async function hydratePolicies() {
-  const tbody = document.getElementById('policies');
-  const fallback = () => {
-    rows = demoPolicies.map(makeRowFromPolicy);
-    tbody.replaceChildren(...rows);
-    selectPolicy(rows[0]);
-    updateRows();
-  };
-
+document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(); });
+(async () => {
   try {
-    const response = await fetch('/insurance/policies');
-    if (!response.ok) {
-      fallback();
-      return;
-    }
-
-    const policies = await response.json();
-    if (!Array.isArray(policies) || policies.length === 0) {
-      fallback();
-      return;
-    }
-
-    const enriched = await Promise.all(
-      policies.map(async (policy) => {
-        let request = null;
-        try {
-          const requestResponse = await fetch(`/insurance/requests/${policy.request_id}`);
-          if (requestResponse.ok) {
-            request = await requestResponse.json();
-          }
-        } catch (error) {
-          request = null;
-        }
-
-        return {
-          id: policy.policy_number || policy.policy_id,
-          state: policy.status === 'active' ? 'active' : policy.status === 'issued' ? 'due' : 'pending',
-          client: request?.customer_id ? 'طلب شامل' : 'عميل',
-          type: request?.insurance_type || 'تأمين',
-          company: policy.insurer_id || 'شركة التأمين',
-          premium: policy.premium_amount || '0',
-          expiry: policy.effective_to ? new Date(policy.effective_to).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : 'غير محدد',
-          days: policy.effective_to ? Math.max(0, Math.ceil((new Date(policy.effective_to) - new Date()) / 86400000)) : 0,
-          lines: [
-            request?.coverage_amount ? `التغطية: ${request.coverage_amount}` : 'التغطية: غير محددة',
-            `القسط: ${policy.premium_amount || '0'}`,
-            policy.status === 'active' ? 'السياسة فعّالة' : 'تحتاج متابعة',
-          ],
-        };
-      })
-    );
-
-    rows = enriched.map(makeRowFromPolicy);
-    tbody.replaceChildren(...rows);
-    if (rows[0]) {
-      selectPolicy(rows[0]);
-    }
-    updateRows();
-  } catch (error) {
-    fallback();
-  }
-}
-
-function attachEvents() {
-  document.querySelectorAll('.filter').forEach(button => {
-    button.addEventListener('click', () => {
-      filter = button.dataset.filter;
-      document.querySelectorAll('.filter').forEach(item => item.classList.toggle('active', item === button));
-      updateRows();
-    });
-  });
-
-  document.getElementById('search').addEventListener('input', event => {
-    query = (event.target.value || '').trim().toLocaleLowerCase('ar');
-    updateRows();
-  });
-
-  document.getElementById('renew').addEventListener('click', () => {
-    if (!selected || selected.dataset.state === 'pending') return;
-    selected.dataset.state = 'pending';
-    const state = selected.querySelector('.state');
-    state.textContent = 'طلب تجديد تجريبي';
-    state.className = 'state';
-    updateRows();
-    notify('تمت تهيئة التجديد محليًا للمعاينة فقط');
-  });
-
-  document.getElementById('remind').addEventListener('click', () => {
-    if (!selected) return;
-    notify('لم يُرسل تذكير فعلي؛ الإرسال يتطلب ربط قناة التواصل');
-  });
-
-  document.getElementById('reminders').addEventListener('change', event => {
-    document.getElementById('reminder-state').textContent = event.target.checked ? 'مفعّل' : 'متوقف';
-    notify(event.target.checked ? 'فُعّلت المعاينة المحلية للتذكيرات' : 'أوقفت المعاينة المحلية للتذكيرات');
-  });
-
-  document.getElementById('refresh').addEventListener('click', async () => {
-    notify('جارٍ تحديث بيانات التأمين');
-    await hydratePolicies();
-  });
-
-  document.getElementById('export').addEventListener('click', () => notify('التصدير سيتاح بعد ربط البيانات'));
-
-}
-
-attachEvents();
-hydratePolicies();
-</script></body></html>
+    role = (await BUD_ME)?.role || '';
+    policies = await api('/portfolio/policies');
+    render();
+    if (selectedId) await select(selectedId);
+  } catch (error) { const b = document.getElementById('error'); b.textContent = error.message; b.hidden = false; }
+})();
+</script>
+</body></html>

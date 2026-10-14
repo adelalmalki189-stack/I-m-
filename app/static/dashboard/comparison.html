@@ -29,7 +29,8 @@ td.best{background:#F3F6FF}
 <form id="issue-form" class="panel-body"><div class="form-grid">
 <label class="field"><span>بداية التغطية</span><input name="effective_from" type="date" required></label>
 <label class="field"><span>نهاية التغطية</span><input name="effective_to" type="date" required></label>
-<label class="field full"><span>ملاحظات</span><input name="notes"></label></div>
+<label class="field"><span>طريقة السداد</span><select name="installments"><option value="1">دفعة واحدة</option><option value="2">قسطان (نصف سنوي)</option><option value="4">4 أقساط (ربع سنوي)</option><option value="12">12 قسطًا (شهري)</option></select></label>
+<label class="field"><span>ملاحظات</span><input name="notes"></label></div>
 <button class="button primary" type="submit">إصدار الوثيقة</button></form></section>
 <section id="policy-panel" class="panel" hidden><div class="panel-head"><div><h2>الوثيقة الصادرة</h2></div></div><div class="panel-body"><dl id="policy" class="kv"></dl><div class="actions" style="margin-top:10px"><a class="button" href="policies.html">الوثائق والتجديدات ←</a></div></div></section>
 <section class="panel"><div class="panel-body muted">اختيار عرض يغير حالة الطلب إلى «عرض مختار». يمكن تغيير الاختيار قبل الإصدار، وبعد إصدار الوثيقة يُقفل الطلب.</div></section>
@@ -96,7 +97,7 @@ issueForm.addEventListener('submit', e => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(issueForm));
   if (data.effective_to < data.effective_from) { BUD.notify('تاريخ النهاية قبل البداية'); return; }
-  const body = { effective_from: `${data.effective_from}T00:00:00Z`, effective_to: `${data.effective_to}T23:59:59Z`, notes: data.notes || null };
+  const body = { effective_from: `${data.effective_from}T00:00:00Z`, effective_to: `${data.effective_to}T23:59:59Z`, notes: data.notes || null, installments: Number(data.installments) };
   run(e.submitter, () => api(`/requests/${picker.value}/issue-policy`, { method: 'POST', body }), 'صدرت الوثيقة').then(() => loadRequest(picker.value));
 });
 document.getElementById('print').addEventListener('click', () => window.print());

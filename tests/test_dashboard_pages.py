@@ -32,13 +32,13 @@ def test_dashboard_pages_load():
     assert "إصدار الوثيقة" in comparison_response.text
     assert clients_response.status_code == 200
     assert "ملفات العملاء" in clients_response.text
-    assert "اقتراح متابعة آلي" in clients_response.text
+    assert "بيانات التواصل" in clients_response.text
     assert policies_response.status_code == 200
     assert "الوثائق والتجديدات" in policies_response.text
-    assert "أولوية التجديد المقترحة" in policies_response.text
+    assert "بدء تجديد" in policies_response.text
     assert claims_response.status_code == 200
     assert "متابعة المطالبات" in claims_response.text
-    assert "مساعدة فرز المطالبة" in claims_response.text
+    assert "تسجيل مطالبة جديدة" in claims_response.text
     assert collections_response.status_code == 200
     assert "التحصيلات والتسويات" in collections_response.text
     assert "تسويات عمولات الشركات" in collections_response.text
@@ -47,7 +47,7 @@ def test_dashboard_pages_load():
     assert "بريد طلبات التسعير" in insurers_response.text
     assert reports_response.status_code == 200
     assert "التقارير والتحليلات" in reports_response.text
-    assert "رؤى تشغيلية" in reports_response.text
+    assert "الأقساط المكتتبة شهريًا" in reports_response.text
     assert settings_response.status_code == 200
     assert "الإعدادات والصلاحيات" in settings_response.text
     assert "سجل التدقيق" in settings_response.text

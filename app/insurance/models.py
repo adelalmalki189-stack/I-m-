@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum as PyEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, new_uuid
@@ -34,6 +35,22 @@ class InsurancePolicyStatus(str, PyEnum):
     ISSUED = "issued"
     ACTIVE = "active"
     EXPIRED = "expired"
+    CANCELLED = "cancelled"
+
+
+class ClaimStatus(str, PyEnum):
+    REPORTED = "reported"
+    SUBMITTED = "submitted"
+    UNDER_ASSESSMENT = "under_assessment"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PAID = "paid"
+    CLOSED = "closed"
+
+
+class InstallmentStatus(str, PyEnum):
+    DUE = "due"
+    PAID = "paid"
     CANCELLED = "cancelled"
 
 
@@ -81,7 +98,7 @@ class Customer(Base, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    requests: Mapped[list["InsuranceRequest"]] = relationship(back_populates="customer")
+    requests: Mapped[list[InsuranceRequest]] = relationship(back_populates="customer")
 
 
 class SalesEmployee(Base, TimestampMixin):
@@ -98,31 +115,31 @@ class SalesEmployee(Base, TimestampMixin):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)  # NULL = cannot log in
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    requests_handled: Mapped[list["InsuranceRequest"]] = relationship(
+    requests_handled: Mapped[list[InsuranceRequest]] = relationship(
         foreign_keys="InsuranceRequest.sales_employee_id",
         back_populates="sales_employee",
     )
-    assignments_received: Mapped[list["InsuranceRequest"]] = relationship(
+    assignments_received: Mapped[list[InsuranceRequest]] = relationship(
         foreign_keys="InsuranceRequest.underwriter_id",
         back_populates="underwriter",
     )
-    created_assignments: Mapped[list["UnderwritingAssignment"]] = relationship(
+    created_assignments: Mapped[list[UnderwritingAssignment]] = relationship(
         foreign_keys="UnderwritingAssignment.assigned_by_employee_id",
         back_populates="assigned_by_employee",
     )
-    assigned_to_requests: Mapped[list["UnderwritingAssignment"]] = relationship(
+    assigned_to_requests: Mapped[list[UnderwritingAssignment]] = relationship(
         foreign_keys="UnderwritingAssignment.assigned_to_employee_id",
         back_populates="assigned_to_employee",
     )
-    request_preferences: Mapped[list["InsuranceRequestPreference"]] = relationship(
+    request_preferences: Mapped[list[InsuranceRequestPreference]] = relationship(
         foreign_keys="InsuranceRequestPreference.sales_employee_id",
         back_populates="sales_employee",
     )
-    underwriting_assignments: Mapped[list["InsuranceUnderwritingCase"]] = relationship(
+    underwriting_assignments: Mapped[list[InsuranceUnderwritingCase]] = relationship(
         foreign_keys="InsuranceUnderwritingCase.sales_employee_id",
         back_populates="sales_employee",
     )
-    underwriting_cases: Mapped[list["InsuranceUnderwritingCase"]] = relationship(
+    underwriting_cases: Mapped[list[InsuranceUnderwritingCase]] = relationship(
         foreign_keys="InsuranceUnderwritingCase.assigned_underwriter_id",
         back_populates="assigned_underwriter",
     )
@@ -188,6 +205,7 @@ class InsuranceRequest(Base, TimestampMixin):
     selected_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     request_details: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: catalog field key -> value
     consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    renewal_of_policy_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     # Short-lived token returned to the portal so the customer can attach documents to
     # their own request without a staff session (sha256 of the token).
     upload_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -195,10 +213,10 @@ class InsuranceRequest(Base, TimestampMixin):
     last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     customer: Mapped[Customer] = relationship(back_populates="requests")
-    documents: Mapped[list["RequestDocument"]] = relationship(back_populates="request")
-    submissions: Mapped[list["InsuranceSubmission"]] = relationship(back_populates="request")
-    preferences: Mapped[list["InsuranceRequestPreference"]] = relationship(back_populates="request")
-    underwriting_case: Mapped["InsuranceUnderwritingCase"] = relationship(back_populates="request", uselist=False)
+    documents: Mapped[list[RequestDocument]] = relationship(back_populates="request")
+    submissions: Mapped[list[InsuranceSubmission]] = relationship(back_populates="request")
+    preferences: Mapped[list[InsuranceRequestPreference]] = relationship(back_populates="request")
+    underwriting_case: Mapped[InsuranceUnderwritingCase] = relationship(back_populates="request", uselist=False)
     sales_employee: Mapped[SalesEmployee | None] = relationship(
         foreign_keys=[sales_employee_id],
         back_populates="requests_handled",
@@ -207,8 +225,8 @@ class InsuranceRequest(Base, TimestampMixin):
         foreign_keys=[underwriter_id],
         back_populates="assignments_received",
     )
-    underwriting_assignments: Mapped[list["UnderwritingAssignment"]] = relationship(back_populates="request")
-    policies: Mapped[list["InsurancePolicy"]] = relationship(back_populates="request")
+    underwriting_assignments: Mapped[list[UnderwritingAssignment]] = relationship(back_populates="request")
+    policies: Mapped[list[InsurancePolicy]] = relationship(back_populates="request")
 
 
 class InsurancePolicy(Base, TimestampMixin):
@@ -231,6 +249,11 @@ class InsurancePolicy(Base, TimestampMixin):
     effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Broker commission owed by the insurer for this policy.
+    commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)  # percent
+    commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    commission_received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    commission_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="policies")
     insurer: Mapped[Insurer] = relationship(back_populates="policies")
@@ -330,10 +353,11 @@ class Insurer(Base, TimestampMixin):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    default_commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)  # percent
 
-    templates: Mapped[list["InsurerTemplate"]] = relationship(back_populates="insurer")
-    submissions: Mapped[list["InsuranceSubmission"]] = relationship(back_populates="insurer")
-    policies: Mapped[list["InsurancePolicy"]] = relationship(back_populates="insurer")
+    templates: Mapped[list[InsurerTemplate]] = relationship(back_populates="insurer")
+    submissions: Mapped[list[InsuranceSubmission]] = relationship(back_populates="insurer")
+    policies: Mapped[list[InsurancePolicy]] = relationship(back_populates="insurer")
 
 
 class InsurerTemplate(Base, TimestampMixin):
@@ -380,8 +404,8 @@ class InsuranceSubmission(Base, TimestampMixin):
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="submissions")
     insurer: Mapped[Insurer] = relationship(back_populates="submissions")
-    quotes: Mapped[list["InsuranceQuote"]] = relationship(back_populates="submission")
-    audit_logs: Mapped[list["EmailAuditLog"]] = relationship(back_populates="submission")
+    quotes: Mapped[list[InsuranceQuote]] = relationship(back_populates="submission")
+    audit_logs: Mapped[list[EmailAuditLog]] = relationship(back_populates="submission")
 
 
 class InsuranceQuote(Base, TimestampMixin):
@@ -446,3 +470,60 @@ class AuditEvent(Base, TimestampMixin):
     entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class InsurerCommissionRate(Base, TimestampMixin):
+    """Commission percent an insurer pays the broker for one insurance line."""
+
+    __tablename__ = "insurance_commission_rates"
+    __table_args__ = (UniqueConstraint("insurer_id", "line", name="uq_commission_rate_insurer_line"),)
+
+    rate_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    insurer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False)
+    line: Mapped[str] = mapped_column(String(80), nullable=False)
+    rate: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+
+
+class PremiumInstallment(Base, TimestampMixin):
+    """One premium payment the customer owes on a policy."""
+
+    __tablename__ = "insurance_premium_installments"
+
+    installment_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    policy_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_policies.policy_id"), nullable=False, index=True
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[InstallmentStatus] = mapped_column(
+        Enum(InstallmentStatus, native_enum=False, values_callable=_values, name="installment_status"),
+        nullable=False,
+        default=InstallmentStatus.DUE,
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class InsuranceClaim(Base, TimestampMixin):
+    __tablename__ = "insurance_claims"
+
+    claim_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    claim_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    policy_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_policies.policy_id"), nullable=False, index=True
+    )
+    status: Mapped[ClaimStatus] = mapped_column(
+        Enum(ClaimStatus, native_enum=False, values_callable=_values, name="claim_status"),
+        nullable=False,
+        default=ClaimStatus.REPORTED,
+    )
+    incident_date: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    claimed_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    approved_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    paid_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    insurer_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -4,428 +4,97 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
 <title>BUD | التحصيلات والعمولات</title>
 <link rel="stylesheet" href="bud.css">
-<style>
-.page-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
-.page-head h1{margin:0;font-size:22px}
-.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}
-.metric{padding:11px 13px;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.metric-label{color:var(--muted);font-size:9px}
-.metric-value{margin-top:5px;font-size:19px;font-weight:700}
-.metric-note{margin-top:3px;color:var(--muted);font-size:8px}
-.tabs{display:flex;align-items:center;gap:4px;width:max-content;max-width:100%;margin:0 0 12px;padding:4px;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.tab{padding:7px 12px;border:0;border-radius:4px;background:transparent;color:var(--muted);font-size:9px}
-.tab.active{background:var(--black);color:var(--white)}
-.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(265px,.85fr);gap:12px;align-items:start}
-.panel{min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.panel-head{min-height:49px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
-.panel-head h2{margin:0;font-size:11px}
-.hint{margin-top:3px;color:var(--muted);font-size:8px}
-.filters{display:flex;align-items:center;gap:5px;padding:9px 11px;border-bottom:1px solid var(--line);overflow:auto}
-.filter{flex:0 0 auto;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--white);color:var(--gray);font-size:8px}
-.filter.active{border-color:var(--blue);background:var(--blue);color:var(--white)}
-.count{margin-right:auto;color:var(--muted);font-size:8px;white-space:nowrap}
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse;text-align:right;white-space:nowrap}
-th,td{padding:9px 10px;border-bottom:1px solid var(--line)}
-th{background:var(--pale);color:var(--gray);font-size:8px;font-weight:600}
-td{font-size:8px}
-tbody tr:last-child td{border:0}
-tbody tr:hover,tbody tr.selected{background:#E6E9F2}
-.record-button{padding:0;border:0;background:none;color:var(--ink);text-align:right;font-size:9px;font-weight:600}
-.record-button:hover{color:var(--blue)}
-.subline{margin-top:3px;color:var(--muted);font-size:8px}
-.state{display:inline-block;padding:4px 6px;border-radius:4px;background:var(--pale);color:var(--gray);font-size:8px}
-.state.attention{color:var(--blue)}
-.empty{display:none;padding:20px;text-align:center;color:var(--muted);font-size:9px}
-.right-stack{display:grid;gap:11px}
-.detail{overflow:hidden}
-.detail-head{padding:12px 13px;border-bottom:1px solid var(--line)}
-.detail-top{display:flex;align-items:center;gap:9px}
-.detail-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:8px;background:var(--pale);color:var(--blue);font-size:12px}
-.detail-title{font-size:11px;font-weight:700}
-.detail-sub{margin-top:3px;color:var(--muted);font-size:8px}
-.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;padding:10px 13px;border-bottom:1px solid var(--line)}
-.detail-item span{display:block;color:var(--muted);font-size:8px}
-.detail-item b{display:block;margin-top:4px;font-size:9px}
-.section{padding:10px 13px;border-bottom:1px solid var(--line)}
-.section:last-child{border:0}
-.section h3{margin:0 0 8px;font-size:9px}
-.assist{padding:10px;border:1px solid var(--line);border-radius:5px;background:var(--white)}
-.assist-head{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:700}
-.assist-mark{display:grid;place-items:center;width:19px;height:19px;border-radius:4px;background:var(--blue);color:var(--white)}
-.assist-title{margin-top:7px;font-size:9px;font-weight:600}
-.assist-reason{margin-top:4px;color:var(--muted);font-size:8px;line-height:1.6}
-.progress{height:5px;margin-top:7px;border-radius:5px;background:var(--pale);overflow:hidden}
-.progress span{display:block;width:40%;height:100%;background:var(--blue)}
-.assist-actions{display:grid;gap:6px;margin-top:9px}
-.assist-actions .button{width:100%}
-.disclaimer{margin-top:7px;color:var(--muted);font-size:7px;line-height:1.5}
-.history{padding:11px 13px}
-.history h2{margin:0 0 7px;font-size:10px}
-.history-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--line);font-size:8px}
-.history-row:last-child{border:0}
-.history-row span{margin-right:auto;color:var(--muted);font-size:7px}
-.modal-backdrop{position:fixed;inset:0;z-index:6;display:none;place-items:center;padding:16px;background:#0A0A0B80}
-.modal-backdrop.open{display:grid}
-.modal{width:min(440px,100%);padding:18px;border-radius:7px;background:var(--white)}
-.modal-head{display:flex;align-items:center;justify-content:space-between}
-.modal-head h2{margin:0;font-size:14px}
-.close{width:29px;height:29px;border:0;border-radius:4px;background:var(--pale);font-size:17px}
-.field{display:grid;gap:5px;margin-top:12px}
-.field label{font-size:9px;font-weight:600}
-.field input,.field select{height:35px;padding:0 9px;border:1px solid var(--line);border-radius:4px;background:var(--white);font-size:10px}
-.modal-actions{display:flex;gap:7px;margin-top:16px}
-@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:minmax(0,1.25fr) minmax(250px,.9fr)}}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.right-stack{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:520px){.page-head{display:block}.page-head .button{margin-top:9px}.metrics{gap:7px}.metric{padding:9px}.metric-label{font-size:8px}.metric-value{font-size:17px}.right-stack{grid-template-columns:1fr}th,td{padding:8px}}
-</style>
+<style>.pay-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.pay-form select,.pay-form input{min-height:30px;padding:0 8px;border:1px solid var(--line);border-radius:4px;font-size:10px}</style>
 </head>
-<body><div class="app"><aside class="side"></aside><script src="bud-shell.js"></script>
-<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>التحصيلات والعمولات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث بمرجع أو عميل" aria-label="ابحث بمرجع أو عميل"><button id="export" class="button" type="button">تصدير كشف</button></div></header>
-<section class="page-head"><div><h1>التحصيلات والتسويات</h1><p class="subtitle">تابع أقساط العملاء، مستحقات الشركات، والفروقات المالية.</p></div><button id="record-payment" class="button primary" type="button">+ تسجيل دفعة</button></section>
-<div class="demo"><b>بيانات مباشرة</b><span>يتم حساب الفواتير والحركات من وثائق التأمين الحالية، مع احتفاظه بنسخة احتياطية عند وجود خلل في الربط. التواصل مع شركات التأمين يتم عبر البريد الإلكتروني فقط.</span></div>
-<section class="metrics" aria-label="مؤشرات مالية"><article class="metric"><div class="metric-label">أقساط مستحقة من العملاء</div><div id="metric-due" class="metric-value">—</div><div class="metric-note">المتبقي على الفواتير المفتوحة</div></article><article class="metric"><div class="metric-label">محصل هذا الشهر</div><div id="metric-collected" class="metric-value">—</div><div class="metric-note">دفعات مسجلة في المعاينة</div></article><article class="metric"><div class="metric-label">عمولات مستحقة</div><div id="metric-commission" class="metric-value">—</div><div class="metric-note">بحسب نسب اتفاقية توضيحية</div></article><article class="metric"><div class="metric-label">فروقات تحتاج مطابقة</div><div id="metric-mismatch" class="metric-value">—</div><div class="metric-note">تحتاج مراجعة كشف الجهة</div></article></section>
-<div class="tabs" role="tablist" aria-label="نوع السجل"><button class="tab active" role="tab" aria-selected="true" data-view="premium">تحصيل أقساط العملاء</button><button class="tab" role="tab" aria-selected="false" data-view="commission">تسوية عمولات الشركات</button></div>
-<div class="layout"><section class="panel"><div class="panel-head"><div><h2 id="table-title">فواتير الأقساط</h2><div id="table-subtitle" class="hint">رتب المتأخر والمستحق حسب موعد الدفع</div></div><span id="visible-count" class="count">5 سجلات</span></div><div class="filters" role="group" aria-label="تصفية الحركات"><button class="filter active" data-filter="all">الكل</button><button class="filter" data-filter="open">مفتوح</button><button class="filter" data-filter="overdue">متأخر</button><button class="filter" data-filter="matched">مطابق</button><button class="filter" data-filter="mismatch">فرق مطابقة</button></div><div class="table-wrap"><table><thead id="table-head"></thead><tbody id="records"></tbody></table><div id="empty" class="empty">ما فيه سجلات تطابق البحث أو التصفية.</div></div></section>
-<aside class="right-stack"><section class="panel detail"><div class="panel-head"><div><h2 id="detail-heading">تفاصيل الفاتورة</h2><div class="hint">حدد سجلًا لمراجعة الرصيد والإجراء التالي</div></div></div><div class="detail-head"><div class="detail-title" id="detail-ref">BUD-I-4401</div><div class="detail-sub" id="detail-client">شركة روافد التقنية</div></div><div class="detail-grid"><div class="detail-item"><span id="amount-label">قيمة القسط</span><b id="gross">—</b></div><div class="detail-item"><span id="paid-label">المحصّل</span><b id="paid">—</b></div><div class="detail-item"><span id="remaining-label">المتبقي</span><b id="remaining">—</b></div><div class="detail-item"><span>الاستحقاق</span><b id="due-date">—</b></div></div><div class="section"><div class="assist"><div class="assist-head"><span class="assist-mark">✳</span>مساعد المطابقة</div><div id="assist-title" class="assist-title">—</div><div id="assist-reason" class="assist-reason"></div><div class="assist-actions"><button id="reconcile" class="button primary" type="button">تسجيل مطابقة</button><button id="notify-client" class="button" type="button">تسجيل تذكير</button></div><div class="disclaimer">اقتراح إجرائي تجريبي؛ راجع العقد والكشف البنكي قبل اعتماد أي قيد.</div></div></div></section>
-<section class="panel history"><h2>سجل الحركة</h2><div id="history"><div class="history-row">إنشاء الفاتورة <span>تجريبي</span></div><div class="history-row">آخر تحديث <span>اليوم</span></div></div></section></aside></div>
-</main></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form id="payment-form" class="modal"><div class="modal-head"><h2 id="modal-title">تسجيل دفعة للمعاينة</h2><button id="close-modal" class="close" type="button" aria-label="إغلاق">×</button></div><div class="hint" id="payment-context">شركة روافد التقنية · BUD-I-4401</div><div class="field"><label for="payment-amount">المبلغ المستلم (ر.س)</label><input id="payment-amount" name="amount" type="number" min="0.01" step="0.01" required></div><div class="modal-actions"><button class="button primary" type="submit">حفظ محليًا</button><button id="cancel-modal" class="button" type="button">إلغاء</button></div></form></div>
+<body class="ui"><div class="app">
+<aside class="side"></aside><script src="bud-shell.js"></script>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>التحصيلات والعمولات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث بالعميل أو الوثيقة" aria-label="ابحث بالعميل أو الوثيقة"></div></header>
+<section class="page-head"><div><h1>التحصيلات والتسويات</h1><p class="subtitle">أقساط العملاء المستحقة والمتأخرة، وتسويات عمولات الشركات.</p></div></section>
+<div id="error" class="notice error" hidden></div>
+<section class="metrics">
+<article class="metric"><div class="metric-label">مستحق على العملاء</div><div id="m-due" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">منها متأخر</div><div id="m-overdue" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">محصّل هذا الشهر</div><div id="m-month" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">عمولات لم تُستلم</div><div id="m-comm" class="metric-value">—</div></article>
+</section>
+<nav class="tabs" role="tablist"><button class="tab active" data-tab="inst" role="tab">أقساط العملاء</button><button class="tab" data-tab="comm" role="tab" data-uw hidden>تسويات عمولات الشركات</button></nav>
+
+<section id="tab-inst" class="panel"><div id="filters" class="filters"></div>
+<div class="table-wrap"><table><thead><tr><th>العميل / الوثيقة</th><th>القسط</th><th>المبلغ</th><th>تاريخ الاستحقاق</th><th>الحالة</th><th></th></tr></thead><tbody id="inst"></tbody></table><div id="inst-empty" class="empty" hidden>لا توجد أقساط في هذه التصفية.</div></div></section>
+
+<section id="tab-comm" class="panel" hidden>
+<div class="table-wrap"><table><thead><tr><th>الوثيقة / العميل</th><th>الشركة</th><th>القسط</th><th>النسبة</th><th>العمولة</th><th>الحالة</th><th></th></tr></thead><tbody id="comm"></tbody></table><div id="comm-empty" class="empty" hidden>لا توجد عمولات.</div></div></section>
+</main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="bud-api.js"></script>
 <script>
-const fallbackPremiumRecords = [
-  { ref: 'BUD-I-4401', client: 'شركة روافد التقنية', policy: 'BUD-P-9938', gross: 284500, paid: 240000, due: '10 أكتوبر 2026', state: 'open', rate: 12 },
-  { ref: 'BUD-I-4402', client: 'مؤسسة أفق للمقاولات', policy: 'BUD-P-9928', gross: 438000, paid: 438000, due: '2 أكتوبر 2026', state: 'matched', rate: 10 },
-  { ref: 'BUD-I-4403', client: 'نورة القحطاني', policy: 'BUD-P-9934', gross: 4280, paid: 0, due: '4 أكتوبر 2026', state: 'overdue', rate: 15 },
-  { ref: 'BUD-I-4404', client: 'مؤسسة نبراس للتجارة', policy: 'BUD-P-9941', gross: 96000, paid: 48000, due: '15 أكتوبر 2026', state: 'open', rate: 12.5 },
-  { ref: 'BUD-I-4405', client: 'شركة ألوان الإبداع', policy: 'BUD-P-9921', gross: 12400, paid: 12400, due: '30 سبتمبر 2026', state: 'matched', rate: 15 }
-];
+const { api, el, run, date, money } = BUD;
+const METHODS = { bank_transfer: 'تحويل بنكي', sadad: 'سداد', card: 'بطاقة', cash: 'نقدًا', other: 'أخرى' };
+const FILTERS = [['open', 'غير مدفوعة'], ['overdue', 'متأخرة'], ['paid', 'مدفوعة'], ['all', 'الكل']];
+const focusId = new URLSearchParams(location.search).get('installment');
+let items = [], commissions = [], filter = 'open', query = '', canUW = false;
+const sum = (rows, key) => rows.reduce((s, r) => s + Number(r[key] || 0), 0);
 
-let premiumRecords = [];
-let commissionRecords = [];
-let view = 'premium';
-let filter = 'all';
-let query = '';
-let selectedIndex = 0;
-let timer;
-const toast = document.getElementById('toast');
-
-function notify(text) {
-  toast.textContent = text;
-  toast.classList.add('show');
-  clearTimeout(timer);
-  timer = setTimeout(() => toast.classList.remove('show'), 2400);
+function payForm(i) {
+  const method = el('select', { 'aria-label': 'طريقة السداد' }, ...Object.entries(METHODS).map(([k, v]) => el('option', { value: k, text: v })));
+  const ref = el('input', { placeholder: 'المرجع', 'aria-label': 'مرجع السداد', size: 10 });
+  return el('div', { class: 'pay-form' }, method, ref, el('button', { class: 'button primary', type: 'button', text: 'تسجيل السداد',
+    onclick: e => run(e.currentTarget, () => api(`/installments/${i.installment_id}/pay`, { method: 'POST', body: { payment_method: method.value, payment_reference: ref.value || null } }), 'سُجل السداد').then(load) }));
 }
 
-function money(value) {
-  return `${Number(value || 0).toLocaleString('en-US')} ر.س`;
+function renderInstallments() {
+  document.getElementById('filters').replaceChildren(...FILTERS.map(([k, l]) => el('button', { class: `filter${k === filter ? ' active' : ''}`, type: 'button', text: l, onclick: () => { filter = k; renderInstallments(); } })));
+  const visible = items.filter(i => (filter === 'all' || (filter === 'open' ? i.status === 'due' : filter === 'overdue' ? i.is_overdue : i.status === filter))
+    && `${i.customer_name} ${i.policy_number}`.toLowerCase().includes(query));
+  document.getElementById('inst').replaceChildren(...visible.map(i => el('tr', { class: i.installment_id === focusId ? 'selected' : '' },
+    el('td', {}, el('div', { class: 'strong', text: i.customer_name }), el('a', { class: 'sub', href: `policies.html?policy=${i.policy_id}`, text: `${i.policy_number} · ${i.insurer_name}` })),
+    el('td', { text: `#${i.sequence}` }), el('td', { class: 'strong', text: money(i.amount) }), el('td', { text: i.due_date }),
+    el('td', {}, el('span', { class: `pill ${i.status === 'paid' ? 'blue' : i.is_overdue ? 'red' : ''}`,
+      text: i.status === 'paid' ? `مدفوع · ${METHODS[i.payment_method] || ''}` : i.status === 'cancelled' ? 'ملغى' : i.is_overdue ? 'متأخر' : 'مستحق' })),
+    el('td', {}, i.status === 'due' && canUW ? payForm(i) : i.payment_reference ? el('span', { class: 'muted', text: i.payment_reference }) : null))));
+  document.getElementById('inst-empty').hidden = visible.length > 0;
+  document.querySelector('tr.selected')?.scrollIntoView({ block: 'center' });
 }
 
-function buildCommissionRecords(source) {
-  return source.map((record, index) => {
-    const rate = record.rate ?? 10;
-    const expected = Math.round(record.gross * rate / 100);
-    const received = Math.min(expected, Math.round(record.paid * (0.18 + index * 0.02)));
-    const state = expected > received ? 'open' : 'matched';
-    return {
-      ref: `BUD-C-${index + 1}`,
-      client: record.client,
-      policy: record.policy,
-      gross: record.gross,
-      rate,
-      expected,
-      received,
-      due: record.due,
-      state,
-    };
-  });
+function renderCommissions() {
+  const visible = commissions.filter(c => c.commission_amount && `${c.customer_name} ${c.policy_number} ${c.insurer_name}`.toLowerCase().includes(query));
+  document.getElementById('comm').replaceChildren(...visible.map(c => el('tr', {},
+    el('td', {}, el('a', { class: 'strong', href: `policies.html?policy=${c.policy_id}`, text: c.policy_number }), el('div', { class: 'sub', text: c.customer_name })),
+    el('td', { text: c.insurer_name }), el('td', { text: money(c.premium_amount) }), el('td', { text: `${Number(c.commission_rate)}%` }),
+    el('td', { class: 'strong', text: money(c.commission_amount) }),
+    el('td', {}, el('span', { class: `pill ${c.commission_received_at ? 'blue' : ''}`, text: c.commission_received_at ? `مستلمة ${date(c.commission_received_at).split('،')[0]}` : 'لم تُستلم' })),
+    el('td', {}, !c.commission_received_at && el('button', { class: 'button', type: 'button', text: 'تسجيل الاستلام',
+      onclick: e => { const ref = prompt('مرجع التحويل من الشركة (اختياري):'); if (ref === null) return;
+        run(e.currentTarget, () => api(`/policies/${c.policy_id}/commission-received`, { method: 'POST', body: { reference: ref || null } }), 'سُجل استلام العمولة').then(load); } })))));
+  document.getElementById('comm-empty').hidden = visible.length > 0;
 }
 
-function buildFallbackData() {
-  premiumRecords = fallbackPremiumRecords.map((record) => ({ ...record }));
-  commissionRecords = buildCommissionRecords(premiumRecords);
+async function load() {
+  items = await api('/portfolio/installments');
+  if (canUW) commissions = await api('/portfolio/commissions');
+  const month = new Date().toISOString().slice(0, 7);
+  const due = items.filter(i => i.status === 'due');
+  document.getElementById('m-due').textContent = money(sum(due, 'amount'));
+  document.getElementById('m-overdue').textContent = money(sum(due.filter(i => i.is_overdue), 'amount'));
+  document.getElementById('m-month').textContent = money(sum(items.filter(i => i.status === 'paid' && (i.paid_at || '').startsWith(month)), 'amount'));
+  document.getElementById('m-comm').textContent = canUW ? money(sum(commissions.filter(c => c.commission_amount && !c.commission_received_at), 'commission_amount')) : '—';
+  renderInstallments();
+  renderCommissions();
 }
 
-function normalizePolicyRecord(policy, index) {
-  const gross = Number(policy.premium_amount || 0);
-  const paid = policy.status === 'active' ? gross : Math.min(gross, gross * (0.75 + index * 0.08));
-  const state = policy.status === 'active' ? 'matched' : policy.status === 'issued' ? 'open' : 'overdue';
-  return {
-    ref: `BUD-I-${index + 4401}`,
-    client: policy.customer_name || `عميل ${index + 1}`,
-    policy: policy.policy_number || policy.policy_id || `POL-${index + 1}`,
-    gross,
-    paid,
-    due: policy.effective_to ? new Date(policy.effective_to).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }) : 'غير محدد',
-    state,
-    rate: 10 + (index % 4) * 2,
-  };
-}
-
-async function hydrateCollections() {
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+  document.getElementById('tab-inst').hidden = t.dataset.tab !== 'inst';
+  document.getElementById('tab-comm').hidden = t.dataset.tab !== 'comm';
+}));
+document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderInstallments(); renderCommissions(); });
+(async () => {
   try {
-    const response = await fetch('/insurance/policies');
-    if (!response.ok) throw new Error('Policies endpoint unavailable');
-
-    const policies = await response.json();
-    if (!Array.isArray(policies) || policies.length === 0) {
-      throw new Error('No policies available');
-    }
-
-    const enriched = await Promise.all(
-      policies.slice(0, 5).map(async (policy, index) => {
-        let request = null;
-        try {
-          const requestResponse = await fetch(`/insurance/requests/${policy.request_id}`);
-          if (requestResponse.ok) request = await requestResponse.json();
-        } catch (error) {
-          request = null;
-        }
-
-        const record = normalizePolicyRecord(policy, index);
-        record.client = request?.customer_id || record.client;
-        return record;
-      })
-    );
-
-    premiumRecords = enriched;
-    commissionRecords = buildCommissionRecords(premiumRecords);
-    render();
-  } catch (error) {
-    buildFallbackData();
-    render();
-  }
-}
-
-function activeRecords() {
-  return view === 'premium' ? premiumRecords : commissionRecords;
-}
-
-function updateMetrics() {
-  const due = premiumRecords.reduce((sum, row) => sum + Math.max(0, row.gross - row.paid), 0);
-  const collected = premiumRecords.reduce((sum, row) => sum + row.paid, 0);
-  const commissions = commissionRecords.reduce((sum, row) => sum + Math.max(0, row.expected - row.received), 0);
-  const mismatches = commissionRecords.filter((row) => row.state === 'mismatch').length;
-
-  document.getElementById('metric-due').textContent = money(due);
-  document.getElementById('metric-collected').textContent = money(collected);
-  document.getElementById('metric-commission').textContent = money(commissions);
-  document.getElementById('metric-mismatch').textContent = String(mismatches);
-}
-
-function renderTable() {
-  const records = activeRecords();
-  const head = document.getElementById('table-head');
-  head.innerHTML = view === 'premium'
-    ? '<tr><th>المرجع / العميل</th><th>الوثيقة</th><th>قيمة القسط</th><th>المتبقي</th><th>الاستحقاق</th><th>الحالة</th></tr>'
-    : '<tr><th>المرجع / العميل</th><th>الوثيقة</th><th>النسبة</th><th>العمولة</th><th>المستلم</th><th>المطابقة</th></tr>';
-
-  const tbody = document.getElementById('records');
-  tbody.replaceChildren();
-  let shown = 0;
-
-  records.forEach((record, index) => {
-    const remaining = view === 'premium' ? record.gross - record.paid : record.expected - record.received;
-    const matches = (filter === 'all' || record.state === filter) && `${record.ref} ${record.client} ${record.policy}`.toLocaleLowerCase('ar').includes(query);
-    if (!matches) return;
-
-    shown += 1;
-    const row = document.createElement('tr');
-    if (index === selectedIndex) row.classList.add('selected');
-
-    const cells = [
-      `${record.ref}|${record.client}`,
-      record.policy,
-      view === 'premium' ? money(record.gross) : `${record.rate}%`,
-      view === 'premium' ? money(remaining) : money(record.expected),
-      view === 'premium' ? record.due : money(record.received),
-      view === 'premium'
-        ? (record.state === 'matched' ? 'محصل' : record.state === 'overdue' ? 'متأخر' : 'جزئي')
-        : (record.state === 'matched' ? 'مطابق' : record.state === 'mismatch' ? 'فرق مطابقة' : 'بانتظار')
-    ];
-
-    cells.forEach((value, cellIndex) => {
-      const cell = document.createElement('td');
-      if (cellIndex === 0) {
-        const button = document.createElement('button');
-        button.className = 'record-button';
-        button.type = 'button';
-        button.textContent = value.split('|')[0];
-        button.addEventListener('click', () => {
-          selectedIndex = index;
-          renderTable();
-          renderDetails();
-        });
-        cell.append(button);
-
-        const sub = document.createElement('div');
-        sub.className = 'subline';
-        sub.textContent = value.split('|')[1];
-        cell.append(sub);
-      } else if (cellIndex === 5) {
-        const tag = document.createElement('span');
-        tag.className = `state${record.state === 'overdue' || record.state === 'mismatch' ? ' attention' : ''}`;
-        tag.textContent = value;
-        cell.append(tag);
-      } else {
-        cell.textContent = value;
-      }
-      row.append(cell);
-    });
-
-    tbody.append(row);
-  });
-
-  document.getElementById('visible-count').textContent = `${shown} سجلات`;
-  document.getElementById('empty').style.display = shown ? 'none' : 'block';
-}
-
-function renderDetails() {
-  const records = activeRecords();
-  const record = records[Math.min(selectedIndex, records.length - 1)] || records[0];
-  if (!record) return;
-
-  const expected = view === 'premium' ? record.gross : record.expected;
-  const received = view === 'premium' ? record.paid : record.received;
-  const remaining = Math.max(0, expected - received);
-
-  document.getElementById('detail-heading').textContent = view === 'premium' ? 'تفاصيل الفاتورة' : 'تفاصيل العمولة';
-  document.getElementById('detail-ref').textContent = record.ref;
-  document.getElementById('detail-client').textContent = `${record.client} · ${record.policy}`;
-  document.getElementById('amount-label').textContent = view === 'premium' ? 'قيمة القسط' : 'العمولة المتوقعة';
-  document.getElementById('paid-label').textContent = view === 'premium' ? 'المحصّل' : 'المستلم من الشركة';
-  document.getElementById('remaining-label').textContent = view === 'premium' ? 'المتبقي' : 'فرق المطابقة';
-  document.getElementById('gross').textContent = money(expected);
-  document.getElementById('paid').textContent = money(received);
-  document.getElementById('remaining').textContent = money(remaining);
-  document.getElementById('due-date').textContent = record.due;
-  document.getElementById('payment-context').textContent = `${record.client} · ${record.ref}`;
-
-  const isMismatch = view === 'commission' && record.state === 'mismatch';
-  document.getElementById('assist-title').textContent = isMismatch ? 'يوجد فرق بين المستحق والمستلم' : 'متبقي للتحصيل';
-  document.getElementById('assist-reason').textContent = view === 'premium'
-    ? `${money(remaining)} غير محصلة حتى الآن. تحقق من تاريخ الاستحقاق وشروط الدفع قبل إرسال تذكير.`
-    : isMismatch
-      ? `المتوقع ${money(record.expected)}، والمستلم ${money(record.received)}. اطلب كشف تفصيلي من الشركة وراجع نسبة الاتفاقية.`
-      : `المتبقي من العمولة ${money(remaining)}. طابق الإيداع مع رقم الوثيقة وكشف الشركة.`;
-
-  document.getElementById('reconcile').textContent = view === 'premium' ? 'مطابقة دفعة العميل' : 'مطابقة كشف الشركة';
-  document.getElementById('notify-client').textContent = view === 'premium' ? 'تسجيل تذكير للعميل' : 'تسجيل متابعة مع الشركة';
-
-  document.getElementById('history').innerHTML = `
-    <div class="history-row">إنشاء الفاتورة <span>${record.ref}</span></div>
-    <div class="history-row">آخر تحديث <span>اليوم</span></div>
-    <div class="history-row">الحالة <span>${view === 'premium' ? record.state : 'مراجعة العمولة'}</span></div>
-  `;
-}
-
-function render() {
-  if (!premiumRecords.length && !commissionRecords.length) {
-    buildFallbackData();
-  }
-
-  selectedIndex = Math.min(selectedIndex, activeRecords().length - 1);
-  updateMetrics();
-  renderTable();
-  renderDetails();
-
-  document.getElementById('table-title').textContent = view === 'premium' ? 'فواتير الأقساط' : 'تسويات عمولات الشركات';
-  document.getElementById('table-subtitle').textContent = view === 'premium'
-    ? 'المبالغ المستحقة والمدفوعة حسب الفاتورة'
-    : 'المتوقع والمستلم والفروقات حسب الوثيقة';
-  document.getElementById('record-payment').textContent = view === 'premium' ? '+ تسجيل دفعة' : '+ تسجيل عمولة';
-  document.getElementById('modal-title').textContent = view === 'premium' ? 'تسجيل دفعة للمعاينة' : 'تسجيل عمولة مستلمة للمعاينة';
-}
-
-document.querySelectorAll('.tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    view = tab.dataset.view;
-    filter = 'all';
-    selectedIndex = 0;
-    query = '';
-    document.getElementById('search').value = '';
-    document.querySelectorAll('.tab').forEach((item) => {
-      item.classList.toggle('active', item === tab);
-      item.setAttribute('aria-selected', String(item === tab));
-    });
-    document.querySelectorAll('.filter').forEach((item) => item.classList.toggle('active', item.dataset.filter === 'all'));
-    render();
-  });
-});
-
-document.querySelectorAll('.filter').forEach((button) => {
-  button.addEventListener('click', () => {
-    filter = button.dataset.filter;
-    document.querySelectorAll('.filter').forEach((item) => item.classList.toggle('active', item === button));
-    renderTable();
-  });
-});
-
-document.getElementById('search').addEventListener('input', (event) => {
-  query = (event.target.value || '').trim().toLocaleLowerCase('ar');
-  renderTable();
-});
-
-document.getElementById('record-payment').addEventListener('click', () => {
-  document.getElementById('payment-amount').value = '';
-  document.getElementById('modal').classList.add('open');
-  document.getElementById('payment-amount').focus();
-});
-
-function closeModal() {
-  document.getElementById('modal').classList.remove('open');
-}
-
-document.getElementById('close-modal').addEventListener('click', closeModal);
-document.getElementById('cancel-modal').addEventListener('click', closeModal);
-document.getElementById('modal').addEventListener('click', (event) => {
-  if (event.target.id === 'modal') closeModal();
-});
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') closeModal();
-});
-
-document.getElementById('payment-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const amount = Number(new FormData(event.currentTarget).get('amount'));
-  const record = activeRecords()[selectedIndex];
-  const remaining = Math.max(0, (view === 'premium' ? record.gross : record.expected) - (view === 'premium' ? record.paid : record.received));
-
-  if (amount <= 0 || amount > remaining) {
-    notify(`أدخل مبلغًا بين 0.01 و ${remaining.toLocaleString('en-US')} ر.س`);
-    return;
-  }
-
-  if (view === 'premium') {
-    record.paid += amount;
-    record.state = record.paid >= record.gross ? 'matched' : 'open';
-  } else {
-    record.received += amount;
-    record.state = record.received >= record.expected ? 'matched' : (record.received > record.expected ? 'mismatch' : 'open');
-  }
-
-  closeModal();
-  render();
-  notify('سُجلت الحركة محليًا للمعاينة فقط');
-});
-
-document.getElementById('reconcile').addEventListener('click', () => {
-  const record = activeRecords()[selectedIndex];
-  if (view === 'commission' && record.state === 'mismatch') {
-    notify('الفرق يحتاج كشف الشركة ومراجعة الموظف');
-    return;
-  }
-  notify('تم تسجيل المطابقة محليًا فقط');
-});
-
-document.getElementById('notify-client').addEventListener('click', () => {
-  notify(view === 'premium' ? 'لم يُرسل تذكير فعلي للعميل' : 'لم تُرسل متابعة فعلية للشركة');
-});
-
-document.getElementById('export').addEventListener('click', () => notify('التصدير يتطلب ربط البيانات الفعلية'));
-
-
-
-buildFallbackData();
-hydrateCollections();
-</script></body></html>
+    canUW = ['underwriter', 'manager'].includes((await BUD_ME)?.role);
+    document.querySelectorAll('[data-uw]').forEach(x => { x.hidden = !canUW; });
+    if (focusId) filter = 'all';
+    await load();
+  } catch (error) { const b = document.getElementById('error'); b.textContent = error.message; b.hidden = false; }
+})();
+</script>
+</body></html>

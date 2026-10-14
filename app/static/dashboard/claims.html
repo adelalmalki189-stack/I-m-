@@ -4,367 +4,144 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
 <title>BUD | المطالبات</title>
 <link rel="stylesheet" href="bud.css">
-<style>
-.page-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
-.page-head h1{margin:0;font-size:22px}
-.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}
-.metric{padding:11px 13px;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.metric-label{color:var(--muted);font-size:9px}
-.metric-value{margin-top:5px;font-size:19px;font-weight:700}
-.metric-note{margin-top:3px;color:var(--muted);font-size:8px}
-.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(270px,.9fr);gap:12px;align-items:start}
-.panel{min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.panel-head{min-height:49px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
-.panel-head h2{margin:0;font-size:11px}
-.hint{margin-top:3px;color:var(--muted);font-size:8px}
-.filters{display:flex;align-items:center;gap:5px;padding:9px 11px;border-bottom:1px solid var(--line);overflow:auto}
-.filter{flex:0 0 auto;padding:5px 8px;border:1px solid var(--line);border-radius:4px;background:var(--white);color:var(--gray);font-size:8px}
-.filter.active{border-color:var(--blue);background:var(--blue);color:var(--white)}
-.count{margin-right:auto;color:var(--muted);font-size:8px;white-space:nowrap}
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse;text-align:right;white-space:nowrap}
-th,td{padding:9px 10px;border-bottom:1px solid var(--line)}
-th{background:var(--pale);color:var(--gray);font-size:8px;font-weight:600}
-td{font-size:8px}
-tbody tr:last-child td{border:0}
-tbody tr:hover,tbody tr.selected{background:#E6E9F2}
-.claim-button{padding:0;border:0;background:none;color:var(--ink);text-align:right;font-size:9px;font-weight:600}
-.claim-button:hover{color:var(--blue)}
-.subline{margin-top:3px;color:var(--muted);font-size:8px}
-.status{display:inline-block;padding:4px 6px;border-radius:4px;background:var(--pale);color:var(--gray);font-size:8px}
-.status.active{color:var(--blue)}
-.empty{display:none;padding:20px;text-align:center;color:var(--muted);font-size:9px}
-.right-stack{display:grid;gap:11px}
-.detail{overflow:hidden}
-.detail-head{padding:12px 13px;border-bottom:1px solid var(--line)}
-.detail-top{display:flex;align-items:center;gap:9px}
-.detail-icon{display:grid;place-items:center;width:35px;height:35px;border-radius:8px;background:var(--pale);color:var(--blue);font-size:13px}
-.detail-title{font-size:11px;font-weight:700}
-.detail-sub{margin-top:3px;color:var(--muted);font-size:8px}
-.detail-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;padding:10px 13px;border-bottom:1px solid var(--line)}
-.detail-item span{display:block;color:var(--muted);font-size:8px}
-.detail-item b{display:block;margin-top:4px;font-size:9px}
-.section{padding:10px 13px;border-bottom:1px solid var(--line)}
-.section:last-child{border:0}
-.section h3{margin:0 0 8px;font-size:9px}
-.doc-row,.flow-row{display:flex;align-items:center;gap:7px;padding:6px 0;border-bottom:1px solid var(--line);font-size:8px}
-.doc-row:last-child,.flow-row:last-child{border:0}
-.doc-check{accent-color:var(--blue)}
-.doc-label,.flow-label{flex:1}
-.doc-state,.flow-state{color:var(--muted);font-size:7px}
-.assist{padding:10px;border:1px solid var(--line);border-radius:5px;background:var(--white)}
-.assist-head{display:flex;align-items:center;gap:7px;font-size:9px;font-weight:700}
-.assist-mark{display:grid;place-items:center;width:19px;height:19px;border-radius:4px;background:var(--blue);color:var(--white)}
-.priority{display:flex;align-items:center;justify-content:space-between;margin-top:8px;font-size:9px}
-.priority strong{color:var(--blue);font-size:16px}
-.progress{height:5px;margin-top:5px;border-radius:5px;background:var(--pale);overflow:hidden}
-.progress span{display:block;width:80%;height:100%;background:var(--blue)}
-.assist-reason{margin-top:7px;color:var(--muted);font-size:8px;line-height:1.6}
-.assist-actions{display:grid;gap:6px;margin-top:9px}
-.assist-actions .button{width:100%}
-.disclaimer{margin-top:7px;color:var(--muted);font-size:7px;line-height:1.5}
-.activity{padding:11px 13px}
-.activity h2{margin:0 0 7px;font-size:10px}
-.note-input{width:100%;min-height:52px;resize:vertical;padding:8px;border:1px solid var(--line);border-radius:4px;font-size:9px}
-.modal-backdrop{position:fixed;inset:0;z-index:6;display:none;place-items:center;padding:16px;background:#0A0A0B80}
-.modal-backdrop.open{display:grid}
-.modal{width:min(430px,100%);padding:18px;border-radius:7px;background:var(--white)}
-.modal-head{display:flex;align-items:center;justify-content:space-between}
-.modal-head h2{margin:0;font-size:14px}
-.close{width:29px;height:29px;border:0;border-radius:4px;background:var(--pale);font-size:17px}
-.field{display:grid;gap:5px;margin-top:12px}
-.field label{font-size:9px;font-weight:600}
-.field input,.field select{height:35px;padding:0 9px;border:1px solid var(--line);border-radius:4px;background:var(--white);font-size:10px}
-.modal-actions{display:flex;gap:7px;margin-top:16px}
-@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.layout{grid-template-columns:minmax(0,1.2fr) minmax(250px,.9fr)}}
-@media(max-width:760px){.layout{grid-template-columns:1fr}.right-stack{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:520px){.page-head{display:block}.page-head .button{margin-top:9px}.metrics{gap:7px}.metric{padding:9px}.metric-label{font-size:8px}.metric-value{font-size:17px}.right-stack{grid-template-columns:1fr}th,td{padding:8px}}
-</style>
+<style>.section-title{margin:14px 0 7px;font-size:11px;font-weight:700}.section-title:first-child{margin-top:0}</style>
 </head>
-<body><div class="app"><aside class="side"></aside><script src="bud-shell.js"></script>
-<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>المطالبات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث برقم المطالبة أو العميل" aria-label="ابحث برقم المطالبة أو العميل"><button id="export" class="button" type="button">تصدير</button></div></header>
-<section class="page-head"><div><h1>متابعة المطالبات</h1><p class="subtitle">استقبال المطالبات، اكتمال مستنداتها، ومتابعة رد شركة التأمين.</p></div><button id="new-claim" class="button primary" type="button">+ تسجيل مطالبة</button></section>
-<div class="demo"><b>بيانات مباشرة</b><span>تُحمّل المطالبات من النظام الحالي، ومتابعة التواصل مع شركات التأمين قائمة على البريد الإلكتروني فقط.</span></div>
-<section class="metrics" aria-label="ملخص المطالبات"><article class="metric"><div class="metric-label">مطالبات مفتوحة</div><div class="metric-value">23</div><div class="metric-note">تحت المتابعة</div></article><article class="metric"><div class="metric-label">مستندات ناقصة</div><div class="metric-value">5</div><div class="metric-note">تحتاج متابعة العميل</div></article><article class="metric"><div class="metric-label">بانتظار الشركة</div><div class="metric-value">8</div><div class="metric-note">تجاوزت مهلة المتابعة 3</div></article><article class="metric"><div class="metric-label">مكتملة هذا الشهر</div><div class="metric-value">16</div><div class="metric-note">مؤشر تجريبي</div></article></section>
-<div class="layout"><section class="panel"><div class="panel-head"><div><h2>قائمة المطالبات</h2><div class="hint">الأولوية حسب الاستعجال والأثر واكتمال المستندات</div></div><span id="visible-count" class="count">5 مطالبات</span></div><div class="filters" role="group" aria-label="تصفية المطالبات"><button class="filter active" data-filter="all">الكل</button><button class="filter" data-filter="urgent">أولوية عالية</button><button class="filter" data-filter="documents">مستندات ناقصة</button><button class="filter" data-filter="insurer">بانتظار الشركة</button><button class="filter" data-filter="closed">مكتملة</button></div><div class="table-wrap"><table><thead><tr><th>رقم المطالبة / العميل</th><th>النوع</th><th>تاريخ البلاغ</th><th>اكتمال الملف</th><th>الحالة</th></tr></thead><tbody id="claims">
-<tr data-id="CL-2841" data-state="urgent" data-client="أحمد الحربي" data-type="حادث مركبة" data-policy="BUD-P-8214" data-insurer="جهة افتراضية أ" data-age="2" data-impact="72" data-urgency="96" data-docs="80" data-missing="تقرير الحادث|صور الأضرار" data-next="التحقق من المستندات ثم تنسيق المعاينة مع جهة التأمين."><td><button class="claim-button" type="button">CL-2841</button><div class="subline">أحمد الحربي</div></td><td>مركبة</td><td>اليوم · 08:42</td><td>80%</td><td><span class="status active">تحت المعالجة</span></td></tr>
-<tr data-id="CL-2838" data-state="documents" data-client="شركة البنيان" data-type="موافقة علاجية" data-policy="BUD-P-7742" data-insurer="جهة افتراضية ب" data-age="6" data-impact="64" data-urgency="62" data-docs="52" data-missing="تقرير طبي حديث|تفويض المستفيد" data-next="أرسل قائمة المستندات الناقصة للعميل قبل إحالة الملف."><td><button class="claim-button" type="button">CL-2838</button><div class="subline">شركة البنيان</div></td><td>طبي</td><td>اليوم · 05:10</td><td>52%</td><td><span class="status">مستندات ناقصة</span></td></tr>
-<tr data-id="CL-2829" data-state="insurer" data-client="مخابز السنابل" data-type="أضرار ممتلكات" data-policy="BUD-P-7219" data-insurer="جهة افتراضية ج" data-age="31" data-impact="88" data-urgency="76" data-docs="100" data-missing="" data-next="الملف مكتمل؛ تابع موعد المعاينة ورد الجهة المؤمنة."><td><button class="claim-button" type="button">CL-2829</button><div class="subline">مخابز السنابل</div></td><td>ممتلكات</td><td>أمس · 09:35</td><td>100%</td><td><span class="status">بانتظار الشركة</span></td></tr>
-<tr data-id="CL-2817" data-state="insurer" data-client="مؤسسة أفق للمقاولات" data-type="مسؤولية مدنية" data-policy="BUD-P-9928" data-insurer="جهة افتراضية أ" data-age="52" data-impact="81" data-urgency="57" data-docs="100" data-missing="" data-next="مضت مهلة المتابعة؛ جهز تصعيدًا لممثل الجهة بعد موافقة الموظف."><td><button class="claim-button" type="button">CL-2817</button><div class="subline">مؤسسة أفق للمقاولات</div></td><td>مسؤولية</td><td>قبل يومين</td><td>100%</td><td><span class="status">بانتظار الشركة</span></td></tr>
-<tr data-id="CL-2809" data-state="closed" data-client="نورة القحطاني" data-type="حادث مركبة" data-policy="BUD-P-9934" data-insurer="جهة افتراضية ج" data-age="96" data-impact="35" data-urgency="30" data-docs="100" data-missing="" data-next="المطالبة مكتملة؛ تأكد من توثيق النتيجة وإغلاق المتابعة."><td><button class="claim-button" type="button">CL-2809</button><div class="subline">نورة القحطاني</div></td><td>مركبة</td><td>قبل 4 أيام</td><td>100%</td><td><span class="status">مكتملة</span></td></tr>
-</tbody></table><div id="empty" class="empty">ما فيه مطالبات تطابق البحث أو التصفية.</div></div></section>
-<aside class="right-stack"><section class="panel detail"><div class="panel-head"><div><h2>ملف المطالبة</h2><div class="hint">اختر مطالبة لمراجعة الملف والإجراء التالي</div></div></div><div class="detail-head"><div class="detail-top"><div class="detail-icon">◉</div><div><div id="detail-id" class="detail-title">CL-2841</div><div id="detail-client" class="detail-sub">أحمد الحربي · حادث مركبة</div></div></div></div><div class="detail-grid"><div class="detail-item"><span>رقم الوثيقة</span><b id="detail-policy">BUD-P-8214</b></div><div class="detail-item"><span>جهة التأمين</span><b id="detail-insurer">جهة افتراضية أ</b></div><div class="detail-item"><span>عمر المطالبة</span><b id="detail-age">ساعتان</b></div><div class="detail-item"><span>اكتمال الملف</span><b id="detail-docs">80%</b></div></div><div class="section"><h3>المستندات المطلوبة</h3><div id="documents"></div></div><div class="section"><div class="assist"><div class="assist-head"><span class="assist-mark">✳</span>مساعدة فرز المطالبة</div><div class="priority"><span>أولوية المتابعة المقترحة</span><strong id="priority-score">--</strong></div><div class="progress"><span id="priority-bar"></span></div><div id="next-action" class="assist-reason"></div><div class="assist-actions"><button id="request-docs" class="button primary" type="button">تسجيل طلب المستندات</button><button id="escalate" class="button" type="button">تسجيل متابعة مع الشركة</button></div><div class="disclaimer">الترتيب مؤشر إجرائي تجريبي، لا يحكم على التغطية أو الأهلية أو مبلغ التعويض. يتطلب اعتماد الموظف.</div></div></div></section>
-<section class="panel activity"><h2>ملاحظة داخلية</h2><textarea id="note" class="note-input" maxlength="250" placeholder="أضف ملاحظة للمتابعة..." aria-label="ملاحظة داخلية"></textarea><button id="save-note" class="button" style="width:100%;margin-top:7px" type="button">حفظ محلي للمعاينة</button></section><section class="panel activity"><h2>مراحل المطالبة</h2><div class="flow-row"><span class="flow-label">استلام البلاغ</span><span class="flow-state">تم</span></div><div class="flow-row"><span class="flow-label">جمع المستندات</span><span id="flow-docs" class="flow-state">قيد المراجعة</span></div><div class="flow-row"><span class="flow-label">إحالة ومتابعة الشركة</span><span id="flow-insurer" class="flow-state">بانتظار</span></div></section></aside></div>
-</main></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form id="claim-form" class="modal"><div class="modal-head"><h2 id="modal-title">تسجيل مطالبة للمعاينة</h2><button id="close-modal" class="close" type="button" aria-label="إغلاق">×</button></div><div class="field"><label for="claim-client">اسم العميل</label><input id="claim-client" name="client" required maxlength="80" placeholder="اسم العميل أو المنشأة"></div><div class="field"><label for="claim-kind">نوع المطالبة</label><select id="claim-kind" name="kind"><option>حادث مركبة</option><option>موافقة علاجية</option><option>أضرار ممتلكات</option><option>مسؤولية مهنية</option></select></div><div class="modal-actions"><button class="button primary" type="submit">إضافة محليًا</button><button id="cancel-modal" class="button" type="button">إلغاء</button></div></form></div>
+<body class="ui"><div class="app">
+<aside class="side"></aside><script src="bud-shell.js"></script>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>المطالبات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث برقم المطالبة أو العميل" aria-label="ابحث برقم المطالبة أو العميل"></div></header>
+<section class="page-head"><div><h1>متابعة المطالبات</h1><p class="subtitle">من بلاغ العميل حتى صرف التعويض، مع مرجع الشركة والمبالغ في كل مرحلة.</p></div><div class="actions"><button id="new" class="button primary" type="button">+ تسجيل مطالبة</button></div></section>
+<div id="error" class="notice error" hidden></div>
+<section class="metrics">
+<article class="metric"><div class="metric-label">مطالبات مفتوحة</div><div id="m-open" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">بانتظار الشركة</div><div id="m-wait" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">إجمالي المعتمد</div><div id="m-approved" class="metric-value">—</div></article>
+<article class="metric"><div class="metric-label">إجمالي المصروف</div><div id="m-paid" class="metric-value">—</div></article>
+</section>
+<div class="layout">
+<section class="panel"><div class="panel-head"><div><h2>المطالبات</h2><div class="muted">الأحدث أولًا</div></div><span id="count" class="muted"></span></div>
+<div id="filters" class="filters"></div>
+<div class="table-wrap"><table><thead><tr><th>المطالبة / العميل</th><th>الوثيقة</th><th>تاريخ الحادث</th><th>المطالب به</th><th>الحالة</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا توجد مطالبات.</div></div></section>
+
+<section id="create" class="panel" hidden><div class="panel-head"><h2>تسجيل مطالبة جديدة</h2></div>
+<form id="create-form" class="panel-body">
+<label class="field"><span>الوثيقة</span><select name="policy_id" required></select></label>
+<label class="field"><span>تاريخ الحادث</span><input name="incident_date" type="date" required></label>
+<label class="field"><span>وصف الحادث</span><textarea name="description" required minlength="5" rows="4"></textarea></label>
+<label class="field"><span>المبلغ المطالب به (ر.س، اختياري)</span><input name="claimed_amount" type="number" min="0" step="0.01"></label>
+<label class="field"><span>ملاحظات (اختياري)</span><input name="notes"></label>
+<div class="actions"><button class="button primary" type="submit">تسجيل</button><button id="cancel-create" class="button" type="button">إلغاء</button></div>
+</form></section>
+
+<section id="detail" class="panel" hidden><div class="panel-head"><div><h2 id="d-title"></h2><div id="d-sub" class="muted"></div></div><span id="d-status"></span></div>
+<div class="panel-body"><dl id="d-kv" class="kv"></dl>
+<div id="d-move"><div class="section-title">نقل المطالبة إلى</div>
+<form id="move-form"><div class="form-grid">
+<label class="field"><span>الحالة الجديدة</span><select name="status"></select></label>
+<label class="field" data-for="approved"><span>المبلغ المعتمد (ر.س)</span><input name="approved_amount" type="number" min="0" step="0.01"></label>
+<label class="field" data-for="paid"><span>المبلغ المصروف (ر.س)</span><input name="paid_amount" type="number" min="0" step="0.01"></label>
+<label class="field"><span>مرجع الشركة (اختياري)</span><input name="insurer_reference"></label>
+<label class="field full"><span>ملاحظة (اختياري)</span><input name="notes"></label></div>
+<button class="button primary" type="submit">تحديث الحالة</button></form></div></div></section>
+<section id="detail-empty" class="panel"><div class="empty">اختر مطالبة أو سجّل مطالبة جديدة.</div></section>
+</div></main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="bud-api.js"></script>
 <script>
-const fallbackClaims = [
-  { id: 'CL-2841', state: 'urgent', client: 'أحمد الحربي', type: 'حادث مركبة', policy: 'BUD-P-8214', insurer: 'جهة افتراضية أ', age: 2, impact: 72, urgency: 96, docs: 80, missing: 'تقرير الحادث|صور الأضرار', next: 'التحقق من المستندات ثم تنسيق المعاينة مع جهة التأمين.' },
-  { id: 'CL-2838', state: 'documents', client: 'شركة البنيان', type: 'موافقة علاجية', policy: 'BUD-P-7742', insurer: 'جهة افتراضية ب', age: 6, impact: 64, urgency: 62, docs: 52, missing: 'تقرير طبي حديث|تفويض المستفيد', next: 'أرسل قائمة المستندات الناقصة للعميل قبل إحالة الملف.' },
-  { id: 'CL-2829', state: 'insurer', client: 'مخابز السنابل', type: 'أضرار ممتلكات', policy: 'BUD-P-7219', insurer: 'جهة افتراضية ج', age: 31, impact: 88, urgency: 76, docs: 100, missing: '', next: 'الملف مكتمل؛ تابع موعد المعاينة ورد الجهة المؤمنة.' },
-  { id: 'CL-2817', state: 'insurer', client: 'مؤسسة أفق للمقاولات', type: 'مسؤولية مدنية', policy: 'BUD-P-9928', insurer: 'جهة افتراضية أ', age: 52, impact: 81, urgency: 57, docs: 100, missing: '', next: 'مضت مهلة المتابعة؛ جهز تصعيدًا لممثل الجهة بعد موافقة الموظف.' },
-  { id: 'CL-2809', state: 'closed', client: 'نورة القحطاني', type: 'حادث مركبة', policy: 'BUD-P-9934', insurer: 'جهة افتراضية ج', age: 96, impact: 35, urgency: 30, docs: 100, missing: '', next: 'المطالبة مكتملة؛ تأكد من توثيق النتيجة وإغلاق المتابعة.' }
-];
+const { api, el, run, date, money } = BUD;
+const STATUS = { reported: ['مُبلّغ عنها', 'blue'], submitted: ['أُرسلت للشركة', ''], under_assessment: ['قيد التقييم', ''], approved: ['معتمدة', 'blue'], rejected: ['مرفوضة', 'red'], paid: ['مصروفة', 'dark'], closed: ['مغلقة', ''] };
+const OPEN = ['reported', 'submitted', 'under_assessment', 'approved'];
+const params = new URLSearchParams(location.search);
+let claims = [], filter = 'open', query = '', selectedId = params.get('claim'), role = '';
+const pill = s => { const [l, t] = STATUS[s] || [s, '']; return el('span', { class: `pill ${t}`, text: l }); };
+const moveForm = document.getElementById('move-form');
+const createForm = document.getElementById('create-form');
 
-let rows = [];
-let filter = 'all';
-let query = '';
-let selected = null;
-const toast = document.getElementById('toast');
-let timer;
-
-function notify(message) {
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(timer);
-  timer = setTimeout(() => toast.classList.remove('show'), 2400);
+function show(which) {
+  document.getElementById('create').hidden = which !== 'create';
+  document.getElementById('detail').hidden = which !== 'detail';
+  document.getElementById('detail-empty').hidden = which !== 'empty';
 }
 
-function makeClaimRow(claim) {
-  const row = document.createElement('tr');
-  row.dataset.id = claim.id;
-  row.dataset.state = claim.state;
-  row.dataset.client = claim.client;
-  row.dataset.type = claim.type;
-  row.dataset.policy = claim.policy;
-  row.dataset.insurer = claim.insurer;
-  row.dataset.age = String(claim.age ?? 0);
-  row.dataset.impact = String(claim.impact ?? 0);
-  row.dataset.urgency = String(claim.urgency ?? 0);
-  row.dataset.docs = String(claim.docs ?? 0);
-  row.dataset.missing = (claim.missing || '').join ? claim.missing.join('|') : (claim.missing || '');
-  row.dataset.next = claim.next;
-
-  const first = document.createElement('td');
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'claim-button';
-  button.textContent = claim.id;
-  button.addEventListener('click', () => selectClaim(row));
-  const sub = document.createElement('div');
-  sub.className = 'subline';
-  sub.textContent = claim.client;
-  first.append(button, sub);
-
-  const kind = document.createElement('td');
-  kind.textContent = claim.type;
-
-  const age = document.createElement('td');
-  age.textContent = claim.age < 24 ? `${claim.age} ساعة` : `${Math.floor(claim.age / 24)} يوم`;
-
-  const docs = document.createElement('td');
-  docs.textContent = `${claim.docs || 0}%`;
-
-  const status = document.createElement('td');
-  const badge = document.createElement('span');
-  badge.className = claim.state === 'urgent' ? 'status active' : 'status';
-  badge.textContent = claim.state === 'urgent' ? 'تحت المعالجة' : claim.state === 'documents' ? 'مستندات ناقصة' : claim.state === 'insurer' ? 'بانتظار الشركة' : 'مكتملة';
-  status.appendChild(badge);
-
-  row.append(first, kind, age, docs, status);
-  return row;
+function render() {
+  const sum = key => claims.reduce((s, c) => s + Number(c[key] || 0), 0);
+  document.getElementById('m-open').textContent = claims.filter(c => OPEN.includes(c.status)).length;
+  document.getElementById('m-wait').textContent = claims.filter(c => ['submitted', 'under_assessment'].includes(c.status)).length;
+  document.getElementById('m-approved').textContent = money(sum('approved_amount'));
+  document.getElementById('m-paid').textContent = money(sum('paid_amount'));
+  const filters = [['open', 'المفتوحة'], ['all', 'الكل'], ...Object.entries(STATUS).map(([k, [l]]) => [k, l])];
+  document.getElementById('filters').replaceChildren(...filters.map(([k, l]) => el('button', { class: `filter${k === filter ? ' active' : ''}`, type: 'button', text: l, onclick: () => { filter = k; render(); } })));
+  const visible = claims.filter(c => (filter === 'all' || (filter === 'open' ? OPEN.includes(c.status) : c.status === filter))
+    && `${c.claim_number} ${c.customer_name} ${c.policy_number}`.toLowerCase().includes(query));
+  document.getElementById('rows').replaceChildren(...visible.map(c => el('tr', { class: `clickable${c.claim_id === selectedId ? ' selected' : ''}`, onclick: () => select(c.claim_id) },
+    el('td', {}, el('div', { class: 'strong', text: c.claim_number }), el('div', { class: 'sub', text: c.customer_name })),
+    el('td', {}, el('div', { text: c.policy_number }), el('div', { class: 'sub', text: `${c.insurer_name} · ${c.insurance_type_label}` })),
+    el('td', { text: c.incident_date }), el('td', { text: money(c.claimed_amount) }), el('td', {}, pill(c.status)))));
+  document.getElementById('empty').hidden = visible.length > 0;
+  document.getElementById('count').textContent = `${visible.length} مطالبة`;
 }
 
-function updateRows() {
-  let count = 0;
-  rows.forEach((row) => {
-    const visible = (filter === 'all' || row.dataset.state === filter) && (row.textContent || '').toLocaleLowerCase('ar').includes(query);
-    row.hidden = !visible;
-    if (visible) count += 1;
-  });
-  document.getElementById('visible-count').textContent = `${count} مطالبات`;
-  document.getElementById('empty').style.display = count ? 'none' : 'block';
+function select(id) {
+  selectedId = id;
+  history.replaceState(null, '', `?claim=${id}`);
+  const c = claims.find(x => x.claim_id === id);
+  render();
+  if (!c) { show('empty'); return; }
+  show('detail');
+  document.getElementById('d-title').textContent = c.claim_number;
+  document.getElementById('d-sub').textContent = `${c.customer_name} · ${c.policy_number} · ${c.insurer_name}`;
+  document.getElementById('d-status').replaceChildren(pill(c.status));
+  const kv = [['الوصف', c.description], ['تاريخ الحادث', c.incident_date], ['المطالب به', money(c.claimed_amount)], ['المعتمد', money(c.approved_amount)],
+    ['المصروف', money(c.paid_amount)], ['مرجع الشركة', c.insurer_reference], ['ملاحظات', c.notes], ['تاريخ البلاغ', date(c.created_at)], ['آخر تحديث', date(c.last_status_change_at)]]
+    .filter(([, v]) => v && v !== '—');
+  document.getElementById('d-kv').replaceChildren(...kv.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })]),
+    el('dt', { text: 'الوثيقة' }), el('dd', {}, el('a', { href: `policies.html?policy=${c.policy_id}`, text: c.policy_number })));
+  const canMove = ['underwriter', 'manager'].includes(role) && c.allowed_transitions.length;
+  document.getElementById('d-move').hidden = !canMove;
+  moveForm.reset();
+  moveForm.status.replaceChildren(...c.allowed_transitions.map(s => el('option', { value: s, text: STATUS[s][0] })));
+  if (c.approved_amount) moveForm.paid_amount.value = c.approved_amount;
+  syncMoveFields();
 }
 
-function selectClaim(row) {
-  selected = row;
-  rows.forEach((item) => item.classList.toggle('selected', item === row));
-
-  document.getElementById('detail-id').textContent = row.dataset.id;
-  document.getElementById('detail-policy').textContent = row.dataset.policy;
-  document.getElementById('detail-insurer').textContent = row.dataset.insurer;
-  document.getElementById('detail-docs').textContent = `${row.dataset.docs}%`;
-  document.getElementById('detail-client').textContent = `${row.dataset.client} · ${row.dataset.type}`;
-  document.getElementById('detail-age').textContent = Number(row.dataset.age) < 24 ? `${row.dataset.age} ساعة` : `${Math.floor(Number(row.dataset.age) / 24)} يوم`;
-
-  const docs = document.getElementById('documents');
-  const missing = row.dataset.missing ? row.dataset.missing.split('|').filter(Boolean) : [];
-  docs.replaceChildren(...(missing.length ? missing : ['المرفقات المطلوبة مكتملة']).map((label) => {
-    const line = document.createElement('label');
-    line.className = 'doc-row';
-    const check = document.createElement('input');
-    check.className = 'doc-check';
-    check.type = 'checkbox';
-    check.checked = missing.length === 0;
-    check.disabled = missing.length === 0;
-    const text = document.createElement('span');
-    text.className = 'doc-label';
-    text.textContent = label;
-    const status = document.createElement('span');
-    status.className = 'doc-state';
-    status.textContent = missing.length ? 'ناقص' : 'مكتمل';
-    line.append(check, text, status);
-    return line;
-  }));
-
-  const score = Math.round(Number(row.dataset.urgency || 0) * 0.5 + Number(row.dataset.impact || 0) * 0.3 + Number(row.dataset.docs || 0) * 0.2);
-  document.getElementById('priority-score').textContent = `${score}%`;
-  document.getElementById('priority-bar').style.width = `${score}%`;
-  document.getElementById('next-action').textContent = row.dataset.next || 'راجع الملف قبل الإحالة.';
-
-  const requestDocsButton = document.getElementById('request-docs');
-  requestDocsButton.disabled = missing.length === 0;
-  requestDocsButton.textContent = missing.length ? 'تسجيل طلب المستندات' : 'المستندات مكتملة';
-  document.getElementById('flow-docs').textContent = missing.length ? 'ناقص مستندات' : 'مكتمل';
-  document.getElementById('flow-insurer').textContent = row.dataset.state === 'insurer' ? 'بانتظار الرد' : 'بانتظار الإحالة';
+function syncMoveFields() {
+  moveForm.querySelectorAll('[data-for]').forEach(f => { f.hidden = f.dataset.for !== moveForm.status.value; });
 }
+moveForm.status.addEventListener('change', syncMoveFields);
+moveForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(moveForm));
+  const body = { status: f.status, insurer_reference: f.insurer_reference || null, notes: f.notes || null };
+  if (f.status === 'approved') body.approved_amount = f.approved_amount || null;
+  if (f.status === 'paid') body.paid_amount = f.paid_amount || null;
+  run(e.submitter, () => api(`/claims/${selectedId}/status`, { method: 'POST', body }), 'حُدّثت المطالبة').then(async () => { await load(); select(selectedId); });
+});
 
-async function hydrateClaims() {
-  const tbody = document.getElementById('claims');
+async function openCreate(policyId) {
+  const live = (await api('/portfolio/policies')).filter(p => ['issued', 'active'].includes(p.effective_status));
+  createForm.policy_id.replaceChildren(...live.map(p => el('option', { value: p.policy_id, text: `${p.policy_number} · ${p.customer_name} · ${p.insurance_type_label}` })));
+  if (!live.length) { BUD.notify('لا توجد وثائق سارية لتسجيل مطالبة عليها'); return; }
+  if (policyId) createForm.policy_id.value = policyId;
+  createForm.incident_date.max = new Date().toISOString().slice(0, 10);
+  show('create');
+}
+createForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = Object.fromEntries(new FormData(createForm));
+  const body = { policy_id: f.policy_id, incident_date: f.incident_date, description: f.description.trim(), claimed_amount: f.claimed_amount || null, notes: f.notes || null };
+  run(e.submitter, () => api('/claims', { method: 'POST', body }), 'سُجلت المطالبة').then(async created => { createForm.reset(); await load(); select(created.claim_id); });
+});
+document.getElementById('new').addEventListener('click', () => openCreate());
+document.getElementById('cancel-create').addEventListener('click', () => show(selectedId ? 'detail' : 'empty'));
+document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(); });
 
+async function load() { claims = await api('/claims'); render(); }
+(async () => {
   try {
-    const response = await fetch('/insurance/policies');
-    if (!response.ok) throw new Error('Policies unavailable');
-    const policies = await response.json();
-    if (Array.isArray(policies) && policies.length > 0) {
-      const mapped = await Promise.all(
-        policies.slice(0, 5).map(async (policy, index) => {
-          let request = null;
-          try {
-            const requestResponse = await fetch(`/insurance/requests/${policy.request_id}`);
-            if (requestResponse.ok) request = await requestResponse.json();
-          } catch (error) {
-            request = null;
-          }
-
-          const status = policy.status === 'active' ? 'closed' : policy.status === 'issued' ? 'insurer' : 'urgent';
-          const claim = {
-            id: `CL-${String((index + 1) * 17).padStart(4, '0')}`,
-            state: status,
-            client: request?.customer_id || `عميل ${index + 1}`,
-            type: request?.insurance_type || 'تأمين عام',
-            policy: policy.policy_number || policy.policy_id,
-            insurer: policy.insurer_id || 'جهة تأمين',
-            age: 8 + index * 10,
-            impact: 60 + index * 8,
-            urgency: 70 + index * 7,
-            docs: 80 + (index % 2) * 20,
-            missing: index % 2 === 0 ? 'تقرير الحادث|صور الأضرار' : '',
-            next: 'راجع ملف المطالبة وتأكد من إرسال البريد الإلكتروني إلى الشركة وفق القاعدة الرسمية.'
-          };
-          return makeClaimRow(claim);
-        })
-      );
-
-      rows = mapped;
-      tbody.replaceChildren(...rows);
-      if (rows[0]) selectClaim(rows[0]);
-      updateRows();
-      return;
-    }
-  } catch (error) {
-    // fallback to demo data below
-  }
-
-  rows = fallbackClaims.map(makeClaimRow);
-  tbody.replaceChildren(...rows);
-  selectClaim(rows[0]);
-  updateRows();
-}
-
-document.querySelectorAll('.filter').forEach((button) => {
-  button.addEventListener('click', () => {
-    filter = button.dataset.filter;
-    document.querySelectorAll('.filter').forEach((item) => item.classList.toggle('active', item === button));
-    updateRows();
-  });
-});
-
-document.getElementById('search').addEventListener('input', (event) => {
-  query = (event.target.value || '').trim().toLocaleLowerCase('ar');
-  updateRows();
-});
-
-document.getElementById('request-docs').addEventListener('click', () => {
-  if (!selected || document.getElementById('request-docs').disabled) return;
-  selected.dataset.state = 'documents';
-  selected.querySelector('.status').textContent = 'طلب مستندات تجريبي';
-  document.getElementById('flow-docs').textContent = 'تم تسجيل الطلب';
-  updateRows();
-  notify('تم تسجيل متابعة المستندات محليًا');
-});
-
-document.getElementById('escalate').addEventListener('click', () => {
-  if (!selected) return;
-  notify('لم يُرسل تصعيد فعلي؛ الإجراء يتطلب ربط الشركة واعتماد الموظف');
-});
-
-document.getElementById('save-note').addEventListener('click', () => {
-  const note = document.getElementById('note').value.trim();
-  notify(note ? 'حُفظت الملاحظة محليًا للمعاينة' : 'اكتب الملاحظة أولًا');
-});
-
-document.getElementById('new-claim').addEventListener('click', () => document.getElementById('modal').classList.add('open'));
-function closeModal() { document.getElementById('modal').classList.remove('open'); }
-document.getElementById('close-modal').addEventListener('click', closeModal);
-document.getElementById('cancel-modal').addEventListener('click', closeModal);
-document.getElementById('modal').addEventListener('click', (event) => { if (event.target.id === 'modal') closeModal(); });
-document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeModal(); });
-
-document.getElementById('claim-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  const row = document.createElement('tr');
-  row.dataset.id = `CL-${Date.now().toString().slice(-4)}`;
-  row.dataset.state = 'urgent';
-  row.dataset.client = String(data.get('client')).trim();
-  row.dataset.type = String(data.get('kind'));
-  row.dataset.policy = 'غير مرتبط';
-  row.dataset.insurer = 'بانتظار الإحالة';
-  row.dataset.age = '0';
-  row.dataset.impact = '50';
-  row.dataset.urgency = '70';
-  row.dataset.docs = '0';
-  row.dataset.missing = 'وثيقة التأمين|تقرير الحادث';
-  row.dataset.next = 'تحقق من الوثيقة واجمع المستندات الأساسية قبل الإحالة.';
-
-  const first = document.createElement('td');
-  const open = document.createElement('button');
-  open.className = 'claim-button';
-  open.type = 'button';
-  open.textContent = row.dataset.id;
-  open.addEventListener('click', () => selectClaim(row));
-  first.appendChild(open);
-  const sub = document.createElement('div');
-  sub.className = 'subline';
-  sub.textContent = row.dataset.client;
-  first.appendChild(sub);
-
-  const kind = document.createElement('td');
-  kind.textContent = row.dataset.type;
-  const date = document.createElement('td');
-  date.textContent = 'الآن';
-  const completeness = document.createElement('td');
-  completeness.textContent = '0%';
-  const state = document.createElement('td');
-  const tag = document.createElement('span');
-  tag.className = 'status';
-  tag.textContent = 'بلاغ جديد';
-  state.appendChild(tag);
-
-  row.append(first, kind, date, completeness, state);
-  document.getElementById('claims').prepend(row);
-  rows.unshift(row);
-  selectClaim(row);
-  updateRows();
-  event.currentTarget.reset();
-  closeModal();
-  notify('أضيف البلاغ محليًا للمعاينة فقط');
-});
-
-document.getElementById('export').addEventListener('click', () => notify('التصدير سيتاح بعد ربط بيانات المطالبات'));
-
-
-hydrateClaims();
-</script></body></html>
+    role = (await BUD_ME)?.role || '';
+    await load();
+    if (params.get('policy')) await openCreate(params.get('policy'));
+    else if (selectedId) select(selectedId);
+  } catch (error) { const b = document.getElementById('error'); b.textContent = error.message; b.hidden = false; }
+})();
+</script>
+</body></html>

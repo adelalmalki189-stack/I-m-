@@ -5,79 +5,184 @@
 <title>BUD | التقارير والتحليلات</title>
 <link rel="stylesheet" href="bud.css">
 <style>
-.actions{display:flex;gap:8px}
-.heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
-.heading h1{margin:0;font-size:22px}
-.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}
-.period{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:5px;background:var(--white)}
-.period button{padding:6px 10px;border:0;border-radius:4px;background:none;color:var(--muted);font-size:9px}
-.period button.active{background:var(--black);color:var(--white)}
-.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:13px}
-.metric{padding:11px 13px;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.metric-label{color:var(--muted);font-size:9px}
-.metric-value{margin-top:5px;font-size:19px;font-weight:700}
-.metric-note{margin-top:3px;color:var(--muted);font-size:8px}
-.blue{color:var(--blue)}
-.grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.85fr);gap:12px;align-items:start}
-.stack{display:grid;gap:12px}
-.panel{min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--white)}
-.panel-head{min-height:49px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line)}
-.panel-head h2{margin:0;font-size:11px}
-.hint{margin-top:3px;color:var(--muted);font-size:8px}
-.chart-body{padding:12px 14px 10px}
-.chart-summary{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
-.chart-total{font-size:19px;font-weight:700}
-.chart-change{color:var(--blue);font-size:8px}
-.chart{height:135px;display:grid;grid-template-columns:repeat(var(--count),minmax(0,1fr));align-items:end;gap:8px;padding:7px 3px 0;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to bottom,transparent 0,transparent 32px,#E6E9F2 33px)}
-.bar-item{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:end;gap:5px}
-.bar{width:min(21px,70%);height:var(--height);min-height:3px;border-radius:3px 3px 0 0;background:var(--pale)}
-.bar.current{background:var(--blue)}
-.bar-label{padding-bottom:6px;color:var(--muted);font-size:8px;white-space:nowrap}
-.funnel{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:13px}
-.stage{padding:10px;border-radius:5px;background:var(--pale)}
-.stage-label{color:var(--muted);font-size:8px}
-.stage-value{margin-top:5px;font-size:18px;font-weight:700}
-.stage-rate{margin-top:3px;color:var(--blue);font-size:8px}
-.table-wrap{overflow:auto}
-table{width:100%;border-collapse:collapse;text-align:right;white-space:nowrap}
-th,td{padding:9px 10px;border-bottom:1px solid var(--line)}
-th{background:var(--pale);color:var(--gray);font-size:8px;font-weight:600}
-td{font-size:8px}
-tbody tr:last-child td{border:0}
-.share{color:var(--muted)}
-.trend{color:var(--blue);font-weight:600}
-.insights{display:grid;gap:8px;padding:12px}
-.insight{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
-.insight:last-child{border:0}
-.insight-icon{display:grid;place-items:center;width:20px;height:20px;border-radius:5px;background:var(--pale);color:var(--blue);font-size:10px}
-.insight-title{font-size:9px;font-weight:700}
-.insight-text{margin-top:3px;color:var(--muted);font-size:8px;line-height:1.6}
-.disclaimer{padding:0 12px 11px;color:var(--muted);font-size:7px;line-height:1.5}
-@media(max-width:1050px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:minmax(0,1.35fr) minmax(240px,.9fr)}}
-@media(max-width:760px){.grid{grid-template-columns:1fr}.stack{display:contents}.funnel{order:1}.chart-panel{order:2}.product-panel{order:3}.insight-panel{order:4}}
-@media(max-width:520px){.heading{display:block}.period{width:max-content;margin-top:10px}.heading .button{margin-top:9px}.metrics{gap:7px}.metric{padding:9px}.metric-label{font-size:8px}.metric-value{font-size:17px}.chart{gap:4px}.bar-label{font-size:7px}.funnel{gap:5px;padding:9px}.stage{padding:8px 6px}.stage-value{font-size:16px}}
+.period{display:flex;flex-wrap:wrap;align-items:end;gap:8px}
+.period .field{margin:0}.period input{min-height:34px}
+.chart-wrap{position:relative;padding:12px 13px 4px}
+.chart svg{display:block;width:100%;height:220px;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .tick{fill:var(--muted);font-size:9px}
+.chart .bar{fill:var(--blue)}
+.chart .hit{fill:transparent;cursor:default}
+.chart .hit:hover+.bar,.chart .bar.hover{opacity:.8}
+.chart .value{fill:var(--ink);font-size:9px;font-weight:600}
+.tooltip{position:absolute;z-index:3;pointer-events:none;padding:6px 9px;border-radius:5px;background:var(--black);color:var(--white);font-size:10px;white-space:nowrap;transform:translate(50%,-110%)}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin-top:13px}
+.cards dl{margin:0}
+@media(max-width:900px){.cards{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
-<body><div class="app"><aside class="side"></aside><script src="bud-shell.js"></script>
-<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>التقارير والتحليلات</b></div><div class="actions"><button id="export" class="button" type="button">تصدير CSV</button></div></header>
-<section class="heading"><div><h1>التقارير والتحليلات</h1><p class="subtitle">مؤشرات الإنتاج والتحويل والتجديد خلال الفترة المحددة.</p></div><div class="period" role="group" aria-label="الفترة"><button class="active" data-period="month" aria-pressed="true">هذا الشهر</button><button data-period="week" aria-pressed="false">7 أيام</button><button data-period="year" aria-pressed="false">12 شهرًا</button></div></section>
-<div class="demo"><b>بيانات توضيحية</b><span>المؤشرات والعينات غير مرتبطة ببيانات إنتاجية. غيّر الفترة لمعاينة طريقة العرض.</span></div>
-<section class="metrics" aria-label="مؤشرات الأداء"><article class="metric"><div class="metric-label">أقساط مكتتبة</div><div id="premium" class="metric-value">1.28 مليون ر.س</div><div class="metric-note">إجمالي قيمة الوثائق المصدرة</div></article><article class="metric"><div class="metric-label">عمولات متوقعة</div><div id="commission" class="metric-value">96,450 ر.س</div><div class="metric-note">قبل التسوية النهائية</div></article><article class="metric"><div class="metric-label">طلبات عروض</div><div id="quotes" class="metric-value">184</div><div class="metric-note">طلبات مكتملة البيانات</div></article><article class="metric"><div class="metric-label">تحويل إلى وثيقة</div><div id="conversion" class="metric-value">41.3%</div><div class="metric-note">من العروض المرسلة</div></article></section>
-<div class="grid"><div class="stack"><section class="panel chart-panel"><div class="panel-head"><div><h2>إنتاج الأقساط</h2><div id="chart-caption" class="hint">إجمالي الأقساط حسب الشهر</div></div><span class="hint">ر.س</span></div><div class="chart-body"><div class="chart-summary"><span id="chart-total" class="chart-total">1.28 مليون</span><span class="chart-change">↑ 12.8% عن الفترة السابقة</span></div><div id="chart" class="chart" role="img" aria-label="مخطط توضيحي لإنتاج الأقساط"></div></div></section>
-<section class="panel funnel"><div class="stage"><div class="stage-label">طلبات واردة</div><div id="funnel-in" class="stage-value">184</div><div class="stage-rate">100% من البداية</div></div><div class="stage"><div class="stage-label">بيانات مكتملة</div><div id="funnel-valid" class="stage-value">142</div><div id="rate-valid" class="stage-rate">77%</div></div><div class="stage"><div class="stage-label">عروض مرسلة</div><div id="funnel-sent" class="stage-value">98</div><div id="rate-sent" class="stage-rate">53%</div></div><div class="stage"><div class="stage-label">وثائق صادرة</div><div id="funnel-bound" class="stage-value">76</div><div id="rate-bound" class="stage-rate">41%</div></div></section>
-<section class="panel product-panel"><div class="panel-head"><div><h2>الأداء حسب فرع التأمين</h2><div class="hint">مقارنة الإنتاج ومعدل التحويل</div></div></div><div class="table-wrap"><table><thead><tr><th>الفرع</th><th>أقساط مكتتبة</th><th>نسبة الإنتاج</th><th>معدل التحويل</th><th>مؤشر التجديد</th></tr></thead><tbody><tr><td>مركبات</td><td>538,000 ر.س</td><td class="share">42%</td><td>44%</td><td class="trend">82%</td></tr><tr><td>طبي جماعي</td><td>397,000 ر.س</td><td class="share">31%</td><td>39%</td><td>88%</td></tr><tr><td>ممتلكات</td><td>230,000 ر.س</td><td class="share">18%</td><td>36%</td><td>74%</td></tr><tr><td>أخرى</td><td>115,000 ر.س</td><td class="share">9%</td><td>33%</td><td>69%</td></tr></tbody></table></div></section></div>
-<aside class="stack"><section class="panel insight-panel"><div class="panel-head"><div><h2>رؤى تشغيلية</h2><div class="hint">ملاحظات قواعدية قابلة للمراجعة</div></div></div><div class="insights"><article class="insight"><span class="insight-icon">↗</span><div><div class="insight-title">فرع المركبات الأعلى إنتاجًا</div><div class="insight-text">يمثل 42% من الأقساط في العينة. راجع طاقة معالجة الطلبات قبل زيادة الحمل.</div></div></article><article class="insight"><span class="insight-icon">◷</span><div><div class="insight-title">فرص تجديد قريبة</div><div class="insight-text">توجد وثائق في نافذة التجديد؛ ابدأ المقارنة مبكرًا لتقليل انقطاع التغطية.</div></div></article><article class="insight"><span class="insight-icon">!</span><div><div class="insight-title">تفاوت بين العرض والإصدار</div><div class="insight-text">راجع أسباب عدم التحويل بين العرض والوثيقة حسب الفرع والجهة.</div></div></article></div><div class="disclaimer">هذه رؤى ثابتة لبيانات العرض، وليست مخرجات نموذج AI أو قياسًا فعليًا.</div></section>
-<section class="panel insight-panel"><div class="panel-head"><div><h2>التجديد والاحتفاظ</h2><div class="hint">مؤشرات متابعة العملاء</div></div></div><div class="insights"><article class="insight"><span class="insight-icon">✓</span><div><div class="insight-title">معدل الاحتفاظ</div><div class="insight-text">87% من الوثائق في العينة جُددت أو ما زالت ضمن نافذة التجديد.</div></div></article><article class="insight"><span class="insight-icon">⌕</span><div><div class="insight-title">إجراء مقترح</div><div id="action-insight" class="insight-text">ابدأ التواصل مع الوثائق التي تنتهي خلال 30 يومًا، ثم راقب إتمام المقارنة.</div></div></article></div></section></aside></div>
-</main></div><div id="toast" class="toast" role="status" aria-live="polite"></div>
+<body class="ui"><div class="app">
+<aside class="side"></aside><script src="bud-shell.js"></script>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>التقارير والتحليلات</b></div><div class="top-actions"><button id="export" class="button" type="button">تصدير CSV</button></div></header>
+<section class="page-head"><div><h1>التقارير والتحليلات</h1><p class="subtitle">أرقام فعلية من النظام: الإنتاج، التحويل، العمولات، التحصيل، المطالبات، والتجديدات.</p></div>
+<form id="period" class="period"><div class="actions" id="presets"></div>
+<label class="field"><span>من</span><input name="from" type="date" required></label>
+<label class="field"><span>إلى</span><input name="to" type="date" required></label>
+<button class="button primary" type="submit">عرض</button></form></section>
+<div id="error" class="notice error" hidden></div>
+<section class="metrics">
+<article class="metric"><div class="metric-label">أقساط مكتتبة</div><div id="m-premium" class="metric-value">—</div><div id="m-policies" class="muted"></div></article>
+<article class="metric"><div class="metric-label">معدل التحويل إلى وثيقة</div><div id="m-conv" class="metric-value">—</div><div id="m-requests" class="muted"></div></article>
+<article class="metric"><div class="metric-label">عمولات مستحقة في الفترة</div><div id="m-comm" class="metric-value">—</div><div id="m-comm-sub" class="muted"></div></article>
+<article class="metric"><div class="metric-label">محصّل من العملاء في الفترة</div><div id="m-collected" class="metric-value">—</div><div id="m-outstanding" class="muted"></div></article>
+</section>
+
+<section class="panel"><div class="panel-head"><div><h2>الأقساط المكتتبة شهريًا</h2><div class="muted">آخر 12 شهرًا حتى نهاية الفترة · ر.س</div></div><button id="toggle-table" class="button" type="button" aria-pressed="false">عرض كجدول</button></div>
+<div class="chart-wrap"><div id="chart" class="chart" role="img"></div><div id="tooltip" class="tooltip" hidden></div></div>
+<div id="monthly-table" class="table-wrap" hidden><table><thead><tr><th>الشهر</th><th>الأقساط</th><th>الوثائق</th></tr></thead><tbody id="monthly-rows"></tbody></table></div>
+</section>
+
+<div class="layout" style="margin-top:13px">
+<section class="panel"><div class="panel-head"><h2>الأداء حسب فرع التأمين</h2></div>
+<div class="table-wrap"><table><thead><tr><th>الفرع</th><th>طلبات</th><th>وثائق</th><th>الأقساط</th><th>العمولة</th></tr></thead><tbody id="by-line"></tbody></table><div id="by-line-empty" class="empty" hidden>لا توجد بيانات في هذه الفترة.</div></div></section>
+<section class="panel"><div class="panel-head"><h2>حسب شركة التأمين</h2></div>
+<div class="table-wrap"><table><thead><tr><th>الشركة</th><th>وثائق</th><th>الأقساط</th><th>العمولة</th></tr></thead><tbody id="by-insurer"></tbody></table><div id="by-insurer-empty" class="empty" hidden>لا توجد وثائق في هذه الفترة.</div></div></section>
+</div>
+<div class="cards">
+<section class="panel"><div class="panel-head"><h2>التحصيل</h2></div><div class="panel-body"><dl id="c-collections" class="kv"></dl></div></section>
+<section class="panel"><div class="panel-head"><h2>المطالبات</h2></div><div class="panel-body"><dl id="c-claims" class="kv"></dl></div></section>
+<section class="panel"><div class="panel-head"><h2>التجديدات القادمة</h2></div><div class="panel-body"><dl id="c-renewals" class="kv"></dl></div></section>
+</div>
+</main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="bud-api.js"></script>
 <script>
-const periods={
-month:{premium:'1.28 مليون ر.س',commission:'96,450 ر.س',quotes:184,conversion:'41.3%',funnel:[184,142,98,76],caption:'إجمالي الأقساط حسب الشهر',chartTotal:'1.28 مليون',labels:['أكت','نوف','ديس','ينا','فبر','مار','أبر','ماي','يون','يول','أغس','سبت'],bars:[36,48,41,57,50,64,58,73,67,82,75,92]},
-week:{premium:'316,000 ر.س',commission:'23,700 ر.س',quotes:43,conversion:'37.2%',funnel:[43,34,22,16],caption:'إجمالي الأقساط حسب اليوم',chartTotal:'316 ألف',labels:['أحد','اثن','ثلا','أرب','خمي','جمع','سبت'],bars:[52,71,44,86,63,94,76]},
-year:{premium:'14.6 مليون ر.س',commission:'1.08 مليون ر.س',quotes:2184,conversion:'38.6%',funnel:[2184,1714,1240,842],caption:'إجمالي الأقساط حسب الشهر',chartTotal:'14.6 مليون',labels:['أكت','نوف','ديس','ينا','فبر','مار','أبر','ماي','يون','يول','أغس','سبت'],bars:[42,49,46,58,55,61,66,70,72,80,84,93]}
-};let activePeriod='month';
-function renderReport(){const data=periods[activePeriod];document.getElementById('premium').textContent=data.premium;document.getElementById('commission').textContent=data.commission;document.getElementById('quotes').textContent=data.quotes.toLocaleString('en-US');document.getElementById('conversion').textContent=data.conversion;document.getElementById('chart-caption').textContent=data.caption;document.getElementById('chart-total').textContent=data.chartTotal;const stages=['funnel-in','funnel-valid','funnel-sent','funnel-bound'];stages.forEach((id,index)=>document.getElementById(id).textContent=data.funnel[index].toLocaleString('en-US'));['rate-valid','rate-sent','rate-bound'].forEach((id,index)=>document.getElementById(id).textContent=`${Math.round(data.funnel[index+1]/data.funnel[0]*100)}% من الطلبات`);const chart=document.getElementById('chart');chart.style.setProperty('--count',data.bars.length);chart.replaceChildren(...data.bars.map((height,index)=>{const item=document.createElement('div');item.className='bar-item';const bar=document.createElement('span');bar.className=`bar${index===data.bars.length-1?' current':''}`;bar.style.setProperty('--height',`${height}%`);bar.title=`${data.labels[index]}: ${height}%`;const label=document.createElement('span');label.className='bar-label';label.textContent=data.labels[index];item.append(bar,label);return item}))}
-document.querySelectorAll('.period button').forEach(button=>button.addEventListener('click',()=>{activePeriod=button.dataset.period;document.querySelectorAll('.period button').forEach(item=>{item.classList.toggle('active',item===button);item.setAttribute('aria-pressed',String(item===button))});renderReport()}));
-document.getElementById('export').addEventListener('click',()=>{const data=periods[activePeriod];const rows=[['مؤشر','قيمة'],['الفترة',activePeriod],['الأقساط',data.premium],['العمولات',data.commission],['طلبات العروض',data.quotes],['معدل التحويل',data.conversion]];const csv='\uFEFF'+rows.map(row=>row.map(value=>`"${String(value).replaceAll('"','""')}"`).join(',')).join('\n');const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download=`bud-report-${activePeriod}.csv`;link.click();URL.revokeObjectURL(url)});
-const toast=document.getElementById('toast');let timer;function notify(text){toast.textContent=text;toast.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>toast.classList.remove('show'),2300)}
-renderReport();
-</script></body></html>
+const { api, el, money } = BUD;
+const form = document.getElementById('period');
+const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+const monthLabel = (ym, short) => { const [y, m] = ym.split('-').map(Number); const name = MONTHS[m - 1]; return short ? name.slice(0, 3) : `${name} ${y}`; };
+const compact = n => (n >= 1e6 ? `${+(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${+(n / 1e3).toFixed(1)}K` : String(Math.round(n)));
+const iso = d => d.toISOString().slice(0, 10);
+let report;
+
+function kv(id, rows) { document.getElementById(id).replaceChildren(...rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })])); }
+
+// Round the axis top up to 1, 2, 5 or 10 × a power of ten.
+function niceMax(v) { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 5, 10].map(m => m * p).find(n => n >= v); }
+
+function drawChart(monthly) {
+  const values = monthly.map(m => Number(m.premium));
+  const W = 720, H = 220, top = 18, bottom = 26, left = 6, right = 42;
+  const max = niceMax(Math.max(...values));
+  const plotW = W - left - right, plotH = H - top - bottom, band = plotW / monthly.length;
+  const barW = Math.min(24, band * 0.6), r = 4;
+  const y = v => top + plotH - (v / max) * plotH;
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.setAttribute('preserveAspectRatio', 'none');
+  const add = (tag, attrs, text) => { const n = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text != null) n.textContent = text; svg.append(n); return n; };
+  for (let i = 0; i <= 4; i++) {
+    const v = (max / 4) * i, yy = y(v);
+    add('line', { class: 'grid', x1: left, x2: W - right, y1: yy, y2: yy });
+    add('text', { class: 'tick', x: W - right + 6, y: yy + 3, 'text-anchor': 'start' }, compact(v));
+  }
+  const peak = values.indexOf(Math.max(...values));
+  const tooltip = document.getElementById('tooltip');
+  const wrap = document.querySelector('.chart-wrap');
+  // RTL reading order: the latest month sits on the left edge, earliest on the right.
+  monthly.forEach((m, i) => {
+    const v = values[i], cx = W - right - band * (i + 0.5), x = cx - barW / 2, h = Math.max(0, y(0) - y(v));
+    const hit = add('rect', { class: 'hit', x: cx - band / 2, y: top, width: band, height: plotH + bottom });
+    if (h > 0) {
+      const rr = Math.min(r, h);
+      const d = `M${x},${y(0)} V${y(v) + rr} Q${x},${y(v)} ${x + rr},${y(v)} H${x + barW - rr} Q${x + barW},${y(v)} ${x + barW},${y(v) + rr} V${y(0)} Z`;
+      const bar = add('path', { class: 'bar', d });
+      hit.addEventListener('mouseenter', () => bar.classList.add('hover'));
+      hit.addEventListener('mouseleave', () => bar.classList.remove('hover'));
+    }
+    add('text', { class: 'tick', x: cx, y: H - 8, 'text-anchor': 'middle' }, monthLabel(m.month, true));
+    if ((i === peak || i === monthly.length - 1) && v > 0) add('text', { class: 'value', x: cx, y: y(v) - 5, 'text-anchor': 'middle' }, compact(v));
+    const show = () => {
+      tooltip.textContent = `${monthLabel(m.month)}: ${money(v)} · ${m.policies} وثيقة`;
+      const box = wrap.getBoundingClientRect(), s = svg.getBoundingClientRect();
+      tooltip.style.right = `${box.right - (s.left + (cx / W) * s.width)}px`;
+      tooltip.style.top = `${s.top - box.top + (y(v) / H) * s.height}px`;
+      tooltip.hidden = false;
+    };
+    hit.addEventListener('mouseenter', show);
+    hit.addEventListener('mouseleave', () => { tooltip.hidden = true; });
+  });
+  add('line', { class: 'grid', x1: left, x2: W - right, y1: y(0), y2: y(0) });
+  const chart = document.getElementById('chart');
+  chart.setAttribute('aria-label', `الأقساط الشهرية لآخر 12 شهرًا، الأعلى ${monthLabel(monthly[peak].month)} بقيمة ${money(values[peak])}`);
+  chart.replaceChildren(svg);
+  document.getElementById('monthly-rows').replaceChildren(...monthly.map(m => el('tr', {}, el('td', { text: monthLabel(m.month) }), el('td', { text: money(m.premium) }), el('td', { text: String(m.policies) }))));
+}
+
+function render(r) {
+  report = r;
+  document.getElementById('m-premium').textContent = money(r.premiums_written);
+  document.getElementById('m-policies').textContent = `${r.policies_issued} وثيقة صادرة`;
+  document.getElementById('m-conv').textContent = r.conversion_rate == null ? '—' : `${r.conversion_rate}%`;
+  document.getElementById('m-requests').textContent = `من ${r.requests_created} طلب في الفترة`;
+  document.getElementById('m-comm').textContent = money(r.commission_earned);
+  document.getElementById('m-comm-sub').textContent = `مستلم ${money(r.commission_received)} · كل المعلّق ${money(r.commission_pending)}`;
+  document.getElementById('m-collected').textContent = money(r.collections.collected_in_period);
+  document.getElementById('m-outstanding').textContent = `مستحق الآن ${money(r.collections.outstanding)}`;
+  drawChart(r.monthly);
+  document.getElementById('by-line').replaceChildren(...r.by_line.map(l => el('tr', {}, el('td', { class: 'strong', text: l.label }), el('td', { text: l.requests }), el('td', { text: l.policies }), el('td', { text: money(l.premium) }), el('td', { text: money(l.commission) }))));
+  document.getElementById('by-line-empty').hidden = r.by_line.length > 0;
+  document.getElementById('by-insurer').replaceChildren(...r.by_insurer.map(l => el('tr', {}, el('td', { class: 'strong', text: l.insurer }), el('td', { text: l.policies }), el('td', { text: money(l.premium) }), el('td', { text: money(l.commission) }))));
+  document.getElementById('by-insurer-empty').hidden = r.by_insurer.length > 0;
+  kv('c-collections', [['مستحق على العملاء', money(r.collections.outstanding)], ['منها متأخر', money(r.collections.overdue)], ['محصّل في الفترة', money(r.collections.collected_in_period)]]);
+  kv('c-claims', [['مفتوحة', r.claims.open], ['إجمالي المعتمد', money(r.claims.approved_total)], ['إجمالي المصروف', money(r.claims.paid_total)]]);
+  kv('c-renewals', [['وثائق سارية', r.active_policies], ['تنتهي خلال 30 يومًا', r.renewals.due_30], ['خلال 60 يومًا', r.renewals.due_60], ['خلال 90 يومًا', r.renewals.due_90]]);
+}
+
+async function load() {
+  const box = document.getElementById('error');
+  try { render(await api(`/reports/summary?date_from=${form.from.value}&date_to=${form.to.value}`)); box.hidden = true; }
+  catch (error) { box.textContent = error.message; box.hidden = false; }
+}
+
+function preset(label, fromDate) {
+  return el('button', { class: 'filter', type: 'button', text: label, onclick: () => { form.from.value = iso(fromDate); form.to.value = iso(new Date()); load(); } });
+}
+const now = new Date();
+document.getElementById('presets').append(
+  preset('هذا الشهر', new Date(now.getFullYear(), now.getMonth(), 1)),
+  preset('3 أشهر', new Date(now.getFullYear(), now.getMonth() - 2, 1)),
+  preset('هذه السنة', new Date(now.getFullYear(), 0, 1)),
+  preset('12 شهرًا', new Date(now.getFullYear() - 1, now.getMonth(), 1)));
+form.from.value = iso(new Date(now.getFullYear() - 1, now.getMonth(), 1));
+form.to.value = iso(now);
+form.addEventListener('submit', e => { e.preventDefault(); load(); });
+
+document.getElementById('toggle-table').addEventListener('click', e => {
+  const table = document.getElementById('monthly-table');
+  table.hidden = !table.hidden;
+  document.getElementById('chart').hidden = !table.hidden;
+  e.currentTarget.textContent = table.hidden ? 'عرض كجدول' : 'عرض كرسم';
+  e.currentTarget.setAttribute('aria-pressed', String(!table.hidden));
+});
+document.getElementById('export').addEventListener('click', () => {
+  if (!report) return;
+  const rows = [['البند', 'القيمة'], ['من', report.period.from], ['إلى', report.period.to], ['الأقساط المكتتبة', report.premiums_written], ['الوثائق الصادرة', report.policies_issued],
+    ['الطلبات', report.requests_created], ['معدل التحويل %', report.conversion_rate ?? ''], ['العمولات المستحقة', report.commission_earned], ['العمولات المستلمة', report.commission_received],
+    [], ['الشهر', 'الأقساط', 'الوثائق'], ...report.monthly.map(m => [m.month, m.premium, m.policies]),
+    [], ['الفرع', 'طلبات', 'وثائق', 'أقساط', 'عمولة'], ...report.by_line.map(l => [l.label, l.requests, l.policies, l.premium, l.commission])];
+  const csv = '﻿' + rows.map(r => r.map(v => `"${String(v ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
+  const link = el('a', { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })), download: `bud-report-${report.period.from}-${report.period.to}.csv` });
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+BUD_ME.then(me => {
+  if (me && !['underwriter', 'manager'].includes(me.role)) {
+    const box = document.getElementById('error'); box.className = 'notice'; box.textContent = 'التقارير المالية متاحة لفريق الاكتتاب والمدير فقط.'; box.hidden = false;
+    return;
+  }
+  load();
+});
+</script>
+</body></html>

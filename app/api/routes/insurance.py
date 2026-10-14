@@ -19,7 +19,7 @@ from app.api.auth import MANAGERS, UNDERWRITING, Role, audit, client_ip, get_cur
 from app.api.deps import get_db_session
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
-from app.insurance import catalog, workflow
+from app.insurance import aftersales, catalog, workflow
 from app.insurance.models import (
     AuditEvent,
     Customer,
@@ -1469,6 +1469,12 @@ async def issue_policy(
     if existing_policy is not None:
         return InsurancePolicyResponse.model_validate(existing_policy)
 
+    premium = aftersales.to_money(quote.premium)
+    if premium is None or premium <= 0:
+        raise _error(422, "INVALID_PREMIUM", "The selected quote has no valid premium")
+    if body.installments not in aftersales.ALLOWED_INSTALLMENTS:
+        raise _error(422, "INVALID_INSTALLMENTS", f"installments must be one of {aftersales.ALLOWED_INSTALLMENTS}")
+
     _transition(request, InsuranceRequestStatus.POLICY_ISSUED)
     effective_from = body.effective_from or datetime.now(UTC)
     policy = InsurancePolicy(
@@ -1481,13 +1487,20 @@ async def issue_policy(
         premium_amount=quote.premium,
         currency=quote.currency or "SAR",
         effective_from=effective_from,
-        effective_to=body.effective_to or effective_from,
+        effective_to=body.effective_to or aftersales.one_year_term_end(effective_from),
         issued_at=datetime.now(UTC),
         notes=body.notes,
     )
+    rate = await aftersales.commission_rate_for(session, submission.insurer_id, request.insurance_type)
+    policy.commission_rate = rate
+    policy.commission_amount = aftersales.commission_amount(premium, rate)
     session.add(policy)
     await session.flush()
-    audit(session, staff, "policy_issued", "request", request_id, policy_number=policy.policy_number)
+    session.add_all(aftersales.build_installments(policy, premium, body.installments, effective_from.date()))
+    audit(
+        session, staff, "policy_issued", "request", request_id,
+        policy_number=policy.policy_number, installments=body.installments,
+    )
     await session.commit()
     await session.refresh(policy)
     return InsurancePolicyResponse.model_validate(policy)

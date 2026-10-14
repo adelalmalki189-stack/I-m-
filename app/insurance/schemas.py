@@ -442,6 +442,7 @@ class InsurancePolicyCreateRequest(BaseModel):
     effective_from: datetime | None = None
     effective_to: datetime | None = None
     notes: str | None = None
+    installments: int = 1  # number of equal premium payments: 1, 2, 3, 4, 6 or 12
 
 
 class InsurancePolicyStatusUpdateRequest(BaseModel):
