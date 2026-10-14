@@ -123,7 +123,7 @@ async def test_full_flow_with_default_and_insurer_templates(db_session, monkeypa
         def send_message(self, message):
             sent.append(message)
 
-    monkeypatch.setattr("app.api.routes.insurance.smtplib.SMTP", FakeSMTP)
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
     monkeypatch.setattr("app.api.routes.insurance.settings.email_delivery_enabled", True)
 
     with TestClient(app) as client:
@@ -219,7 +219,7 @@ async def test_smtp_failure_is_recorded_not_reported_as_sent(db_session, monkeyp
         def __init__(self, *args, **kwargs):
             raise smtplib.SMTPConnectError(421, "service not available")
 
-    monkeypatch.setattr("app.api.routes.insurance.smtplib.SMTP", BrokenSMTP)
+    monkeypatch.setattr("smtplib.SMTP", BrokenSMTP)
     monkeypatch.setattr("app.api.routes.insurance.settings.email_delivery_enabled", True)
     with TestClient(app) as client:
         request_id = _portal_request(client)["request_id"]

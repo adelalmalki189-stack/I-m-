@@ -399,7 +399,7 @@ async def test_send_submission_uses_email_and_pdf_attachment(db_session, monkeyp
         def quit(self):
             pass
 
-    monkeypatch.setattr("app.api.routes.insurance.smtplib.SMTP", FakeSMTP)
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
     monkeypatch.setattr("app.api.routes.insurance.settings.smtp_host", "smtp.example.com")
     monkeypatch.setattr("app.api.routes.insurance.settings.smtp_port", 587)
     monkeypatch.setattr("app.api.routes.insurance.settings.smtp_username", "mailer@example.com")

@@ -39,6 +39,18 @@ services:
     volumes:
       - uploads:/app/app/static/uploads
 
+  # Sends customer messages and runs reminders/renewals/follow-ups. Run exactly one.
+  worker:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    command: ["python", "-m", "app.automation.worker"]
+    volumes:
+      - uploads:/app/app/static/uploads
+
 volumes:
   db_data:
   uploads:

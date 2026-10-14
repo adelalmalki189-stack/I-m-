@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import UNDERWRITING, audit, get_current_staff, require_roles
 from app.api.deps import get_db_session
+from app.automation import service as notifications
 from app.insurance import aftersales, catalog
 from app.insurance.aftersales_schemas import (
     ClaimCreateRequest,
@@ -53,6 +54,13 @@ router = APIRouter(prefix="/insurance", tags=["after-sales"], dependencies=[Depe
 
 ZERO = Decimal("0.00")
 LIVE_POLICY = {InsurancePolicyStatus.ISSUED, InsurancePolicyStatus.ACTIVE}
+# Claim changes the customer is told about, and how each is worded.
+CLAIM_UPDATE_LABELS = {
+    ClaimStatus.SUBMITTED: lambda c: "أُرسلت إلى شركة التأمين",
+    ClaimStatus.APPROVED: lambda c: f"اعتُمدت بمبلغ {c.approved_amount:,.2f} ر.س",
+    ClaimStatus.REJECTED: lambda c: "اعتذرت الشركة عنها، وسيتواصل معك فريقنا",
+    ClaimStatus.PAID: lambda c: f"صُرف التعويض بمبلغ {c.paid_amount:,.2f} ر.س",
+}
 OPEN_CLAIMS = {ClaimStatus.REPORTED, ClaimStatus.SUBMITTED, ClaimStatus.UNDER_ASSESSMENT, ClaimStatus.APPROVED}
 
 
@@ -220,34 +228,10 @@ async def renew_policy(
 ) -> RenewalResponse:
     """Open a new request for the same customer and risk, linked to this policy."""
     policy = await _get(session, InsurancePolicy, policy_id, "POLICY_NOT_FOUND")
-    if policy.status == InsurancePolicyStatus.CANCELLED:
-        raise _error(409, "POLICY_CANCELLED", "A cancelled policy cannot be renewed")
-    existing = await session.execute(
-        select(InsuranceRequest).where(
-            InsuranceRequest.renewal_of_policy_id == policy_id,
-            InsuranceRequest.status != InsuranceRequestStatus.CLOSED,
-        )
-    )
-    if (open_renewal := existing.scalars().first()) is not None:
-        raise _error(409, "RENEWAL_EXISTS", f"Renewal request {open_renewal.request_number} already exists")
-    original = await _get(session, InsuranceRequest, policy.request_id, "REQUEST_NOT_FOUND")
-    renewal = InsuranceRequest(
-        customer_id=original.customer_id,
-        request_number=f"IR-{datetime.now(UTC).strftime('%Y%m%d')}-{uuid4().hex[:8].upper()}",
-        insurance_type=original.insurance_type,
-        product_type=original.product_type,
-        request_source="renewal",
-        status=InsuranceRequestStatus.NEW,
-        coverage_amount=policy.coverage_amount or original.coverage_amount,
-        customer_priority=original.customer_priority,
-        request_details=original.request_details,
-        preferred_insurers="[]",
-        sales_employee_id=staff.employee_id,
-        renewal_of_policy_id=policy_id,
-        notes=f"تجديد للوثيقة {policy.policy_number}",
-    )
-    session.add(renewal)
-    await session.flush()
+    try:
+        renewal = await aftersales.create_renewal_request(session, policy, staff.employee_id)
+    except aftersales.RenewalNotAllowed as exc:
+        raise _error(409, exc.code, str(exc)) from exc
     audit(session, staff, "renewal_started", "policy", policy_id, request_id=renewal.request_id)
     await session.commit()
     return RenewalResponse(request_id=renewal.request_id, request_number=renewal.request_number)
@@ -509,6 +493,23 @@ async def update_claim_status(
         approved_amount=claim.approved_amount,
         paid_amount=claim.paid_amount,
     )
+    if body.status in CLAIM_UPDATE_LABELS:
+        policy = await _get(session, InsurancePolicy, claim.policy_id, "POLICY_NOT_FOUND")
+        request = await _get(session, InsuranceRequest, policy.request_id, "REQUEST_NOT_FOUND")
+        customer = await _get(session, Customer, request.customer_id, "CUSTOMER_NOT_FOUND")
+        await notifications.enqueue(
+            session,
+            "claim_update",
+            customer,
+            {
+                "customer_name": _display_name(customer),
+                "claim_number": claim.claim_number,
+                "claim_status": CLAIM_UPDATE_LABELS[body.status](claim),
+            },
+            dedupe_key=f"claim:{claim_id}:{body.status.value}",
+            claim_id=claim_id,
+            policy_id=policy.policy_id,
+        )
     await session.commit()
     await session.refresh(claim)
     return (await _claim_views(session, [claim]))[0]
@@ -530,6 +531,7 @@ def _customer_summary(
         company_name=customer.company_name,
         email=customer.email,
         phone=customer.phone,
+        messaging_opt_out=customer.messaging_opt_out,
         requests_count=len(requests),
         open_requests=len([r for r in requests if r.status in OPEN_STATUSES]),
         active_policies=len(live),

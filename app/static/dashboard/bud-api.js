@@ -34,6 +34,33 @@ const BUD = (() => {
     UPLOAD_NOT_ALLOWED: 'انتهت صلاحية رابط رفع المستندات.',
     FILE_TOO_LARGE: 'حجم الملف أكبر من المسموح.',
     UNSUPPORTED_FILE_TYPE: 'نقبل ملفات PDF أو JPG أو PNG فقط.',
+    CHANNEL_NOT_CONFIGURED: 'بيانات مزوّد الرسائل غير موجودة على الخادم. أضفها أولًا ثم فعّل الوضع الفعلي.',
+    AMOUNT_REQUIRED: 'أدخل المبلغ لهذه المرحلة.',
+    COMMISSION_ALREADY_RECEIVED: 'العمولة مسجلة كمستلمة مسبقًا.',
+    NO_COMMISSION: 'العرض المختار لا يحتوي نسبة عمولة.',
+    CUSTOMER_EXISTS: 'يوجد عميل بنفس البريد.',
+    DOCUMENT_FILE_MISSING: 'ملف المستند غير موجود على الخادم.',
+    INCIDENT_IN_FUTURE: 'تاريخ الحادث لا يمكن أن يكون في المستقبل.',
+    INCIDENT_OUTSIDE_COVERAGE: 'تاريخ الحادث خارج مدة الوثيقة.',
+    INSTALLMENT_NOT_DUE: 'هذا القسط ليس مستحقًا (مدفوع أو ملغى).',
+    INSURER_INACTIVE: 'إحدى الشركات المختارة موقوفة.',
+    INVALID_CREDENTIALS: 'البريد أو كلمة المرور غير صحيحة.',
+    INVALID_FILE: 'الملف غير صالح.',
+    INVALID_INSTALLMENTS: 'عدد الأقساط غير مسموح.',
+    INVALID_PARAM: 'قيمة التوقيت خارج الحدود المسموحة.',
+    UNKNOWN_PARAM: 'إعداد غير معروف لهذه القاعدة.',
+    INVALID_PERIOD: 'تاريخ البداية بعد تاريخ النهاية.',
+    INVALID_PREMIUM: 'العرض المختار لا يحتوي قسطًا صحيحًا.',
+    NOT_RETRYABLE: 'يمكن إعادة إرسال الرسائل الفاشلة فقط.',
+    NO_MESSAGE: 'هذه القاعدة مهمة داخلية ولا ترسل رسالة.',
+    NO_SELECTED_QUOTE: 'اختر عرضًا أولًا.',
+    POLICY_CANCELLED: 'الوثيقة ملغاة.',
+    RENEWAL_EXISTS: 'يوجد طلب تجديد مفتوح لهذه الوثيقة.',
+    QUOTE_NOT_FOR_REQUEST: 'العرض لا يخص هذا الطلب.',
+    QUOTES_NOT_FOUND: 'لا توجد عروض لهذا الطلب.',
+    TOO_MANY_ATTEMPTS: 'محاولات كثيرة. حاول بعد ربع ساعة.',
+    TOO_MANY_DOCUMENTS: 'وصلت للحد الأقصى من المستندات.',
+    UNDERWRITER_ID_REQUIRED: 'اختر المكتتب.',
   };
 
   class ApiError extends Error {
@@ -55,7 +82,10 @@ const BUD = (() => {
     }
     if (!response.ok) {
       const detail = data?.detail;
-      if (detail?.error_code) throw new ApiError(response.status, detail.error_code, ERRORS[detail.error_code] || detail.message);
+      if (detail?.error_code) {
+        const fallback = /_NOT_FOUND$/.test(detail.error_code) ? 'العنصر المطلوب غير موجود (ربما حُذف).' : detail.message;
+        throw new ApiError(response.status, detail.error_code, ERRORS[detail.error_code] || fallback);
+      }
       if (Array.isArray(detail)) throw new ApiError(response.status, 'VALIDATION', detail.map(d => d.msg.replace(/^Value error, /, '')).join('، '));
       throw new ApiError(response.status, 'HTTP', `خطأ من الخادم (${response.status})`);
     }

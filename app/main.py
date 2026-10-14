@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import aftersales, auth, insurance
+from app.api.routes import aftersales, auth, automation, insurance
 
 app = FastAPI(
     title="BUD — Digital Insurance Brokerage",
@@ -19,6 +19,7 @@ app.include_router(auth.router)
 app.include_router(insurance.public_router)
 app.include_router(insurance.router)
 app.include_router(aftersales.router)
+app.include_router(automation.router)
 
 DASHBOARD_DIR = Path(__file__).parent / "static" / "dashboard"
 app.mount("/dashboard", StaticFiles(directory=DASHBOARD_DIR, html=True), name="dashboard")

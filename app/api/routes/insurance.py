@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hmac
 import json
-import smtplib
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
@@ -17,9 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import MANAGERS, UNDERWRITING, Role, audit, client_ip, get_current_staff, require_roles
 from app.api.deps import get_db_session
+from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
-from app.insurance import aftersales, catalog, workflow
+from app.insurance import aftersales, catalog, mailer, workflow
 from app.insurance.models import (
     AuditEvent,
     Customer,
@@ -125,6 +125,10 @@ async def _get_submission_or_404(session: AsyncSession, submission_id: str) -> I
 
 async def _get_template_or_404(session: AsyncSession, template_id: str) -> InsurerTemplate:
     return await _get_or_404(session, InsurerTemplate, template_id, "TEMPLATE_NOT_FOUND", "template")
+
+
+def _display_customer(customer: Customer) -> str:
+    return customer.company_name or customer.full_name
 
 
 def _transition(request: InsuranceRequest, target: InsuranceRequestStatus) -> None:
@@ -707,6 +711,18 @@ async def create_portal_request(
         ip=ip,
         customer_id=customer.customer_id,
     )
+    await notifications.enqueue(
+        session,
+        "request_received",
+        customer,
+        {
+            "customer_name": _display_customer(customer),
+            "request_number": request.request_number,
+            "line": catalog.line_label(request.insurance_type),
+        },
+        dedupe_key=f"request_received:{request.request_id}",
+        request_id=request.request_id,
+    )
     await session.commit()
     return PortalRequestResponse(
         request_id=request.request_id,
@@ -840,6 +856,16 @@ async def update_request_status(
     if body.notes:
         request.notes = body.notes
     audit(session, staff, "request_status_changed", "request", request_id, status=body.status.value)
+    if body.status == InsuranceRequestStatus.NEEDS_INFO:
+        customer = await _get_customer_or_404(session, request.customer_id)
+        await notifications.enqueue(
+            session,
+            "missing_info",
+            customer,
+            {"customer_name": _display_customer(customer), "request_number": request.request_number},
+            request_id=request_id,
+            created_by=staff.full_name,
+        )
     await session.commit()
     await session.refresh(request)
     return await _request_response(session, request)
@@ -1274,15 +1300,10 @@ async def send_submission(
     message = _build_insurer_email_message(submission, insurer, documents.scalars().all())
 
     try:
-        with smtplib.SMTP(settings.smtp_host, int(settings.smtp_port), timeout=30) as smtp_client:
-            if settings.smtp_use_tls:
-                smtp_client.starttls()
-            if settings.smtp_username and settings.smtp_password:
-                smtp_client.login(settings.smtp_username, settings.smtp_password)
-            smtp_client.send_message(message)
-    except (smtplib.SMTPException, OSError) as exc:
+        await mailer.send(message)
+    except mailer.EmailDeliveryError as exc:
         submission.status = InsuranceSubmissionStatus.FAILED
-        submission.delivery_error = f"{type(exc).__name__}: {exc}"[:2000]
+        submission.delivery_error = str(exc)
         _email_audit(session, submission, "send_failed", staff.full_name, error=submission.delivery_error)
     else:
         submission.status = InsuranceSubmissionStatus.SENT
@@ -1499,8 +1520,30 @@ async def issue_policy(
     await session.flush()
     session.add_all(aftersales.build_installments(policy, premium, body.installments, effective_from.date()))
     audit(
-        session, staff, "policy_issued", "request", request_id,
-        policy_number=policy.policy_number, installments=body.installments,
+        session,
+        staff,
+        "policy_issued",
+        "request",
+        request_id,
+        policy_number=policy.policy_number,
+        installments=body.installments,
+    )
+    customer = await _get_customer_or_404(session, request.customer_id)
+    insurer = await _get_insurer_or_404(session, submission.insurer_id)
+    await notifications.enqueue(
+        session,
+        "policy_issued",
+        customer,
+        {
+            "customer_name": _display_customer(customer),
+            "policy_number": policy.policy_number,
+            "insurer": insurer.name,
+            "end_date": policy.effective_to.date().isoformat() if policy.effective_to else "",
+            "premium": f"{premium:,.2f} ر.س",
+        },
+        dedupe_key=f"policy_issued:{policy.policy_id}",
+        policy_id=policy.policy_id,
+        request_id=request_id,
     )
     await session.commit()
     await session.refresh(policy)

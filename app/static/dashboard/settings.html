@@ -8,13 +8,19 @@
 .role-card{padding:10px 0;border-bottom:1px solid var(--line);font-size:10px;line-height:1.7}.role-card:last-child{border:0}
 .role-card b{display:block;font-size:11px}
 .details{max-width:340px;color:var(--muted);font-size:9px;word-break:break-word}
+.rule{padding:12px 13px;border-bottom:1px solid var(--line)}.rule:last-child{border:0}
+.rule-head{display:flex;align-items:center;gap:10px}.rule-head b{flex:1;font-size:11px}
+.rule-body{margin-top:9px}.rule-body[hidden]{display:none}
+.switch{display:flex;align-items:center;gap:6px;font-size:10px;cursor:pointer}
+.msg{padding:9px 13px;border-bottom:1px solid var(--line);font-size:10px}.msg:last-child{border:0}
+.msg-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px}.msg-body{color:var(--gray);white-space:pre-wrap;line-height:1.6}
 </style>
 </head>
 <body class="ui"><div class="app">
 <aside class="side"></aside><script src="bud-shell.js"></script>
 <main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>الإعدادات والصلاحيات</b></div></header>
 <section class="page-head"><div><h1>الإعدادات والصلاحيات</h1><p class="subtitle">حسابك، فريق العمل وأدوارهم، وسجل التدقيق.</p></div></section>
-<nav class="tabs" role="tablist"><button class="tab active" data-tab="account" role="tab">حسابي</button><button class="tab" data-tab="team" role="tab" data-manager hidden>الفريق والصلاحيات</button><button class="tab" data-tab="audit" role="tab" data-manager hidden>سجل التدقيق</button></nav>
+<nav class="tabs" role="tablist"><button class="tab active" data-tab="account" role="tab">حسابي</button><button class="tab" data-tab="team" role="tab" data-manager hidden>الفريق والصلاحيات</button><button class="tab" data-tab="automation" role="tab" data-manager hidden>الأتمتة والرسائل</button><button class="tab" data-tab="audit" role="tab" data-manager hidden>سجل التدقيق</button></nav>
 
 <section id="tab-account"><div class="layout">
 <section class="panel"><div class="panel-head"><h2>بيانات الحساب</h2></div><div class="panel-body"><dl id="me" class="kv"></dl></div></section>
@@ -45,6 +51,24 @@
 </div></section>
 </section></div></section>
 
+<section id="tab-automation" hidden>
+<div id="mode-notice" class="notice"></div>
+<div class="layout">
+<section class="stack">
+<section class="panel"><div class="panel-head"><div><h2>قواعد الأتمتة</h2><div class="muted">فعّل القاعدة أو أوقفها، وعدّل نص الرسالة وتوقيتها</div></div><button id="run-now" class="button" type="button">تشغيل المهام الآن</button></div>
+<div id="rules"></div></section>
+</section>
+<section class="stack">
+<section class="panel"><div class="panel-head"><h2>قناة الرسائل</h2></div>
+<form id="channel-form" class="panel-body">
+<label class="field"><span>الوضع</span><select name="messaging_mode"><option value="sandbox">تجريبي — تُسجَّل الرسائل ولا تُرسل</option><option value="live">فعلي — إرسال عبر المزوّد</option></select></label>
+<label class="field"><span>القناة</span><select name="customer_channel"><option value="whatsapp">واتساب</option><option value="sms">رسائل SMS</option></select></label>
+<div id="channel-status" class="muted" style="margin-bottom:10px"></div>
+<button class="button primary" type="submit">حفظ</button></form></section>
+<section class="panel"><div class="panel-head"><div><h2>سجل الرسائل</h2><div class="muted">آخر 200 رسالة للعملاء</div></div><select id="msg-filter" class="search" aria-label="تصفية الرسائل"><option value="">الكل</option><option value="queued">بالانتظار</option><option value="sent">أُرسلت</option><option value="simulated">تجريبية</option><option value="failed">فشلت</option><option value="skipped">لم تُرسل</option></select></div>
+<div id="messages"></div></section>
+</section></div></section>
+
 <section id="tab-audit" hidden><section class="panel"><div class="panel-head"><div><h2>سجل التدقيق</h2><div class="muted">آخر 200 عملية حساسة في النظام</div></div><button id="audit-refresh" class="button" type="button">تحديث</button></div>
 <div class="table-wrap"><table><thead><tr><th>الوقت</th><th>الموظف</th><th>العملية</th><th>السجل</th><th>تفاصيل</th></tr></thead><tbody id="audit"></tbody></table></div></section></section>
 </main></div>
@@ -53,22 +77,25 @@
 <script>
 const { api, el, run, date } = BUD;
 const ROLE = { sales_agent: 'مبيعات', underwriter: 'اكتتاب', manager: 'مدير' };
-const ENTITIES = { request: 'طلب', template: 'قالب', insurer: 'شركة تأمين', employee: 'موظف', policy: 'وثيقة', customer: 'عميل' };
+const ENTITIES = { request: 'طلب', template: 'قالب', insurer: 'شركة تأمين', employee: 'موظف', policy: 'وثيقة', customer: 'عميل', claim: 'مطالبة', automation: 'الأتمتة' };
 const ACTIONS = {
   login: 'تسجيل دخول', login_failed: 'محاولة دخول فاشلة', password_changed: 'تغيير كلمة المرور', password_reset: 'إعادة تعيين كلمة مرور',
   employee_created: 'إضافة موظف', employee_updated: 'تعديل موظف', customer_created: 'إضافة عميل', request_created: 'إنشاء طلب',
   portal_request_created: 'طلب من البوابة', portal_document_uploaded: 'مستند من العميل', document_uploaded: 'رفع مستند', document_downloaded: 'تنزيل مستند',
   request_status_changed: 'تغيير حالة طلب', request_assigned: 'إسناد للاكتتاب', insurer_created: 'إضافة شركة', insurer_updated: 'تعديل شركة',
   template_created: 'إنشاء قالب', template_updated: 'تعديل قالب', template_deleted: 'حذف قالب', emails_drafted: 'تجهيز رسائل',
-  quote_recorded: 'تسجيل عرض', quote_selected: 'اختيار عرض', policy_issued: 'إصدار وثيقة', policy_activated: 'تفعيل وثيقة', policy_status_changed: 'تغيير حالة وثيقة',
+  quote_recorded: 'تسجيل عرض', policy_cancelled: 'إلغاء وثيقة', renewal_started: 'فتح تجديد', premium_collected: 'تحصيل قسط', commission_received: 'استلام عمولة',
+  claim_reported: 'تسجيل مطالبة', claim_status_changed: 'تحديث مطالبة', customer_updated: 'تعديل عميل', policy_expired: 'انتهاء وثيقة',
+  automation_settings_changed: 'إعدادات الرسائل', automation_rule_changed: 'تعديل قاعدة أتمتة', notification_retried: 'إعادة إرسال رسالة', manual_message: 'رسالة يدوية لعميل', quote_selected: 'اختيار عرض', policy_issued: 'إصدار وثيقة', policy_activated: 'تفعيل وثيقة', policy_status_changed: 'تغيير حالة وثيقة',
 };
 let me, team = [], selected = null;
 const memberForm = document.getElementById('member-form');
 
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-  ['account', 'team', 'audit'].forEach(t => { document.getElementById(`tab-${t}`).hidden = t !== name; });
+  ['account', 'team', 'automation', 'audit'].forEach(t => { document.getElementById(`tab-${t}`).hidden = t !== name; });
   if (name === 'audit') loadAudit();
+  if (name === 'automation') loadAutomation();
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
 
@@ -132,6 +159,94 @@ async function loadAudit() {
     el('td', {}, el('div', { class: 'details', text: [ev.details, ev.ip_address && `IP: ${ev.ip_address}`].filter(Boolean).join(' · ') })))));
 }
 document.getElementById('audit-refresh').addEventListener('click', e => run(e.currentTarget, loadAudit));
+
+const MSG_STATUS = { queued: ['بالانتظار', ''], sent: ['أُرسلت', 'blue'], simulated: ['تجريبية', ''], failed: ['فشلت', 'red'], skipped: ['لم تُرسل', 'red'] };
+const PARAM_LABELS = { days: 'قبل الانتهاء بـ (أيام، افصل بفاصلة)', days_before: 'قبل الاستحقاق بـ (أيام)', days_after: 'بعد الاستحقاق بـ (أيام، افصل بفاصلة)', hours: 'بعد (ساعات) بدون رد', max_followups: 'أقصى عدد متابعات' };
+let automation;
+
+function ruleCard(rule) {
+  const body = el('div', { class: 'rule-body', hidden: true });
+  const toggle = el('input', { type: 'checkbox', checked: rule.enabled, onchange: e => saveRule(rule.key, { enabled: e.target.checked }, e.target) });
+  const fields = [];
+  let message, template;
+  if (rule.sends_message) {
+    message = el('textarea', { rows: 4 }); message.value = rule.message || '';
+    template = el('input', { value: rule.whatsapp_template || '', dir: 'ltr', placeholder: 'مثال: bud_renewal_reminder' });
+    fields.push(
+      el('div', { class: 'chips', style: 'display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px' }, ...rule.variables.map(v => el('button', { type: 'button', class: 'chip', text: `{${v}}`,
+        onclick: () => { const at = message.selectionStart ?? message.value.length; message.value = message.value.slice(0, at) + `{${v}}` + message.value.slice(message.selectionEnd ?? at); message.focus(); } }))),
+      el('label', { class: 'field' }, el('span', { text: 'نص الرسالة' }), message),
+      el('label', { class: 'field' }, el('span', { text: 'اسم قالب واتساب المعتمد (اختياري)' }), template,
+        el('span', { class: 'hint' }, 'متغيرات القالب بالترتيب: ', ...rule.variables.map((v, i) => el('bdi', { dir: 'ltr', class: 'chip', style: 'margin-inline-start:4px;cursor:default', text: `{{${i + 1}}} = ${v}` })))));
+  }
+  const paramInputs = Object.entries(rule.params).map(([name, value]) => {
+    const input = el('input', { value: Array.isArray(value) ? value.join('، ') : value, dir: 'ltr' });
+    fields.push(el('label', { class: 'field' }, el('span', { text: PARAM_LABELS[name] || name }), input));
+    return [name, input, Array.isArray(value)];
+  });
+  const save = el('button', { class: 'button primary', type: 'button', text: 'حفظ القاعدة', onclick: e => {
+    const payload = {};
+    if (message) { payload.message = message.value.trim() === (rule.default_message || '').trim() ? '' : message.value.trim(); payload.whatsapp_template = template.value.trim(); }
+    if (paramInputs.length) payload.params = Object.fromEntries(paramInputs.map(([n, input, isList]) => [n, isList ? input.value.split(/[,،\s]+/).filter(Boolean).map(Number) : Number(input.value)]));
+    saveRule(rule.key, payload, e.currentTarget);
+  } });
+  const reset = rule.sends_message && el('button', { class: 'button', type: 'button', text: 'استعادة النص الأصلي', onclick: e => saveRule(rule.key, { message: '' }, e.currentTarget) });
+  body.append(el('p', { class: 'muted', text: rule.description }), ...fields, el('div', { class: 'actions' }, save, reset));
+  return el('div', { class: 'rule' },
+    el('div', { class: 'rule-head' }, el('label', { class: 'switch' }, toggle, el('span', { text: rule.enabled ? 'مفعّلة' : 'موقوفة' })), el('b', { text: rule.label }),
+      el('span', { class: 'pill', text: rule.sends_message ? 'رسالة للعميل' : 'مهمة داخلية' }),
+      el('button', { class: 'button', type: 'button', text: 'تفاصيل', onclick: () => { body.hidden = !body.hidden; } })),
+    body);
+}
+
+function saveRule(key, payload, button) {
+  run(button, () => api(`/automation/rules/${key}`, { method: 'PUT', body: payload }), 'حُفظت القاعدة').then(renderAutomation);
+}
+
+function renderAutomation(data) {
+  automation = data;
+  const live = data.messaging_mode === 'live';
+  const notice = document.getElementById('mode-notice');
+  notice.className = live ? 'notice' : 'notice error';
+  notice.textContent = live ? `الإرسال فعلي عبر ${data.customer_channel === 'whatsapp' ? 'واتساب' : 'SMS'}.`
+    : 'الوضع التجريبي: تُسجَّل الرسائل في السجل ولا تصل للعملاء. فعّل الوضع الفعلي بعد إضافة بيانات المزوّد على الخادم.';
+  const f = document.getElementById('channel-form');
+  f.messaging_mode.value = data.messaging_mode; f.customer_channel.value = data.customer_channel;
+  const cfg = data.configured_channels;
+  document.getElementById('channel-status').textContent = `بيانات المزوّد على الخادم: واتساب ${cfg.whatsapp ? '✓ موجودة' : '✗ غير موجودة'} · SMS ${cfg.sms ? '✓ موجودة' : '✗ غير موجودة'}`;
+  document.getElementById('rules').replaceChildren(...data.rules.map(ruleCard));
+}
+
+async function loadMessages() {
+  const status = document.getElementById('msg-filter').value;
+  const rows = await api(`/notifications${status ? `?status=${status}` : ''}`);
+  document.getElementById('messages').replaceChildren(...(rows.length ? rows.map(m => {
+    const [label, tone] = MSG_STATUS[m.status];
+    return el('div', { class: 'msg' },
+      el('div', { class: 'msg-head' }, el('span', {}, el('b', { text: m.customer_name }), ` · ${m.kind_label} · ${m.channel === 'whatsapp' ? 'واتساب' : 'SMS'}`), el('span', { class: `pill ${tone}`, text: label })),
+      el('div', { class: 'msg-body', text: m.body }),
+      el('div', { class: 'muted', style: 'margin-top:4px' }, `${date(m.created_at)}${m.created_by ? ` · ${m.created_by}` : ''}${m.last_error ? ` · ${m.last_error}` : ''}`,
+        ['failed', 'skipped'].includes(m.status) ? el('button', { class: 'button', type: 'button', style: 'margin-right:8px', text: 'إعادة الإرسال',
+          onclick: e => run(e.currentTarget, () => api(`/notifications/${m.notification_id}/retry`, { method: 'POST' }), 'أُعيدت للانتظار').then(loadMessages) }) : null));
+  }) : [el('div', { class: 'empty', text: 'لا توجد رسائل.' })]));
+}
+
+async function loadAutomation() { renderAutomation(await api('/automation')); await loadMessages(); }
+document.getElementById('msg-filter').addEventListener('change', loadMessages);
+document.getElementById('channel-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  const button = e.submitter;
+  button.disabled = true;
+  api('/automation/settings', { method: 'PUT', body: { messaging_mode: f.messaging_mode.value, customer_channel: f.customer_channel.value } })
+    .then(data => { renderAutomation(data); BUD.notify('حُفظت إعدادات القناة'); })
+    .catch(error => { BUD.notify(error.message); renderAutomation(automation); })  // show what is really saved
+    .finally(() => { button.disabled = false; });
+});
+document.getElementById('run-now').addEventListener('click', e => run(e.currentTarget, () => api('/automation/run', { method: 'POST' })).then(r => {
+  BUD.notify(`تم: ${r.renewal_reminders} تذكير تجديد، ${r.auto_renewals} طلب تجديد، ${r.installments.due + r.installments.overdue} تذكير قسط، ${r.expired} وثيقة منتهية، رسائل: ${r.outbox.sent + r.outbox.simulated}`);
+  loadMessages();
+}));
 
 BUD_ME.then(async profile => {
   me = profile;

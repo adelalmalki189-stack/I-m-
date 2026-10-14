@@ -24,11 +24,15 @@
 <label class="field"><span>الجوال</span><input name="phone" type="tel" dir="ltr"></label>
 <label class="field"><span>البريد</span><input name="email" type="email" dir="ltr"></label>
 <label class="field full"><span>ملاحظات</span><textarea name="notes" rows="2"></textarea></label>
+<label class="field full" style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="messaging_opt_out" style="width:auto;min-height:0"> <span>العميل لا يرغب في استلام رسائل واتساب/SMS</span></label>
 <div class="full"><button class="button primary" type="submit">حفظ التعديلات</button></div>
 </form>
 <div class="section-title">الوثائق</div><div id="p-policies"></div>
 <div class="section-title">الطلبات</div><div id="p-requests"></div>
 <div class="section-title">المطالبات</div><div id="p-claims"></div>
+<div class="section-title">الرسائل</div>
+<form id="message-form" class="actions" style="margin-bottom:8px"><input name="text" class="search" style="flex:1;width:auto" required minlength="2" maxlength="1000" placeholder="اكتب رسالة للعميل (واتساب/SMS)"><button class="button primary" type="submit">إرسال</button></form>
+<div id="p-messages"></div>
 </div></section>
 <section id="profile-empty" class="panel"><div class="empty">اختر عميلًا لعرض ملفه.</div></section>
 </div></main></div>
@@ -53,7 +57,7 @@ function render() {
   document.getElementById('count').textContent = `${visible.length} عميل`;
 }
 
-const line = (href, title, sub, badge) => el('a', { class: 'line', href }, el('span', { class: 'grow' }, el('div', { class: 'strong', text: title }), el('div', { class: 'sub', text: sub })), badge);
+const line = (href, title, sub, badge) => el(href ? 'a' : 'div', { class: 'line', href }, el('span', { class: 'grow' }, el('div', { class: 'strong', text: title }), el('div', { class: 'sub', text: sub })), badge);
 const none = text => el('div', { class: 'muted', text });
 
 async function select(id) {
@@ -67,7 +71,8 @@ async function select(id) {
   document.getElementById('p-title').textContent = c.display_name;
   document.getElementById('p-sub').textContent = `${c.requests_count} طلب · ${c.active_policies} وثيقة سارية · عميل منذ ${date(c.created_at).split('،')[0]}`;
   contact.full_name.value = c.full_name; contact.company_name.value = c.company_name || '';
-  contact.phone.value = c.phone || ''; contact.email.value = c.email || ''; contact.notes.value = p.notes || '';
+  contact.phone.value = c.phone || ''; contact.email.value = c.email || ''; contact.notes.value = p.notes || ''; contact.messaging_opt_out.checked = c.messaging_opt_out;
+  loadMessages(id);
   document.getElementById('p-policies').replaceChildren(...(p.policies.length ? p.policies.map(x => line(`policies.html?policy=${x.policy_id}`, `${x.policy_number} · ${x.insurance_type_label}`,
     `${x.insurer_name} · ${money(x.premium_amount)} · حتى ${date(x.effective_to).split('،')[0]}`, el('span', { class: 'pill', text: POLICY[x.effective_status] || x.effective_status }))) : [none('لا توجد وثائق')]));
   document.getElementById('p-requests').replaceChildren(...(p.requests.length ? p.requests.map(r => line(`requests.html?request=${r.request_id}`, r.request_number,
@@ -79,8 +84,20 @@ async function select(id) {
 contact.addEventListener('submit', e => {
   e.preventDefault();
   const f = Object.fromEntries(new FormData(contact));
-  const body = { full_name: f.full_name.trim(), company_name: f.company_name.trim() || null, phone: f.phone.trim() || null, email: f.email.trim() || null, notes: f.notes.trim() || null };
+  const body = { full_name: f.full_name.trim(), company_name: f.company_name.trim() || null, phone: f.phone.trim() || null, email: f.email.trim() || null, notes: f.notes.trim() || null, messaging_opt_out: contact.messaging_opt_out.checked };
   run(e.submitter, () => api(`/customers/${selectedId}`, { method: 'PATCH', body }), 'حُفظت بيانات العميل').then(async () => { await load(); await select(selectedId); });
+});
+const MSG_STATUS = { queued: ['بالانتظار', ''], sent: ['أُرسلت', 'blue'], simulated: ['تجريبية', ''], failed: ['فشلت', 'red'], skipped: ['لم تُرسل', 'red'] };
+async function loadMessages(id) {
+  const rows = await api(`/notifications?customer_id=${id}&limit=50`);
+  document.getElementById('p-messages').replaceChildren(...(rows.length ? rows.map(m => line(null, m.kind_label, `${date(m.created_at)} · ${m.body.slice(0, 90)}${m.body.length > 90 ? '…' : ''}`,
+    el('span', { class: `pill ${MSG_STATUS[m.status][1]}`, text: MSG_STATUS[m.status][0], title: m.last_error || '' }))) : [none('لا توجد رسائل')]));
+}
+document.getElementById('message-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  run(e.submitter, () => api(`/customers/${selectedId}/messages`, { method: 'POST', body: { text: form.text.value.trim() } }), 'أُضيفت الرسالة لقائمة الإرسال')
+    .then(() => { form.reset(); loadMessages(selectedId); });
 });
 document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); render(); });
 async function load() { customers = await api('/portfolio/customers'); render(); }

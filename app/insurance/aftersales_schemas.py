@@ -135,6 +135,7 @@ class CustomerUpdateRequest(BaseModel):
     email: EmailStr | None = None
     phone: str | None = None
     notes: str | None = Field(default=None, max_length=5000)
+    messaging_opt_out: bool | None = None
 
     @field_validator("phone")
     @classmethod
@@ -150,6 +151,7 @@ class CustomerSummary(BaseModel):
     company_name: str | None
     email: str | None
     phone: str | None
+    messaging_opt_out: bool = False
     requests_count: int
     open_requests: int
     active_policies: int

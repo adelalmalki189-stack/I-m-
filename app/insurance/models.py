@@ -98,6 +98,8 @@ class Customer(Base, TimestampMixin):
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # The customer asked not to receive WhatsApp/SMS messages from BUD.
+    messaging_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     requests: Mapped[list[InsuranceRequest]] = relationship(back_populates="customer")
 

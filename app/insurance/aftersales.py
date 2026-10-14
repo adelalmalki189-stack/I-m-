@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
+from uuid import uuid4
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.insurance.models import (
     ClaimStatus,
     InsurancePolicy,
+    InsurancePolicyStatus,
+    InsuranceRequest,
+    InsuranceRequestStatus,
     PremiumInstallment,
 )
 
@@ -86,3 +93,50 @@ CLAIM_TRANSITIONS: dict[ClaimStatus, set[ClaimStatus]] = {
 
 def claim_next(status: ClaimStatus) -> list[str]:
     return sorted(s.value for s in CLAIM_TRANSITIONS[status])
+
+
+class RenewalNotAllowed(Exception):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
+async def open_renewal_for(session: AsyncSession, policy_id: str) -> InsuranceRequest | None:
+    result = await session.execute(
+        select(InsuranceRequest).where(
+            InsuranceRequest.renewal_of_policy_id == policy_id,
+            InsuranceRequest.status != InsuranceRequestStatus.CLOSED,
+        )
+    )
+    return result.scalars().first()
+
+
+async def create_renewal_request(
+    session: AsyncSession, policy: InsurancePolicy, sales_employee_id: str | None
+) -> InsuranceRequest:
+    """New request for the same customer and risk, linked to `policy` (flushed, not committed)."""
+    if policy.status == InsurancePolicyStatus.CANCELLED:
+        raise RenewalNotAllowed("POLICY_CANCELLED", "A cancelled policy cannot be renewed")
+    if (existing := await open_renewal_for(session, policy.policy_id)) is not None:
+        raise RenewalNotAllowed("RENEWAL_EXISTS", f"Renewal request {existing.request_number} already exists")
+    original = await session.get(InsuranceRequest, policy.request_id)
+    if original is None:
+        raise RenewalNotAllowed("REQUEST_NOT_FOUND", "The policy's original request is missing")
+    renewal = InsuranceRequest(
+        customer_id=original.customer_id,
+        request_number=f"IR-{datetime.now(UTC).strftime('%Y%m%d')}-{uuid4().hex[:8].upper()}",
+        insurance_type=original.insurance_type,
+        product_type=original.product_type,
+        request_source="renewal",
+        status=InsuranceRequestStatus.NEW,
+        coverage_amount=policy.coverage_amount or original.coverage_amount,
+        customer_priority=original.customer_priority,
+        request_details=original.request_details,
+        preferred_insurers="[]",
+        sales_employee_id=sales_employee_id or original.sales_employee_id,
+        renewal_of_policy_id=policy.policy_id,
+        notes=f"تجديد للوثيقة {policy.policy_number}",
+    )
+    session.add(renewal)
+    await session.flush()
+    return renewal

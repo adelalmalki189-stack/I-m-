@@ -29,5 +29,15 @@ class Settings(BaseSettings):
     portal_requests_per_hour: int = 10
     portal_max_upload_mb: int = 10
 
+    # Customer messaging. Credentials only come from the environment; the manager chooses
+    # sandbox/live and the channel in Settings → Automation.
+    whatsapp_token: str | None = None
+    whatsapp_phone_number_id: str | None = None
+    whatsapp_api_version: str = "v21.0"
+    whatsapp_template_language: str = "ar"
+    unifonic_app_sid: str | None = None
+    unifonic_sender_id: str | None = None
+    unifonic_api_url: str = "https://el.cloud.unifonic.com/rest/SMS/messages"
+
 
 settings = Settings()
