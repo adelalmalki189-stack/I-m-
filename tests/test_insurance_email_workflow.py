@@ -69,9 +69,18 @@ async def test_create_insurer_template_and_submission_requires_approval(db_sessi
         assert approval_response.status_code == 200
         assert approval_response.json()["status"] == "approved"
 
+        # Email delivery is disabled by default: sending must refuse rather than pretend.
         send_response = client.post(f"/insurance/submissions/{submission['submission_id']}/send")
-        assert send_response.status_code == 200
-        assert send_response.json()["status"] == "sent"
+        assert send_response.status_code == 409
+        assert send_response.json()["detail"]["error_code"] == "EMAIL_DELIVERY_DISABLED"
+        assert client.get(f"/insurance/submissions/{submission['submission_id']}").json()["status"] == "approved"
+
+        marked = client.post(
+            f"/insurance/submissions/{submission['submission_id']}/mark-sent",
+            json={"note": "Sent from the underwriter's mailbox"},
+        )
+        assert marked.status_code == 200
+        assert marked.json()["status"] == "sent"
 
 
 async def test_sales_employee_request_routes_to_underwriting(db_session):
@@ -366,7 +375,7 @@ async def test_send_submission_uses_email_and_pdf_attachment(db_session, monkeyp
     captured = {}
 
     class FakeSMTP:
-        def __init__(self, host, port):
+        def __init__(self, host, port, timeout=None):
             self.host = host
             self.port = port
             self.sent = None

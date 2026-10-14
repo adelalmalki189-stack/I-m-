@@ -1,7 +1,4 @@
-# Single image, two roles selected at `docker run`/compose time via CMD override:
-# the FastAPI app + dashboard (default CMD), or the live Scanner Loop
-# (app/scripts/run_live_scanner.py) — see docker-compose.yml. Same image either
-# way so there is never a version mismatch between the two processes.
+# BUD (بُعد) — FastAPI app + dashboard. Migrations run via the compose `migrate` service.
 FROM python:3.11-slim
 
 WORKDIR /app

@@ -1,19 +1,17 @@
 [project]
-name = "options-trading-system"
+name = "bud"
 version = "0.1.0"
-description = "Options Trading Decision Support System — V0.1 (Phase 0: Foundation)"
+description = "BUD (بُعد) — digital insurance brokerage platform"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
-    "sqlalchemy>=2.0",
+    "sqlalchemy[asyncio]>=2.0",
     "asyncpg>=0.29",
     "alembic>=1.13",
-    "redis>=5.0",
-    "pydantic>=2.7",
+    "pydantic[email]>=2.7",
     "pydantic-settings>=2.3",
-    "pandas-market-calendars>=4.4",
-    "ib-insync>=0.9.86",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]

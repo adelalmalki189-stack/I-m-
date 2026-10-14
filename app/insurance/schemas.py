@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.insurance.models import InsurancePolicyStatus, InsuranceRequestStatus, InsuranceSubmissionStatus
 
@@ -129,6 +131,12 @@ class InsuranceRequestResponse(BaseModel):
     coverage_amount: str | None = None
     summary: str | None = None
     notes: str | None = None
+    customer_name: str | None = None
+    insurance_type_label: str | None = None
+    product_type_label: str | None = None
+    request_details: dict[str, Any] = Field(default_factory=dict)
+    allowed_transitions: list[str] = Field(default_factory=list)
+    last_status_change_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     documents: list[RequestDocumentResponse] = []
@@ -284,6 +292,14 @@ class InsurerResponse(BaseModel):
     updated_at: datetime
 
 
+class InsurerUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    email: EmailStr | None = None
+    contact_name: str | None = Field(default=None, max_length=200)
+    is_active: bool | None = None
+    notes: str | None = None
+
+
 class InsurerTemplateCreateRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=200)
     category: str = Field(..., min_length=2, max_length=80)
@@ -297,7 +313,7 @@ class InsurerTemplateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     template_id: str
-    insurer_id: str
+    insurer_id: str | None = None
     name: str
     category: str
     subject_template: str
@@ -306,6 +322,31 @@ class InsurerTemplateResponse(BaseModel):
     active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class DefaultTemplateCreateRequest(InsurerTemplateCreateRequest):
+    insurer_id: str | None = None  # None = default template for the category
+
+
+class InsurerTemplateUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    subject_template: str | None = Field(default=None, min_length=3)
+    body_template: str | None = Field(default=None, min_length=3)
+    required_attachments: list[str] | None = None
+    active: bool | None = None
+
+
+class TemplatePreviewRequest(BaseModel):
+    subject_template: str
+    body_template: str
+    request_id: str | None = None
+    insurer_id: str | None = None
+
+
+class TemplatePreviewResponse(BaseModel):
+    subject: str
+    body: str
+    unknown_placeholders: list[str]
 
 
 class InsuranceSubmissionCreateRequest(BaseModel):
@@ -328,9 +369,25 @@ class InsuranceSubmissionResponse(BaseModel):
     status: InsuranceSubmissionStatus
     approved_for_send: bool
     sent_at: datetime | None = None
+    delivery_error: str | None = None
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class InsuranceSubmissionUpdateRequest(BaseModel):
+    subject: str | None = Field(default=None, min_length=3, max_length=255)
+    email_body: str | None = Field(default=None, min_length=3)
+    notes: str | None = None
+
+
+class BulkSubmissionCreateRequest(BaseModel):
+    insurer_ids: list[str] = Field(..., min_length=1)
+    notes: str | None = None
+
+
+class SubmissionMarkSentRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
 
 
 class InsuranceQuoteCreateRequest(BaseModel):
@@ -388,3 +445,53 @@ class InsuranceQuoteResponse(BaseModel):
     source_channel: str
     created_at: datetime
     updated_at: datetime
+
+
+_NON_DIGITS = re.compile(r"\D")
+
+
+def normalize_saudi_mobile(raw: str) -> str:
+    """Return +9665XXXXXXXX for any common Saudi mobile spelling, else raise ValueError."""
+    digits = _NON_DIGITS.sub("", raw)
+    for prefix in ("00966", "966", "0"):
+        if digits.startswith(prefix):
+            digits = digits[len(prefix):]
+            break
+    if len(digits) != 9 or not digits.startswith("5"):
+        raise ValueError("رقم الجوال غير صحيح؛ استخدم صيغة 05XXXXXXXX")
+    return f"+966{digits}"
+
+
+class PortalRequestCreate(BaseModel):
+    """A customer's request from the public portal: contact details + risk details in one call."""
+
+    customer_type: str = Field(default="individual", pattern="^(individual|business)$")
+    full_name: str = Field(..., min_length=2, max_length=200)
+    company_name: str | None = Field(default=None, max_length=200)
+    mobile: str
+    email: EmailStr | None = None
+    insurance_type: str = Field(..., max_length=80)
+    product_type: str = Field(..., max_length=80)
+    details: dict[str, Any] = Field(default_factory=dict)
+    coverage_amount: str | None = Field(default=None, max_length=50)
+    customer_priority: str | None = Field(default=None, max_length=30)
+    notes: str | None = Field(default=None, max_length=2000)
+    consent: bool
+
+    @field_validator("mobile")
+    @classmethod
+    def _mobile(cls, value: str) -> str:
+        return normalize_saudi_mobile(value)
+
+    @field_validator("consent")
+    @classmethod
+    def _consent(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("الموافقة على استخدام البيانات مطلوبة")
+        return value
+
+
+class PortalRequestResponse(BaseModel):
+    request_id: str
+    request_number: str
+    status: InsuranceRequestStatus

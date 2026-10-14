@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum as PyEnum
 
 from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, new_uuid
+
+
+def _values(enum_cls: type[PyEnum]) -> list[str]:
+    """Persist enum *values* ("new"), matching the migrations, not member names ("NEW")."""
+    return [member.value for member in enum_cls]
 
 
 class CustomerType(str, PyEnum):
@@ -18,6 +24,8 @@ class InsuranceRequestStatus(str, PyEnum):
     NEEDS_INFO = "needs_info"
     UNDER_REVIEW = "under_review"
     READY_FOR_QUOTE = "ready_for_quote"
+    QUOTE_SELECTED = "quote_selected"
+    POLICY_ISSUED = "policy_issued"
     CLOSED = "closed"
 
 
@@ -55,6 +63,7 @@ class InsuranceSubmissionStatus(str, PyEnum):
     PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"
     SENT = "sent"
+    FAILED = "failed"
     FOLLOW_UP_REQUIRED = "follow_up_required"
     REJECTED = "rejected"
     CLOSED = "closed"
@@ -148,7 +157,7 @@ class InsuranceRequest(Base, TimestampMixin):
     product_type: Mapped[str] = mapped_column(String(80), nullable=False)
     request_source: Mapped[str] = mapped_column(String(50), nullable=False, default="portal")
     status: Mapped[InsuranceRequestStatus] = mapped_column(
-        Enum(InsuranceRequestStatus, native_enum=False),
+        Enum(InsuranceRequestStatus, native_enum=False, values_callable=_values, name="insurance_request_status"),
         nullable=False,
         default=InsuranceRequestStatus.NEW,
     )
@@ -175,7 +184,8 @@ class InsuranceRequest(Base, TimestampMixin):
     customer_preferences: Mapped[str | None] = mapped_column(Text, nullable=True)
     sales_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     selected_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    last_status_change_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    request_details: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: catalog field key -> value
+    last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     customer: Mapped[Customer] = relationship(back_populates="requests")
     documents: Mapped[list["RequestDocument"]] = relationship(back_populates="request")
@@ -203,16 +213,16 @@ class InsurancePolicy(Base, TimestampMixin):
     selected_quote_id: Mapped[str] = mapped_column(String(36), nullable=False)
     policy_number: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     status: Mapped[InsurancePolicyStatus] = mapped_column(
-        Enum(InsurancePolicyStatus, native_enum=False),
+        Enum(InsurancePolicyStatus, native_enum=False, values_callable=_values, name="insurance_policy_status"),
         nullable=False,
         default=InsurancePolicyStatus.ISSUED,
     )
     coverage_amount: Mapped[str | None] = mapped_column(String(50), nullable=True)
     premium_amount: Mapped[str | None] = mapped_column(String(50), nullable=True)
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="SAR")
-    effective_from: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    effective_to: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    issued_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="policies")
@@ -323,7 +333,9 @@ class InsurerTemplate(Base, TimestampMixin):
     __tablename__ = "insurance_insurer_templates"
 
     template_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    insurer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False)
+    # NULL insurer_id = the default template for this category (insurance line), used for
+    # any insurer that has no template of its own.
+    insurer_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     category: Mapped[str] = mapped_column(String(80), nullable=False)
     subject_template: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -331,7 +343,7 @@ class InsurerTemplate(Base, TimestampMixin):
     required_attachments: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    insurer: Mapped[Insurer] = relationship(back_populates="templates")
+    insurer: Mapped[Insurer | None] = relationship(back_populates="templates")
 
 
 class InsuranceSubmission(Base, TimestampMixin):
@@ -349,13 +361,14 @@ class InsuranceSubmission(Base, TimestampMixin):
         default=InsurerCommunicationChannel.EMAIL.value,
     )
     status: Mapped[InsuranceSubmissionStatus] = mapped_column(
-        Enum(InsuranceSubmissionStatus, native_enum=False),
+        Enum(InsuranceSubmissionStatus, native_enum=False, values_callable=_values, name="insurance_submission_status"),
         nullable=False,
         default=InsuranceSubmissionStatus.PENDING_APPROVAL,
     )
     approved_for_send: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    sent_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_follow_up_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_follow_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="submissions")
@@ -373,7 +386,7 @@ class InsuranceQuote(Base, TimestampMixin):
     coverage_limit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     exclusions: Mapped[str | None] = mapped_column(Text, nullable=True)
     conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
-    validity_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    validity_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
     source_channel: Mapped[str] = mapped_column(String(30), nullable=False, default=InsurerCommunicationChannel.EMAIL.value)
 

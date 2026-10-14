@@ -3,65 +3,136 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
 <title>BUD | بُعد للوساطة التأمينية</title>
+<link rel="stylesheet" href="bud.css">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
-:root{--ink:#0A0A0B;--muted:#4A4A55;--line:#E6E9F2;--paper:#E6E9F2;--white:#FFFFFF;--pine:#0A0A0B;--teal:#2D5BFF;--lime:#FFFFFF;--aqua:#E6E9F2;--blue:#E6E9F2;--orange:#E6E9F2;--red:#4A4A55}
-*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans Arabic',Tahoma,sans-serif;font-size:13px}button,input,select{font:inherit}button{cursor:pointer}
-.app{min-height:100vh;display:grid;grid-template-columns:238px minmax(0,1fr)}.side{position:sticky;top:0;height:100vh;padding:23px 15px 16px;background:var(--pine);color:#FFFFFF;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:0 8px 28px}.brand-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid #4A4A55;border-radius:11px;background:#0A0A0B;color:var(--lime);font-size:13px;font-weight:700;letter-spacing:1px}.brand-name{font-size:19px;font-weight:700;line-height:1.1}.brand-sub{margin-top:4px;color:#E6E9F2;font-size:10px}.nav-label{margin:8px 10px;color:#4A4A55;font-size:10px}.nav{display:grid;gap:3px}.nav button{display:flex;align-items:center;gap:11px;min-height:41px;width:100%;padding:0 11px;border:0;border-radius:5px;background:transparent;color:#E6E9F2;text-align:right;font-size:12px}.nav button:hover{background:#4A4A55;color:#FFFFFF}.nav button.active{background:#2D5BFF;color:#FFFFFF;box-shadow:inset -3px 0 var(--lime)}.nav-icon{display:grid;place-items:center;width:19px;color:#E6E9F2;font-size:15px}.nav button.active .nav-icon{color:var(--lime)}.count{margin-right:auto;padding:2px 6px;border-radius:4px;background:#4A4A55;color:#FFFFFF;font-size:9px}.user{margin-top:auto;border-top:1px solid #4A4A55;padding:14px 7px 0;display:flex;align-items:center;gap:9px}.avatar{display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:#E6E9F2;color:var(--pine);font-weight:700}.user b{display:block;font-size:11px}.user small{display:block;margin-top:3px;color:#E6E9F2;font-size:9px}.user button{margin-right:auto;border:0;background:none;color:#E6E9F2;font-size:17px}
-main{min-width:0;padding:23px clamp(17px,3vw,38px) 35px}.top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:25px}.crumb{color:var(--muted);font-size:11px}.crumb b{color:var(--ink)}.top-actions{display:flex;align-items:center;gap:8px}.search{width:min(245px,28vw);height:36px;padding:0 11px;border:1px solid var(--line);border-radius:5px;background:#FFFFFF;color:var(--ink);font-size:11px}.search:focus,input:focus,select:focus{outline:2px solid #2D5BFF;outline-offset:1px}.icon-button{position:relative;width:37px;height:36px;border:1px solid var(--line);border-radius:5px;background:#FFFFFF;color:var(--ink);font-size:16px}.notify-dot{position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#2D5BFF}.heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:17px}.heading h1{margin:0;font-size:23px}.subtitle{margin:4px 0 0;color:var(--muted);font-size:11px}.heading-actions{display:flex;align-items:center;gap:8px}.period{display:flex;gap:3px;padding:3px;border:1px solid var(--line);border-radius:6px;background:#FFFFFF}.period button{padding:6px 9px;border:0;border-radius:4px;background:none;color:var(--muted);font-size:10px}.period button.selected{background:#E6E9F2;color:#2D5BFF;font-weight:600}.primary{height:35px;padding:0 12px;border:0;border-radius:5px;background:var(--teal);color:white;font-size:11px;font-weight:600}.primary:hover{background:#2D5BFF}.primary .plus{margin-left:5px;font-size:16px;vertical-align:-1px}
-.demo{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 12px;border:1px solid #E6E9F2;border-radius:5px;background:#E6E9F2;color:#4A4A55;font-size:10px}.demo-mark{color:#2D5BFF;font-weight:700}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:14px}.metric{min-width:0;padding:14px 15px;border:1px solid var(--line);border-radius:7px;background:white}.metric-head{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:10px}.metric-symbol{display:grid;place-items:center;width:28px;height:28px;border-radius:7px;font-size:14px}.sym-teal{background:var(--aqua);color:var(--teal)}.sym-lime{background:#E6E9F2;color:#4A4A55}.sym-blue{background:var(--blue);color:#2D5BFF}.sym-orange{background:var(--orange);color:#4A4A55}.metric-value{margin-top:10px;font-size:23px;font-weight:700;line-height:1.1}.metric-note{margin-top:7px;color:var(--muted);font-size:9px}.positive{color:#2D5BFF;font-weight:600}.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(260px,.85fr);gap:13px;align-items:start}.stack{display:grid;gap:13px}.panel{min-width:0;border:1px solid var(--line);border-radius:7px;background:white}.panel-head{min-height:51px;padding:0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E6E9F2}.panel-title{margin:0;font-size:12px;font-weight:700}.panel-sub{margin-top:3px;color:var(--muted);font-size:9px}.plain-button{border:0;background:none;color:var(--teal);font-size:10px;font-weight:600;white-space:nowrap}.plain-button:hover{text-decoration:underline}.funnel{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:14px}.stage{position:relative;min-height:73px;padding:10px;border-radius:5px;background:#E6E9F2}.stage:not(:last-child)::after{content:'←';position:absolute;left:-8px;top:28px;z-index:1;color:#4A4A55;font-size:11px}.stage-label{color:var(--muted);font-size:9px}.stage strong{display:block;margin-top:5px;font-size:19px}.stage small{display:block;margin-top:2px;color:var(--muted);font-size:8px}.stage.current{background:#E6E9F2}.stage.current strong{color:var(--teal)}
-.request-list{padding:0 13px}.request{min-height:56px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #E6E9F2}.request:last-child{border:0}.request-avatar{display:grid;place-items:center;flex:0 0 30px;height:30px;border-radius:7px;background:#E6E9F2;color:#4A4A55;font-size:10px;font-weight:700}.request-info{flex:1;min-width:0}.request-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:600}.request-meta{margin-top:4px;color:var(--muted);font-size:8px}.product-tag{padding:4px 7px;border-radius:4px;background:#E6E9F2;color:#4A4A55;font-size:8px;white-space:nowrap}.status-tag{padding:4px 7px;border-radius:4px;background:#E6E9F2;color:#2D5BFF;font-size:8px;white-space:nowrap}.status-tag.wait{background:#E6E9F2;color:#2D5BFF}.status-tag.review{background:#E6E9F2;color:#2D5BFF}.pipeline-foot{display:flex;justify-content:center;padding:9px;border-top:1px solid #E6E9F2}.chart-area{padding:13px 15px 11px}.chart-summary{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}.chart-value{font-size:20px;font-weight:700}.chart-delta{color:#2D5BFF;font-size:9px}.chart{height:110px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));align-items:end;gap:7px;padding:7px 3px 0;border-bottom:1px solid var(--line);background:repeating-linear-gradient(to bottom,transparent 0,transparent 27px,#E6E9F2 28px)}.bar{height:var(--h);width:min(19px,72%);margin:0 auto;border-radius:3px 3px 0 0;background:#E6E9F2}.bar:last-child{background:var(--teal)}.months{display:grid;grid-template-columns:repeat(12,1fr);gap:7px;padding:5px 3px 0;text-align:center;color:var(--muted);font-size:8px}.task{display:flex;align-items:center;gap:9px;min-height:53px;margin:0 13px;border-bottom:1px solid #E6E9F2}.task:last-child{border:0}.task-check{accent-color:var(--teal)}.task-text{flex:1;min-width:0}.task-text b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.task-text small{display:block;margin-top:3px;color:var(--muted);font-size:8px}.task-time{color:var(--muted);font-size:8px;white-space:nowrap}.task.done b{color:#4A4A55;text-decoration:line-through}.automation{padding:13px 14px}.auto-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #E6E9F2;font-size:10px}.auto-row:last-child{border:0}.auto-value{color:var(--teal);font-weight:700}.progress{height:5px;margin:6px 0 1px;border-radius:6px;background:#E6E9F2;overflow:hidden}.progress span{display:block;width:78%;height:100%;border-radius:6px;background:var(--teal)}
-.toast{position:fixed;bottom:20px;right:50%;z-index:4;transform:translate(50%,10px);opacity:0;pointer-events:none;padding:9px 13px;border-radius:5px;background:#0A0A0B;color:white;font-size:11px;transition:.2s}.toast.show{transform:translate(50%,0);opacity:1}.modal-backdrop{position:fixed;inset:0;z-index:5;display:none;place-items:center;padding:16px;background:#0A0A0B80}.modal-backdrop.open{display:grid}.modal{width:min(440px,100%);padding:19px;border-radius:8px;background:white;box-shadow:0 14px 40px #0A0A0B35}.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}.modal-head h2{margin:0;font-size:16px}.close{width:30px;height:30px;border:0;border-radius:4px;background:#E6E9F2;color:var(--ink)}.field{display:grid;gap:5px;margin:12px 0}.field label{font-size:10px;font-weight:600}.field input,.field select{height:37px;padding:0 10px;border:1px solid var(--line);border-radius:5px;background:white;color:var(--ink);font-size:11px}.modal-actions{display:flex;justify-content:flex-start;gap:8px;margin-top:16px}.secondary{height:35px;padding:0 12px;border:1px solid var(--line);border-radius:5px;background:white;color:var(--ink);font-size:11px}
-@media(max-width:1080px){.app{grid-template-columns:205px minmax(0,1fr)}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-grid{grid-template-columns:minmax(0,1.35fr) minmax(240px,.9fr)}}
-@media(max-width:760px){.app{display:block}.side{position:relative;height:auto;padding:11px 13px}.brand{padding:0 3px 10px}.brand-icon{width:32px;height:32px}.nav-label,.user{display:none}.nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}.nav button{flex:0 0 auto;width:auto;min-height:34px;padding:0 9px;font-size:10px}.nav-icon{display:none}.nav button.active{box-shadow:inset 0 -2px var(--lime)}main{padding:16px 14px 27px}.top{margin-bottom:19px}.dashboard-grid{grid-template-columns:1fr}.stack{display:contents}.quote-panel{order:1}.chart-panel{order:2}.task-panel{order:3}.automation-panel{order:4}}
-@media(max-width:480px){.heading{display:block}.heading h1{font-size:21px}.heading-actions{justify-content:space-between;margin-top:12px}.search{width:38px;padding:0 5px}.search:focus{position:absolute;top:61px;left:14px;z-index:2;width:calc(100% - 28px);padding:0 10px}.metrics{gap:8px}.metric{padding:11px}.metric-head{font-size:9px}.metric-value{font-size:19px}.metric-note{font-size:8px}.funnel{gap:5px;padding:10px}.stage{min-height:66px;padding:8px 6px}.stage-label{font-size:8px}.stage strong{font-size:17px}.stage small{font-size:7px}.stage:not(:last-child)::after{left:-7px}.chart{gap:4px}}
+.page-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:15px}
+.page-head h1{margin:0;font-size:22px}
+.subtitle{margin:4px 0 0;color:var(--muted);font-size:10px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.metric{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:6px;background:var(--white);color:inherit;text-decoration:none}
+.metric:hover{border-color:var(--blue)}
+.metric-label{color:var(--muted);font-size:9px}
+.metric-value{margin-top:5px;font-size:20px;font-weight:700}
+.metric-foot{margin-top:3px;color:var(--muted);font-size:8px}
+.content{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(275px,.85fr);gap:13px;align-items:start}
+.stack{display:grid;gap:13px}
+.panel{min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--white)}
+.panel-head{min-height:50px;padding:0 13px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}
+.panel-head h2{margin:0;font-size:12px}
+.muted{margin-top:3px;color:var(--muted);font-size:9px}
+.link{color:var(--blue);font-size:10px;font-weight:600;text-decoration:none;white-space:nowrap}.link:hover{text-decoration:underline}
+.funnel{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;padding:13px}
+.stage{position:relative;min-height:70px;padding:10px;border-radius:5px;background:var(--pale);color:inherit;text-decoration:none}
+.stage:hover{outline:1px solid var(--blue)}
+.stage:not(:last-child)::after{content:'←';position:absolute;left:-8px;top:27px;color:var(--gray);font-size:11px}
+.stage-label{color:var(--muted);font-size:9px}
+.stage strong{display:block;margin-top:5px;font-size:19px}
+.stage small{display:block;margin-top:2px;color:var(--muted);font-size:8px}
+.table-wrap{overflow:auto}
+table{width:100%;border-collapse:collapse;text-align:right;white-space:nowrap}
+th,td{padding:10px 11px;border-bottom:1px solid var(--line)}
+th{background:var(--pale);color:var(--gray);font-size:9px;font-weight:500}
+td{font-size:9px}tbody tr:last-child td{border-bottom:0}
+.client{font-weight:600}.meta{margin-top:3px;color:var(--muted);font-size:8px}
+.status{display:inline-flex;padding:4px 7px;border-radius:4px;background:var(--pale);color:var(--gray);font-size:8px}
+.status.new,.status.ready_for_quote{color:var(--blue)}
+.empty{padding:22px;text-align:center;color:var(--muted);font-size:10px}
+.shortcuts{display:grid;padding:4px 13px}
+.shortcut{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
+.shortcut:last-child{border:0}.shortcut:hover b{color:var(--blue)}
+.shortcut-icon{display:grid;place-items:center;flex:0 0 28px;height:28px;border-radius:6px;background:var(--pale);color:var(--blue)}
+.shortcut b{display:block;font-size:10px}.shortcut small{display:block;margin-top:2px;color:var(--muted);font-size:8px}
+.flow{margin:0;padding:12px 13px 12px 13px;list-style:none;counter-reset:step}
+.flow li{position:relative;padding:0 26px 11px 0;font-size:9px;line-height:1.6;color:var(--gray);counter-increment:step}
+.flow li::before{content:counter(step);position:absolute;right:0;top:0;display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--blue);color:var(--white);font-size:8px}
+.flow b{color:var(--ink)}
+@media(max-width:1060px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.content{grid-template-columns:minmax(0,1.35fr) minmax(250px,.9fr)}}
+@media(max-width:760px){.content{grid-template-columns:1fr}.funnel{grid-template-columns:repeat(3,minmax(0,1fr))}.stage:nth-child(3n)::after{display:none}}
+@media(max-width:520px){.page-head{display:block}.page-head .button{margin-top:10px}.metrics{gap:7px}.metric{padding:10px}.metric-value{font-size:18px}.funnel{grid-template-columns:repeat(2,minmax(0,1fr))}.stage::after{display:none}}
 </style>
 </head>
-<body>
-<div class="app">
-<aside class="side"><div class="brand"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></div>
-<div class="nav-label">مساحة العمل</div><nav class="nav" aria-label="القائمة الرئيسية">
-<button class="active" data-section="نظرة عامة"><span class="nav-icon">◫</span>نظرة عامة</button><button data-section="طلبات الأسعار"><span class="nav-icon">⌕</span>طلبات الأسعار <span class="count">12</span></button><button data-section="العملاء"><span class="nav-icon">♙</span>العملاء</button><button data-section="الوثائق"><span class="nav-icon">▤</span>الوثائق والتجديدات</button><button data-section="المطالبات"><span class="nav-icon">◉</span>المطالبات</button><button data-section="التحصيلات"><span class="nav-icon">↗</span>التحصيلات</button>
-<div class="nav-label">الشبكة والإدارة</div><button data-section="شركات التأمين"><span class="nav-icon">⌂</span>شركات التأمين</button><button data-section="التقارير"><span class="nav-icon">▥</span>التقارير</button><button data-section="الإعدادات"><span class="nav-icon">⚙</span>الإعدادات</button></nav>
-<div class="user"><div class="avatar">عم</div><div><b>عمر المنصوري</b><small>مدير العمليات</small></div><button aria-label="قائمة الحساب">···</button></div></aside>
-<main><header class="top"><div class="crumb">بُعد <span aria-hidden="true">/</span> <b>مركز العمليات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث عن عميل أو طلب" aria-label="ابحث عن عميل أو طلب"><button id="notify" class="icon-button" aria-label="الإشعارات" title="الإشعارات">♧<span class="notify-dot"></span></button></div></header>
-<section class="heading"><div><h1>صباح الخير، عمر</h1><p class="subtitle">كل رحلة التأمين الرقمية لفريقك، في مكان واحد.</p></div><div class="heading-actions"><div class="period" aria-label="الفترة"><button>أسبوع</button><button class="selected" aria-pressed="true">هذا الشهر</button><button>السنة</button></div><button id="open-modal" class="primary"><span class="plus">+</span> طلب عرض جديد</button></div></section>
-<div class="demo"><span class="demo-mark">●</span><span>بيانات توضيحية للواجهة. أرقام العملاء والأسعار غير مرتبطة ببيانات إنتاجية.</span></div>
-<section class="metrics" aria-label="مؤشرات التشغيل"><article class="metric"><div class="metric-head"><span>أقساط مكتتبة</span><span class="metric-symbol sym-teal">↗</span></div><div class="metric-value">1.28 <span class="unit">مليون ر.س</span></div><div class="metric-note"><span class="positive">↑ 12.8%</span> عن الشهر السابق</div></article><article class="metric"><div class="metric-head"><span>طلبات عروض جديدة اليوم</span><span class="metric-symbol sym-lime">＋</span></div><div class="metric-value">12</div><div class="metric-note">4 تنتظر مقارنة الأسعار</div></article><article class="metric"><div class="metric-head"><span>وثائق تحتاج تجديدًا</span><span class="metric-symbol sym-orange">◷</span></div><div class="metric-value">28</div><div class="metric-note">خلال 30 يومًا</div></article><article class="metric"><div class="metric-head"><span>عروض تحولت لوثائق</span><span class="metric-symbol sym-blue">✓</span></div><div class="metric-value">76%</div><div class="metric-note">معدل التحويل هذا الشهر</div></article></section>
-<div class="dashboard-grid"><div class="stack">
-<section class="panel quote-panel"><div class="panel-head"><div><h2 class="panel-title">رحلة طلبات التأمين</h2><div class="panel-sub">من الطلب الرقمي حتى إصدار الوثيقة</div></div><button class="plain-button" data-section="طلبات الأسعار">كل الطلبات ←</button></div>
-<div class="funnel"><div class="stage current"><span class="stage-label">طلبات جديدة</span><strong id="new-count">12</strong><small>وصلت اليوم</small></div><div class="stage"><span class="stage-label">مقارنة الأسعار</span><strong>8</strong><small>قيد المعالجة</small></div><div class="stage"><span class="stage-label">بانتظار العميل</span><strong>5</strong><small>عروض مرسلة</small></div><div class="stage"><span class="stage-label">إصدار الوثيقة</span><strong>3</strong><small>جاهزة للإصدار</small></div></div>
-<div class="panel-head"><div><h2 class="panel-title">أحدث الطلبات الرقمية</h2><div class="panel-sub">طلبات وصلت عبر قنوات بُعد</div></div><button class="plain-button" data-section="طلبات الأسعار">عرض الكل ←</button></div>
-<div id="request-list" class="request-list"><div class="request"><div class="request-avatar">ر</div><div class="request-info"><div class="request-name">شركة روافد التقنية</div><div class="request-meta">قبل 8 دقائق · 3 شركات للمقارنة</div></div><span class="product-tag">طبي جماعي</span><span class="status-tag review">مقارنة</span></div><div class="request"><div class="request-avatar">ن</div><div class="request-info"><div class="request-name">نورة القحطاني</div><div class="request-meta">قبل 24 دقيقة · طلب عبر الموقع</div></div><span class="product-tag">مركبات</span><span class="status-tag wait">مراجعة</span></div><div class="request"><div class="request-avatar">أ</div><div class="request-info"><div class="request-name">مؤسسة أفق للمقاولات</div><div class="request-meta">قبل ساعة · 4 شركات للمقارنة</div></div><span class="product-tag">ممتلكات</span><span class="status-tag">عرض جاهز</span></div><div class="request"><div class="request-avatar">م</div><div class="request-info"><div class="request-name">مؤسسة نبراس للتجارة</div><div class="request-meta">قبل ساعتين · طلب عبر التطبيق</div></div><span class="product-tag">أسطول</span><span class="status-tag wait">مراجعة</span></div></div><div class="pipeline-foot"><button class="plain-button" data-section="طلبات الأسعار">فتح صندوق الطلبات الرقمية ←</button></div></section>
-<section class="panel chart-panel"><div class="panel-head"><div><h2 class="panel-title">حجم الأقساط عبر المنصة</h2><div class="panel-sub">إجمالي الأقساط المكتتبة · آخر 12 شهرًا</div></div><button class="plain-button" data-section="التقارير">التقرير التفصيلي ←</button></div><div class="chart-area"><div class="chart-summary"><span class="chart-value">1.28 مليون ر.س</span><span class="chart-delta">↑ 12.8%</span></div><div class="chart" role="img" aria-label="مخطط توضيحي لحجم الأقساط الشهري"><span class="bar" style="--h:36%"></span><span class="bar" style="--h:48%"></span><span class="bar" style="--h:41%"></span><span class="bar" style="--h:57%"></span><span class="bar" style="--h:50%"></span><span class="bar" style="--h:64%"></span><span class="bar" style="--h:58%"></span><span class="bar" style="--h:73%"></span><span class="bar" style="--h:67%"></span><span class="bar" style="--h:82%"></span><span class="bar" style="--h:75%"></span><span class="bar" style="--h:92%"></span></div><div class="months"><span>أكت</span><span>نوف</span><span>ديس</span><span>ينا</span><span>فبر</span><span>مار</span><span>أبر</span><span>ماي</span><span>يون</span><span>يول</span><span>أغس</span><span>سبت</span></div></div></section></div>
-<div class="stack"><section class="panel task-panel"><div class="panel-head"><div><h2 class="panel-title">مهام تحتاج متابعة</h2><div class="panel-sub">مرتبة حسب أولوية العميل</div></div><button class="plain-button" data-section="المهام">كل المهام ←</button></div><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>إرسال مقارنة التأمين الطبي</b><small>شركة روافد التقنية</small></span><span class="task-time">الآن</span></label><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>استكمال بيانات طلب المركبة</b><small>نورة القحطاني</small></span><span class="task-time">10:30</span></label><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>اعتماد عرض تجديد الممتلكات</b><small>مؤسسة أفق للمقاولات</small></span><span class="task-time">12:00</span></label><label class="task"><input class="task-check" type="checkbox"><span class="task-text"><b>متابعة إصدار وثيقة الأسطول</b><small>مؤسسة نبراس للتجارة</small></span><span class="task-time">14:15</span></label></section>
-<section class="panel automation-panel"><div class="panel-head"><div><h2 class="panel-title">عمليات رقمية</h2><div class="panel-sub">مؤشرات تجربة العميل</div></div><span class="metric-symbol sym-lime">✳</span></div><div class="automation"><div class="auto-row"><span>طلبات عبر القنوات الرقمية</span><span class="auto-value">84%</span></div><div class="progress"><span></span></div><div class="auto-row"><span>متوسط تجهيز المقارنة</span><span class="auto-value">4 دقائق</span></div><div class="auto-row"><span>شركات متصلة</span><span class="auto-value">6 شركات</span></div></div></section></div></div>
-</main></div>
+<body><div class="app">
+<aside class="side"></aside><script src="bud-shell.js"></script>
+<main><header class="top"><div class="crumb">بُعد / <b>مركز العمليات</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث في أحدث الطلبات" aria-label="ابحث في أحدث الطلبات"><a class="button primary" href="portal.html">+ طلب عرض جديد</a></div></header>
+<section class="page-head"><div><h1>نظرة عامة</h1><p class="subtitle">ملخص حي لرحلة البيع من الطلب حتى إصدار الوثيقة. التفاصيل في كل صفحة مختصة.</p></div><button id="refresh" class="button" type="button">تحديث</button></section>
+<div id="notice" class="demo" hidden><span class="demo-mark">●</span><span id="notice-text"></span></div>
+<section class="metrics" aria-label="مؤشرات التشغيل">
+<a class="metric" href="requests.html"><div class="metric-label">طلبات مفتوحة</div><div id="m-open" class="metric-value">—</div><div class="metric-foot">لم تُحسم بعد</div></a>
+<a class="metric" href="requests.html"><div class="metric-label">تحتاج استكمال بيانات</div><div id="m-info" class="metric-value">—</div><div class="metric-foot">بانتظار العميل أو الوسيط</div></a>
+<a class="metric" href="policies.html"><div class="metric-label">وثائق سارية</div><div id="m-policies" class="metric-value">—</div><div class="metric-foot">مصدرة أو مفعلة</div></a>
+<a class="metric" href="policies.html"><div class="metric-label">تنتهي خلال 30 يومًا</div><div id="m-renew" class="metric-value">—</div><div class="metric-foot">فرص تجديد</div></a>
+</section>
+<div class="content"><div class="stack">
+<section class="panel"><div class="panel-head"><div><h2>رحلة طلبات التأمين</h2><div class="muted">عدد الطلبات في كل مرحلة من مسار المبيعات</div></div><a class="link" href="requests.html">صندوق الطلبات ←</a></div>
+<div class="funnel">
+<a class="stage" href="requests.html"><span class="stage-label">جديد</span><strong data-stage="new">—</strong><small>وصل حديثًا</small></a>
+<a class="stage" href="requests.html"><span class="stage-label">نواقص بيانات</span><strong data-stage="needs_info">—</strong><small>بانتظار الاستكمال</small></a>
+<a class="stage" href="underwriting.html"><span class="stage-label">قيد الاكتتاب</span><strong data-stage="under_review">—</strong><small>مع المكتتب</small></a>
+<a class="stage" href="underwriting.html"><span class="stage-label">بانتظار العروض</span><strong data-stage="ready_for_quote">—</strong><small>أُرسل للشركات</small></a>
+<a class="stage" href="comparison.html"><span class="stage-label">عرض مختار</span><strong data-stage="quote_selected">—</strong><small>جاهز للإصدار</small></a>
+<a class="stage" href="policies.html"><span class="stage-label">وثيقة صادرة</span><strong data-stage="policy_issued">—</strong><small>تم البيع</small></a>
+</div></section>
+<section class="panel"><div class="panel-head"><div><h2>أحدث الطلبات</h2><div class="muted">آخر 5 طلبات · القائمة الكاملة في صندوق الطلبات</div></div><a class="link" href="requests.html">عرض الكل ←</a></div>
+<div class="table-wrap"><table><thead><tr><th>العميل / الطلب</th><th>الفرع</th><th>المصدر</th><th>الحالة</th></tr></thead><tbody id="latest"></tbody></table><div id="latest-empty" class="empty" hidden></div></div></section>
+</div>
+<aside class="stack">
+<section class="panel"><div class="panel-head"><div><h2>كيف يسير الطلب</h2><div class="muted">مسار المبيعات في بُعد</div></div></div><ol class="flow">
+<li><b>استلام الطلب</b> من بوابة العميل أو موظف المبيعات.</li>
+<li><b>تحويل للاكتتاب</b> لمراجعة الخطر واستكمال النواقص.</li>
+<li><b>إرسال للشركات</b> بعد اعتماد الموظف، عبر قوالب البريد.</li>
+<li><b>مقارنة العروض</b> واختيار العرض المناسب مع العميل.</li>
+<li><b>إصدار الوثيقة</b> ثم المتابعة: تجديد، مطالبات، تحصيل.</li>
+</ol></section>
+<section class="panel"><div class="panel-head"><div><h2>انتقال سريع</h2><div class="muted">كل قسم بصفحة واحدة</div></div></div><div class="shortcuts">
+<a class="shortcut" href="comparison.html"><span class="shortcut-icon">⇄</span><span><b>مقارنة العروض</b><small>عروض الشركات لكل طلب</small></span></a>
+<a class="shortcut" href="claims.html"><span class="shortcut-icon">◉</span><span><b>المطالبات</b><small>بلاغات العملاء ومتابعتها</small></span></a>
+<a class="shortcut" href="collections.html"><span class="shortcut-icon">↗</span><span><b>التحصيلات والعمولات</b><small>الأقساط المستحقة وتسويات الشركات</small></span></a>
+<a class="shortcut" href="reports.html"><span class="shortcut-icon">▥</span><span><b>التقارير</b><small>الإنتاج والتحويل حسب الفترة</small></span></a>
+</div></section>
+</aside></div></main></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title"><form id="request-form" class="modal"><div class="modal-head"><h2 id="modal-title">إضافة طلب عرض</h2><button id="close-modal" class="close" type="button" aria-label="إغلاق">×</button></div><div class="field"><label for="client-name">اسم العميل</label><input id="client-name" name="client" required maxlength="70" placeholder="اسم العميل أو المنشأة"></div><div class="field"><label for="product">نوع التأمين</label><select id="product" name="product"><option>مركبات</option><option>طبي جماعي</option><option>ممتلكات</option><option>مسؤولية مهنية</option><option>سفر</option></select></div><div class="modal-actions"><button class="primary" type="submit">إضافة للطابور التجريبي</button><button id="cancel-modal" class="secondary" type="button">إلغاء</button></div></form></div>
 <script>
+const STATUS_LABELS={new:'جديد',needs_info:'نواقص بيانات',under_review:'قيد الاكتتاب',ready_for_quote:'بانتظار العروض',quote_selected:'عرض مختار',policy_issued:'وثيقة صادرة',closed:'مغلق بدون بيع'};
 const toast=document.getElementById('toast');let toastTimer;
-function notify(message){toast.textContent=message;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2500)}
-const modal=document.getElementById('modal');
-function closeModal(){modal.classList.remove('open')}
-document.getElementById('open-modal').addEventListener('click',()=>{modal.classList.add('open');document.getElementById('client-name').focus()});
-document.getElementById('close-modal').addEventListener('click',closeModal);document.getElementById('cancel-modal').addEventListener('click',closeModal);
-modal.addEventListener('click',event=>{if(event.target===modal)closeModal()});
-document.addEventListener('keydown',event=>{if(event.key==='Escape')closeModal()});
-document.getElementById('request-form').addEventListener('submit',event=>{event.preventDefault();const form=new FormData(event.currentTarget);const name=String(form.get('client')).trim();const product=String(form.get('product'));const row=document.createElement('div');row.className='request';const avatar=document.createElement('div');avatar.className='request-avatar';avatar.textContent=name.slice(0,1);const info=document.createElement('div');info.className='request-info';const client=document.createElement('div');client.className='request-name';client.textContent=name;const meta=document.createElement('div');meta.className='request-meta';meta.textContent='الآن · طلب أضيف محليًا للتجربة';info.append(client,meta);const tag=document.createElement('span');tag.className='product-tag';tag.textContent=product;const status=document.createElement('span');status.className='status-tag wait';status.textContent='جديد';row.append(avatar,info,tag,status);document.getElementById('request-list').prepend(row);const count=document.getElementById('new-count');count.textContent=String(Number(count.textContent)+1);event.currentTarget.reset();closeModal();notify('أضيف الطلب محليًا للمعاينة فقط')});
-document.getElementById('notify').addEventListener('click',()=>notify('ما عندك إشعارات جديدة'));
-document.querySelectorAll('.nav [data-section],.plain-button[data-section]').forEach(button=>button.addEventListener('click',()=>{const section=button.dataset.section;document.querySelectorAll('.nav button').forEach(item=>item.classList.toggle('active',item.dataset.section===section));if(section!=='نظرة عامة')notify(`قسم ${section} غير مربوط بعد`)}));
-document.getElementById('search').addEventListener('input',event=>{const query=event.target.value.trim().toLocaleLowerCase('ar');document.querySelectorAll('.request').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('ar').includes(query)})});
-document.querySelectorAll('.period button').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('.period button').forEach(item=>{item.classList.toggle('selected',item===button);item.setAttribute('aria-pressed',item===button?'true':'false')});notify('تغيير الفترة للعرض فقط؛ البيانات التجريبية ثابتة')}));
-document.querySelectorAll('.task-check').forEach(check=>check.addEventListener('change',()=>check.closest('.task').classList.toggle('done',check.checked)));
-document.querySelectorAll('[data-section="طلبات الأسعار"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='requests.html'}));
-document.querySelectorAll('[data-section="العملاء"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='clients.html'}));
-document.querySelectorAll('[data-section="الوثائق"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='policies.html'}));
-document.querySelectorAll('[data-section="المطالبات"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='claims.html'}));
-document.querySelectorAll('[data-section="التحصيلات"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='collections.html'}));
-document.querySelectorAll('[data-section="شركات التأمين"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='insurers.html'}));
-document.querySelectorAll('[data-section="التقارير"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='reports.html'}));
-document.querySelectorAll('[data-section="الإعدادات"]').forEach(button=>button.addEventListener('click',event=>{event.stopImmediatePropagation();window.location.href='settings.html'}));
-const portalLink=document.createElement('a');portalLink.href='portal.html';portalLink.textContent='بوابة العميل';portalLink.style.cssText='align-self:center;padding:7px 9px;border-radius:5px;background:#2D5BFF;color:#FFFFFF;font-size:10px;text-decoration:none;white-space:nowrap';document.querySelector('.top-actions').prepend(portalLink);
+function notify(text){toast.textContent=text;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),2400)}
+function showNotice(text){document.getElementById('notice-text').textContent=text;document.getElementById('notice').hidden=!text}
+async function getJson(url){const response=await fetch(url);if(!response.ok)throw new Error(`${url} → ${response.status}`);return response.json()}
+
+function cell(text,className){const td=document.createElement('td');if(className)td.className=className;td.textContent=text;return td}
+function renderLatest(requests,customers){
+  const names=new Map(customers.map(c=>[c.customer_id,c.company_name||c.full_name]));
+  const rows=[...requests].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,5).map(request=>{
+    const tr=document.createElement('tr');
+    const who=document.createElement('td');const name=document.createElement('div');name.className='client';name.textContent=names.get(request.customer_id)||'عميل';
+    const meta=document.createElement('div');meta.className='meta';meta.textContent=`${request.request_number} · ${request.product_type}`;who.append(name,meta);
+    const status=document.createElement('span');status.className=`status ${request.status}`;status.textContent=STATUS_LABELS[request.status]||request.status;
+    const statusCell=document.createElement('td');statusCell.append(status);
+    tr.append(who,cell(request.insurance_type),cell(request.request_source),statusCell);return tr});
+  document.getElementById('latest').replaceChildren(...rows);
+  const empty=document.getElementById('latest-empty');empty.hidden=rows.length>0;empty.textContent='لا توجد طلبات بعد. ابدأ من بوابة العميل.';
+}
+
+async function load(){
+  try{
+    const [requests,policies,customers]=await Promise.all([getJson('/insurance/requests'),getJson('/insurance/policies'),getJson('/insurance/customers')]);
+    const byStatus=requests.reduce((acc,r)=>(acc[r.status]=(acc[r.status]||0)+1,acc),{});
+    document.querySelectorAll('[data-stage]').forEach(el=>el.textContent=byStatus[el.dataset.stage]||0);
+    document.getElementById('m-open').textContent=requests.filter(r=>!['closed','policy_issued'].includes(r.status)).length;
+    document.getElementById('m-info').textContent=byStatus.needs_info||0;
+    const live=policies.filter(p=>p.status==='issued'||p.status==='active');
+    document.getElementById('m-policies').textContent=live.length;
+    const now=Date.now(),soon=now+30*864e5;
+    document.getElementById('m-renew').textContent=live.filter(p=>{const end=Date.parse(p.effective_to);return end>=now&&end<=soon}).length;
+    renderLatest(requests,customers);
+    showNotice('');
+  }catch(error){
+    showNotice('تعذر الوصول إلى خادم بُعد، لذلك تظهر المؤشرات فارغة. لا تُعرض أرقام توضيحية في هذه الصفحة.');
+    document.getElementById('latest').replaceChildren();
+    const empty=document.getElementById('latest-empty');empty.hidden=false;empty.textContent='البيانات غير متاحة حاليًا.';
+  }
+}
+document.getElementById('refresh').addEventListener('click',async()=>{await load();notify('تم تحديث المؤشرات')});
+document.getElementById('search').addEventListener('input',event=>{const q=event.target.value.trim().toLocaleLowerCase('ar');document.querySelectorAll('#latest tr').forEach(row=>{row.hidden=!row.textContent.toLocaleLowerCase('ar').includes(q)})});
+load();
 </script>
 </body></html>
