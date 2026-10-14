@@ -139,8 +139,9 @@ form.addEventListener('submit', async event => {
     const files = [...document.getElementById('files').files];
     const failed = [];
     for (const file of files) {
-      const data = new FormData(); data.append('file', file); data.append('document_type', 'customer_upload');
-      try { await api(`/requests/${created.request_id}/documents`, { method: 'POST', form: data }); } catch { failed.push(file.name); }
+      const data = new FormData(); data.append('file', file);
+      try { await api(`/portal/requests/${created.request_id}/documents`, { method: 'POST', form: data, headers: { 'X-Upload-Token': created.upload_token } }); }
+      catch (error) { failed.push(`${file.name} (${error.message})`); }
     }
     document.getElementById('reference').textContent = created.request_number;
     document.getElementById('upload-note').textContent = failed.length ? `تعذر رفع: ${failed.join('، ')}. سنطلبها منك لاحقًا.` : (files.length ? `استلمنا ${files.length} مستند.` : '');

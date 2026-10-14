@@ -109,7 +109,7 @@ async function openCase(requestId) {
     .filter(([, v]) => v != null && v !== '');
   document.getElementById('case-details').replaceChildren(...details.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
   document.getElementById('case-docs').replaceChildren(...(current.documents.length
-    ? current.documents.map(d => el('span', { class: 'pill', text: `${DOC_TYPES[d.document_type] || d.document_type}: ${d.file_name}` }))
+    ? current.documents.map(d => el('a', { class: 'pill blue', href: `/insurance/documents/${d.document_id}/download`, target: '_blank', rel: 'noopener', text: `${DOC_TYPES[d.document_type] || d.document_type}: ${d.file_name}` }))
     : [el('span', { class: 'muted', text: 'لا توجد مستندات مرفوعة' })]));
 
   const actions = current.allowed_transitions.filter(s => ACTION_LABELS[s]).map(status =>

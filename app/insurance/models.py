@@ -95,6 +95,8 @@ class SalesEmployee(Base, TimestampMixin):
     branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
     manager_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)  # NULL = cannot log in
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     requests_handled: Mapped[list["InsuranceRequest"]] = relationship(
         foreign_keys="InsuranceRequest.sales_employee_id",
@@ -185,6 +187,11 @@ class InsuranceRequest(Base, TimestampMixin):
     sales_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     selected_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     request_details: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: catalog field key -> value
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Short-lived token returned to the portal so the customer can attach documents to
+    # their own request without a staff session (sha256 of the token).
+    upload_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    upload_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     customer: Mapped[Customer] = relationship(back_populates="requests")
@@ -407,3 +414,35 @@ class EmailAuditLog(Base, TimestampMixin):
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     submission: Mapped[InsuranceSubmission | None] = relationship(back_populates="audit_logs")
+
+
+class StaffSession(Base, TimestampMixin):
+    """A logged-in staff browser session. Only the sha256 of the cookie token is stored."""
+
+    __tablename__ = "insurance_staff_sessions"
+
+    session_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    employee_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_sales_employees.employee_id"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class AuditEvent(Base, TimestampMixin):
+    """Who did what to which record — one row per sensitive action."""
+
+    __tablename__ = "insurance_audit_events"
+
+    event_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    actor_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("insurance_sales_employees.employee_id"), nullable=True
+    )
+    actor_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    action: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -33,9 +33,13 @@ class CustomerResponse(BaseModel):
     updated_at: datetime
 
 
+STAFF_ROLE_PATTERN = "^(sales_agent|underwriter|manager)$"
+
+
 class SalesEmployeeCreateRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=200)
-    role: str = Field(default="sales_agent", max_length=80)
+    role: str = Field(default="sales_agent", pattern=STAFF_ROLE_PATTERN)
+    password: str | None = None  # omit to create an employee who can't log in yet
     email: EmailStr
     phone: str | None = Field(default=None, max_length=32)
     branch: str | None = Field(default=None, max_length=120)
@@ -54,6 +58,8 @@ class SalesEmployeeResponse(BaseModel):
     branch: str | None = None
     manager_id: str | None = None
     is_active: bool
+    can_login: bool = False
+    last_login_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -62,7 +68,39 @@ class SalesEmployeeResponse(BaseModel):
     def set_sales_agent_id(cls, data):
         if isinstance(data, dict):
             data.setdefault("sales_agent_id", data.get("employee_id"))
+        elif hasattr(data, "password_hash"):  # ORM object
+            data = {
+                **{k: getattr(data, k) for k in cls.model_fields if hasattr(data, k)},
+                "sales_agent_id": data.employee_id,
+                "can_login": bool(data.password_hash),
+            }
         return data
+
+
+class SalesEmployeeUpdateRequest(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=200)
+    role: str | None = Field(default=None, pattern=STAFF_ROLE_PATTERN)
+    phone: str | None = Field(default=None, max_length=32)
+    branch: str | None = Field(default=None, max_length=120)
+    is_active: bool | None = None
+
+
+class PasswordSetRequest(BaseModel):
+    password: str
+
+
+class AuditEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    event_id: str
+    actor_id: str | None = None
+    actor_name: str
+    action: str
+    entity_type: str
+    entity_id: str | None = None
+    details: str | None = None
+    ip_address: str | None = None
+    created_at: datetime
 
 
 class InsuranceRequestCreateRequest(BaseModel):
@@ -495,3 +533,9 @@ class PortalRequestResponse(BaseModel):
     request_id: str
     request_number: str
     status: InsuranceRequestStatus
+    upload_token: str  # lets the portal attach documents to this request for a limited time
+
+
+class PortalDocumentResponse(BaseModel):
+    document_id: str
+    file_name: str

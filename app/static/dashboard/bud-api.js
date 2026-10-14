@@ -27,14 +27,21 @@ const BUD = (() => {
     REQUEST_NOT_OPEN: 'الطلب مغلق.',
     UNKNOWN_TEMPLATE_VARIABLES: 'القالب يحتوي متغيرات غير معروفة.',
     INSURER_EXISTS: 'يوجد شركة مسجلة بنفس البريد.',
+    FORBIDDEN: 'صلاحيتك لا تسمح بهذا الإجراء.',
+    EMPLOYEE_EXISTS: 'يوجد موظف مسجل بنفس البريد.',
+    CANNOT_DEMOTE_SELF: 'لا يمكنك إيقاف حسابك أو تغيير دورك بنفسك.',
+    TOO_MANY_REQUESTS: 'طلبات كثيرة من نفس الجهاز. حاول بعد قليل.',
+    UPLOAD_NOT_ALLOWED: 'انتهت صلاحية رابط رفع المستندات.',
+    FILE_TOO_LARGE: 'حجم الملف أكبر من المسموح.',
+    UNSUPPORTED_FILE_TYPE: 'نقبل ملفات PDF أو JPG أو PNG فقط.',
   };
 
   class ApiError extends Error {
     constructor(status, code, message) { super(message); this.status = status; this.code = code; }
   }
 
-  async function api(path, { method = 'GET', body, form } = {}) {
-    const options = { method, headers: {} };
+  async function api(path, { method = 'GET', body, form, headers = {} } = {}) {
+    const options = { method, headers: { ...headers } };
     if (form) options.body = form;
     else if (body !== undefined) { options.body = JSON.stringify(body); options.headers['Content-Type'] = 'application/json'; }
     let response;
@@ -42,6 +49,10 @@ const BUD = (() => {
     catch { throw new ApiError(0, 'NETWORK', 'تعذر الوصول إلى خادم بُعد.'); }
     if (response.status === 204) return null;
     const data = await response.json().catch(() => null);
+    if (response.status === 401 && !location.pathname.endsWith('/portal.html')) {
+      location.replace(`login.html?next=${encodeURIComponent(location.pathname.split('/').pop() + location.search)}`);
+      return new Promise(() => {});
+    }
     if (!response.ok) {
       const detail = data?.detail;
       if (detail?.error_code) throw new ApiError(response.status, detail.error_code, ERRORS[detail.error_code] || detail.message);

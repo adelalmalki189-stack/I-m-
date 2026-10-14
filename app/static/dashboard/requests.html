@@ -68,7 +68,7 @@ function select(id) {
   const rows = [['مبلغ التغطية', money(r.coverage_amount)], ...Object.entries(r.request_details).map(([k, v]) => [cat.fieldLabel(r.insurance_type, k), v]),
     ['الأولوية', r.customer_priority], ['ملاحظات', r.notes || r.summary], ['آخر تغيير للحالة', date(r.last_status_change_at)]].filter(([, v]) => v != null && v !== '');
   document.getElementById('d-details').replaceChildren(...rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
-  document.getElementById('d-docs').replaceChildren(...(r.documents.length ? r.documents.map(d => el('span', { class: 'pill', text: d.file_name })) : [el('span', { class: 'muted', text: 'لا توجد مستندات' })]));
+  document.getElementById('d-docs').replaceChildren(...(r.documents.length ? r.documents.map(d => el('a', { class: 'pill blue', href: `/insurance/documents/${d.document_id}/download`, target: '_blank', rel: 'noopener', text: d.file_name })) : [el('span', { class: 'muted', text: 'لا توجد مستندات' })]));
   document.getElementById('d-uw').href = `underwriting.html?request=${id}`;
   document.getElementById('d-compare').href = `comparison.html?request=${id}`;
 }

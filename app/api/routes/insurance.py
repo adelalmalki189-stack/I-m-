@@ -1,23 +1,27 @@
 from __future__ import annotations
 
+import hmac
 import json
 import smtplib
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from pathlib import Path
 from typing import TypeVar
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth import MANAGERS, UNDERWRITING, Role, audit, client_ip, get_current_staff, require_roles
 from app.api.deps import get_db_session
 from app.core.config import settings
+from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
 from app.insurance import catalog, workflow
 from app.insurance.models import (
+    AuditEvent,
     Customer,
     EmailAuditLog,
     InsurancePolicy,
@@ -32,9 +36,11 @@ from app.insurance.models import (
     InsurerTemplate,
     RequestDocument,
     SalesEmployee,
+    StaffSession,
     UnderwritingAssignment,
 )
 from app.insurance.schemas import (
+    AuditEventResponse,
     BulkSubmissionCreateRequest,
     CustomerCreateRequest,
     CustomerResponse,
@@ -59,11 +65,14 @@ from app.insurance.schemas import (
     InsurerTemplateResponse,
     InsurerTemplateUpdateRequest,
     InsurerUpdateRequest,
+    PasswordSetRequest,
+    PortalDocumentResponse,
     PortalRequestCreate,
     PortalRequestResponse,
     RequestDocumentResponse,
     SalesEmployeeCreateRequest,
     SalesEmployeeResponse,
+    SalesEmployeeUpdateRequest,
     SubmissionMarkSentRequest,
     TemplatePreviewRequest,
     TemplatePreviewResponse,
@@ -71,7 +80,10 @@ from app.insurance.schemas import (
     UnderwritingAssignmentResponse,
 )
 
-router = APIRouter(prefix="/insurance", tags=["insurance"])
+# Staff API: every endpoint needs a logged-in employee; some add a role requirement.
+router = APIRouter(prefix="/insurance", tags=["insurance"], dependencies=[Depends(get_current_staff)])
+# Customer-facing endpoints used by the public portal.
+public_router = APIRouter(prefix="/insurance", tags=["portal"])
 T = TypeVar("T")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -148,6 +160,59 @@ def _document_storage_root() -> Path:
     return PROJECT_ROOT / "app" / "static" / "uploads"
 
 
+PORTAL_UPLOAD_WINDOW = timedelta(hours=2)
+PORTAL_MAX_DOCUMENTS = 10
+STAFF_MAX_UPLOAD_BYTES = 25 * 1024 * 1024
+# Public uploads must really be PDF/JPEG/PNG — checked by the file's first bytes, not its name.
+PORTAL_FILE_SIGNATURES = {
+    b"%PDF": "application/pdf",
+    b"\xff\xd8\xff": "image/jpeg",
+    b"\x89PNG\r\n\x1a\n": "image/png",
+}
+portal_limiter = RateLimiter(settings.portal_requests_per_hour, 3600)
+
+
+async def _store_document(
+    session: AsyncSession,
+    request_id: str,
+    file: UploadFile,
+    document_type: str,
+    uploader_id: str | None,
+    max_bytes: int,
+    allowed: dict[bytes, str] | None = None,
+) -> RequestDocument:
+    # Keep only the final path component so a crafted name like "../../x" can't escape the uploads folder.
+    file_name = Path(file.filename or "").name
+    if not file_name:
+        raise _error(400, "INVALID_FILE", "A file name is required")
+    content = await file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise _error(413, "FILE_TOO_LARGE", f"Files must be at most {max_bytes // (1024 * 1024)} MB")
+    mime_type = file.content_type or "application/octet-stream"
+    if allowed is not None:
+        detected = next((mime for magic, mime in allowed.items() if content.startswith(magic)), None)
+        if detected is None:
+            raise _error(415, "UNSUPPORTED_FILE_TYPE", "Only PDF, JPEG and PNG files are accepted")
+        mime_type = detected
+
+    storage_root = _document_storage_root() / request_id
+    storage_root.mkdir(parents=True, exist_ok=True)
+    storage_path = storage_root / f"{uuid4().hex}-{file_name}"
+    storage_path.write_bytes(content)
+    document = RequestDocument(
+        request_id=request_id,
+        document_type=document_type,
+        file_name=file_name,
+        mime_type=mime_type,
+        size_bytes=len(content),
+        storage_key=str(storage_path.relative_to(PROJECT_ROOT)),
+        uploaded_by_employee_id=uploader_id,
+    )
+    session.add(document)
+    await session.flush()
+    return document
+
+
 def _resolve_document_path(storage_key: str | None) -> Path | None:
     if not storage_key:
         return None
@@ -218,7 +283,9 @@ def _template_response(template: InsurerTemplate) -> InsurerTemplateResponse:
     )
 
 
-def _audit(session: AsyncSession, submission: InsuranceSubmission, action: str, actor: str, **details) -> None:
+def _email_audit(
+    session: AsyncSession, submission: InsuranceSubmission, action: str, actor: str, **details
+) -> None:
     session.add(
         EmailAuditLog(
             submission_id=submission.submission_id,
@@ -232,7 +299,7 @@ def _audit(session: AsyncSession, submission: InsuranceSubmission, action: str, 
 # --- Catalog & templates -----------------------------------------------------
 
 
-@router.get("/catalog")
+@public_router.get("/catalog")
 async def get_catalog() -> dict:
     """Every insurance line with its products and required risk-detail fields."""
     return {"lines": catalog.LINES}
@@ -300,7 +367,7 @@ async def list_templates(
 
 
 async def _create_template(
-    session: AsyncSession, insurer_id: str | None, body: InsurerTemplateCreateRequest
+    session: AsyncSession, staff: SalesEmployee, insurer_id: str | None, body: InsurerTemplateCreateRequest
 ) -> InsurerTemplateResponse:
     unknown = workflow.unknown_placeholders(body.subject_template + body.body_template)
     if unknown:
@@ -315,6 +382,16 @@ async def _create_template(
         active=body.active,
     )
     session.add(template)
+    await session.flush()
+    audit(
+        session,
+        staff,
+        "template_created",
+        "template",
+        template.template_id,
+        category=body.category,
+        insurer_id=insurer_id,
+    )
     await session.commit()
     await session.refresh(template)
     return _template_response(template)
@@ -324,10 +401,11 @@ async def _create_template(
 async def create_template(
     body: DefaultTemplateCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurerTemplateResponse:
     if body.insurer_id:
         await _get_insurer_or_404(session, body.insurer_id)
-    return await _create_template(session, body.insurer_id, body)
+    return await _create_template(session, staff, body.insurer_id, body)
 
 
 @router.post("/insurers/{insurer_id}/templates", response_model=InsurerTemplateResponse, status_code=201)
@@ -335,9 +413,10 @@ async def create_insurer_template(
     insurer_id: str,
     body: InsurerTemplateCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurerTemplateResponse:
     await _get_insurer_or_404(session, insurer_id)
-    return await _create_template(session, insurer_id, body)
+    return await _create_template(session, staff, insurer_id, body)
 
 
 @router.get("/insurers/{insurer_id}/templates", response_model=list[InsurerTemplateResponse])
@@ -354,6 +433,7 @@ async def update_template(
     template_id: str,
     body: InsurerTemplateUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurerTemplateResponse:
     template = await _get_template_or_404(session, template_id)
     changes = body.model_dump(exclude_unset=True)
@@ -367,14 +447,28 @@ async def update_template(
         changes["required_attachments"] = json.dumps(changes["required_attachments"] or [])
     for key, value in changes.items():
         setattr(template, key, value)
+    audit(session, staff, "template_updated", "template", template_id, fields=sorted(changes))
     await session.commit()
     await session.refresh(template)
     return _template_response(template)
 
 
 @router.delete("/templates/{template_id}", status_code=204)
-async def delete_template(template_id: str, session: AsyncSession = Depends(get_db_session)) -> None:
+async def delete_template(
+    template_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+) -> None:
     template = await _get_template_or_404(session, template_id)
+    audit(
+        session,
+        staff,
+        "template_deleted",
+        "template",
+        template_id,
+        category=template.category,
+        insurer_id=template.insurer_id,
+    )
     await session.delete(template)
     await session.commit()
 
@@ -403,11 +497,14 @@ async def preview_template(
 async def create_employee(
     body: SalesEmployeeCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*MANAGERS)),
 ) -> SalesEmployeeResponse:
     existing = await session.execute(select(SalesEmployee).where(SalesEmployee.email == str(body.email)))
     if existing.scalar_one_or_none() is not None:
         raise _error(409, "EMPLOYEE_EXISTS", "An employee with this email already exists")
 
+    if body.password is not None and (problem := password_problem(body.password)):
+        raise _error(422, "WEAK_PASSWORD", problem)
     employee = SalesEmployee(
         full_name=body.full_name,
         role=body.role,
@@ -415,11 +512,73 @@ async def create_employee(
         phone=body.phone,
         branch=body.branch,
         manager_id=body.manager_id,
+        password_hash=hash_password(body.password) if body.password else None,
     )
     session.add(employee)
+    await session.flush()
+    audit(
+        session, staff, "employee_created", "employee", employee.employee_id, role=body.role, email=employee.email
+    )
     await session.commit()
     await session.refresh(employee)
     return SalesEmployeeResponse.model_validate(employee)
+
+
+@router.patch("/employees/{employee_id}", response_model=SalesEmployeeResponse)
+async def update_employee(
+    employee_id: str,
+    body: SalesEmployeeUpdateRequest,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*MANAGERS)),
+) -> SalesEmployeeResponse:
+    employee = await _get_employee_or_404(session, employee_id)
+    changes = body.model_dump(exclude_unset=True)
+    if employee.employee_id == staff.employee_id and (
+        changes.get("is_active") is False or changes.get("role", Role.MANAGER.value) != Role.MANAGER.value
+    ):
+        raise _error(409, "CANNOT_DEMOTE_SELF", "A manager cannot deactivate or demote their own account")
+    for key, value in changes.items():
+        setattr(employee, key, value)
+    if changes.get("is_active") is False:
+        await session.execute(delete(StaffSession).where(StaffSession.employee_id == employee_id))
+    audit(session, staff, "employee_updated", "employee", employee_id, changes=changes)
+    await session.commit()
+    await session.refresh(employee)
+    return SalesEmployeeResponse.model_validate(employee)
+
+
+@router.post("/employees/{employee_id}/password", status_code=204)
+async def set_employee_password(
+    employee_id: str,
+    body: PasswordSetRequest,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*MANAGERS)),
+) -> None:
+    """Set or reset an employee's password and sign them out everywhere."""
+    employee = await _get_employee_or_404(session, employee_id)
+    if problem := password_problem(body.password):
+        raise _error(422, "WEAK_PASSWORD", problem)
+    employee.password_hash = hash_password(body.password)
+    await session.execute(delete(StaffSession).where(StaffSession.employee_id == employee_id))
+    audit(session, staff, "password_reset", "employee", employee_id)
+    await session.commit()
+
+
+@router.get("/audit", response_model=list[AuditEventResponse])
+async def list_audit_events(
+    entity_id: str | None = None,
+    actor_id: str | None = None,
+    limit: int = 200,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*MANAGERS)),
+) -> list[AuditEventResponse]:
+    stmt = select(AuditEvent).order_by(AuditEvent.created_at.desc()).limit(min(max(limit, 1), 1000))
+    if entity_id:
+        stmt = stmt.where(AuditEvent.entity_id == entity_id)
+    if actor_id:
+        stmt = stmt.where(AuditEvent.actor_id == actor_id)
+    result = await session.execute(stmt)
+    return [AuditEventResponse.model_validate(e) for e in result.scalars().all()]
 
 
 @router.get("/sales-agents", response_model=list[SalesEmployeeResponse])
@@ -435,6 +594,7 @@ async def list_employees(
 async def create_customer(
     body: CustomerCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ) -> CustomerResponse:
     if body.email:
         existing = await session.execute(select(Customer).where(Customer.email == str(body.email)))
@@ -450,6 +610,8 @@ async def create_customer(
         notes=body.notes,
     )
     session.add(customer)
+    await session.flush()
+    audit(session, staff, "customer_created", "customer", customer.customer_id)
     await session.commit()
     await session.refresh(customer)
     return CustomerResponse.model_validate(customer)
@@ -486,12 +648,17 @@ def _new_request_number() -> str:
     return f"IR-{datetime.now(UTC).strftime('%Y%m%d')}-{uuid4().hex[:8].upper()}"
 
 
-@router.post("/portal/requests", response_model=PortalRequestResponse, status_code=201)
+@public_router.post("/portal/requests", response_model=PortalRequestResponse, status_code=201)
 async def create_portal_request(
     body: PortalRequestCreate,
+    http_request: Request,
     session: AsyncSession = Depends(get_db_session),
 ) -> PortalRequestResponse:
     """Public portal: find-or-create the customer by mobile, then open a request."""
+    ip = client_ip(http_request)
+    if portal_limiter.blocked(ip):
+        raise _error(429, "TOO_MANY_REQUESTS", "Too many requests from this address; try again later")
+    portal_limiter.hit(ip)
     errors = catalog.validate_details(body.insurance_type, body.product_type, body.details)
     if errors:
         raise _error(422, "INVALID_REQUEST_DETAILS", "؛ ".join(errors))
@@ -525,18 +692,74 @@ async def create_portal_request(
         notes=body.notes,
         request_details=json.dumps(body.details, ensure_ascii=False),
         preferred_insurers="[]",
+        consent_at=datetime.now(UTC),
     )
+    upload_token, request.upload_token_hash = new_token()
+    request.upload_token_expires_at = datetime.now(UTC) + PORTAL_UPLOAD_WINDOW
     session.add(request)
+    await session.flush()
+    audit(
+        session,
+        None,
+        "portal_request_created",
+        "request",
+        request.request_id,
+        ip=ip,
+        customer_id=customer.customer_id,
+    )
     await session.commit()
     return PortalRequestResponse(
-        request_id=request.request_id, request_number=request.request_number, status=request.status
+        request_id=request.request_id,
+        request_number=request.request_number,
+        status=request.status,
+        upload_token=upload_token,
     )
+
+
+@public_router.post(
+    "/portal/requests/{request_id}/documents", response_model=PortalDocumentResponse, status_code=201
+)
+async def upload_portal_document(
+    request_id: str,
+    file: UploadFile = File(...),
+    upload_token: str = Header(..., alias="X-Upload-Token"),
+    session: AsyncSession = Depends(get_db_session),
+) -> PortalDocumentResponse:
+    """Customer attaches a document to the request they just created (token from the portal response)."""
+    request = await session.get(InsuranceRequest, request_id)
+    expires_at = request.upload_token_expires_at if request else None
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if (
+        request is None
+        or not request.upload_token_hash
+        or not hmac.compare_digest(request.upload_token_hash, hash_token(upload_token))
+        or expires_at is None
+        or expires_at <= datetime.now(UTC)
+    ):
+        raise _error(403, "UPLOAD_NOT_ALLOWED", "Upload link is invalid or expired")
+    count = await session.scalar(select(func.count()).where(RequestDocument.request_id == request_id))
+    if (count or 0) >= PORTAL_MAX_DOCUMENTS:
+        raise _error(409, "TOO_MANY_DOCUMENTS", f"At most {PORTAL_MAX_DOCUMENTS} documents per request")
+    document = await _store_document(
+        session,
+        request_id,
+        file,
+        "customer_upload",
+        None,
+        max_bytes=settings.portal_max_upload_mb * 1024 * 1024,
+        allowed=PORTAL_FILE_SIGNATURES,
+    )
+    audit(session, None, "portal_document_uploaded", "request", request_id, file_name=document.file_name)
+    await session.commit()
+    return PortalDocumentResponse(document_id=document.document_id, file_name=document.file_name)
 
 
 @router.post("/requests", response_model=InsuranceRequestResponse, status_code=201)
 async def create_request(
     body: InsuranceRequestCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ) -> InsuranceRequestResponse:
     await _get_customer_or_404(session, body.customer_id)
 
@@ -569,6 +792,8 @@ async def create_request(
         coverage_amount=body.coverage_amount,
     )
     session.add(request)
+    await session.flush()
+    audit(session, staff, "request_created", "request", request.request_id)
     await session.commit()
     await session.refresh(request)
     return await _request_response(session, request)
@@ -602,6 +827,7 @@ async def update_request_status(
     request_id: str,
     body: InsuranceRequestStatusUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ) -> InsuranceRequestResponse:
     request = await _get_request_or_404(session, request_id)
     if body.status in (InsuranceRequestStatus.QUOTE_SELECTED, InsuranceRequestStatus.POLICY_ISSUED):
@@ -613,6 +839,7 @@ async def update_request_status(
     _transition(request, body.status)
     if body.notes:
         request.notes = body.notes
+    audit(session, staff, "request_status_changed", "request", request_id, status=body.status.value)
     await session.commit()
     await session.refresh(request)
     return await _request_response(session, request)
@@ -625,34 +852,39 @@ async def upload_document(
     document_type: str = Form(...),
     uploaded_by_employee_id: str | None = Form(default=None),
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ) -> RequestDocumentResponse:
     await _get_request_or_404(session, request_id)
     if uploaded_by_employee_id:
         await _get_employee_or_404(session, uploaded_by_employee_id)
-    # Keep only the final path component so a crafted name like "../../x" can't escape the uploads folder.
-    file_name = Path(file.filename or "").name
-    if not file_name:
-        raise _error(400, "INVALID_FILE", "A file name is required")
-
-    content = await file.read()
-    storage_root = _document_storage_root() / request_id
-    storage_root.mkdir(parents=True, exist_ok=True)
-    storage_path = storage_root / f"{uuid4().hex}-{file_name}"
-    storage_path.write_bytes(content)
-
-    document = RequestDocument(
-        request_id=request_id,
-        document_type=document_type,
-        file_name=file_name,
-        mime_type=file.content_type or "application/octet-stream",
-        size_bytes=len(content),
-        storage_key=str(storage_path.relative_to(PROJECT_ROOT)),
-        uploaded_by_employee_id=uploaded_by_employee_id,
+    document = await _store_document(
+        session,
+        request_id,
+        file,
+        document_type,
+        uploaded_by_employee_id or staff.employee_id,
+        max_bytes=STAFF_MAX_UPLOAD_BYTES,
     )
-    session.add(document)
+    audit(session, staff, "document_uploaded", "request", request_id, file_name=document.file_name)
     await session.commit()
     await session.refresh(document)
     return RequestDocumentResponse.model_validate(document)
+
+
+@router.get("/documents/{document_id}/download")
+async def download_document(
+    document_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
+) -> FileResponse:
+    """Customer documents are never served statically; staff fetch them here (and it's audited)."""
+    document = await _get_or_404(session, RequestDocument, document_id, "DOCUMENT_NOT_FOUND", "document")
+    path = _resolve_document_path(document.storage_key)
+    if path is None or not path.is_file():
+        raise _error(404, "DOCUMENT_FILE_MISSING", "The stored file is missing")
+    audit(session, staff, "document_downloaded", "request", document.request_id, document_id=document_id)
+    await session.commit()
+    return FileResponse(path, media_type=document.mime_type, filename=document.file_name)
 
 
 @router.post(
@@ -662,6 +894,7 @@ async def create_request_preferences(
     request_id: str,
     body: InsuranceRequestPreferenceCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ) -> InsuranceRequestPreferenceResponse:
     request = await _get_request_or_404(session, request_id)
     await _get_employee_or_404(session, body.sales_employee_id)
@@ -701,6 +934,7 @@ async def assign_request_to_underwriting(
     request_id: str,
     body: UnderwritingAssignmentRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ):
     request = await _get_request_or_404(session, request_id)
     underwriter_id = body.underwriter_id or body.assigned_underwriter_id
@@ -720,6 +954,7 @@ async def assign_request_to_underwriting(
         notes=body.notes,
     )
     session.add(assignment)
+    audit(session, staff, "request_assigned", "request", request_id, underwriter_id=underwriter.employee_id)
     await session.commit()
     await session.refresh(assignment)
 
@@ -769,6 +1004,7 @@ async def get_underwriting_case(
 async def create_insurer(
     body: InsurerCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurerResponse:
     existing = await session.execute(select(Insurer).where(Insurer.email == str(body.email)))
     if existing.scalar_one_or_none() is not None:
@@ -782,6 +1018,8 @@ async def create_insurer(
         notes=body.notes,
     )
     session.add(insurer)
+    await session.flush()
+    audit(session, staff, "insurer_created", "insurer", insurer.insurer_id, email=insurer.email)
     await session.commit()
     await session.refresh(insurer)
     return InsurerResponse.model_validate(insurer)
@@ -805,6 +1043,7 @@ async def update_insurer(
     insurer_id: str,
     body: InsurerUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurerResponse:
     insurer = await _get_insurer_or_404(session, insurer_id)
     changes = body.model_dump(exclude_unset=True)
@@ -817,6 +1056,7 @@ async def update_insurer(
             raise _error(409, "INSURER_EXISTS", "An insurer with this email already exists")
     for key, value in changes.items():
         setattr(insurer, key, value)
+    audit(session, staff, "insurer_updated", "insurer", insurer_id, fields=sorted(changes))
     await session.commit()
     await session.refresh(insurer)
     return InsurerResponse.model_validate(insurer)
@@ -827,6 +1067,7 @@ async def update_insurer(
 
 async def _draft_submission(
     session: AsyncSession,
+    actor: str,
     request: InsuranceRequest,
     insurer: Insurer,
     category: str,
@@ -850,11 +1091,11 @@ async def _draft_submission(
     )
     session.add(submission)
     await session.flush()
-    _audit(
+    _email_audit(
         session,
         submission,
         "created",
-        "system",
+        actor,
         category=category,
         request_id=request.request_id,
         insurer_id=insurer.insurer_id,
@@ -867,10 +1108,11 @@ async def _draft_submission(
 async def create_submission(
     body: InsuranceSubmissionCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsuranceSubmissionResponse:
     request = await _get_request_or_404(session, body.request_id)
     insurer = await _get_insurer_or_404(session, body.insurer_id)
-    submission = await _draft_submission(session, request, insurer, body.category, body.notes)
+    submission = await _draft_submission(session, staff.full_name, request, insurer, body.category, body.notes)
     await session.commit()
     await session.refresh(submission)
     return _submission_response(submission)
@@ -883,6 +1125,7 @@ async def create_submissions_for_request(
     request_id: str,
     body: BulkSubmissionCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> list[InsuranceSubmissionResponse]:
     """Draft one email per selected insurer, using the request's line as the template category.
 
@@ -898,8 +1141,10 @@ async def create_submissions_for_request(
 
     _transition(request, InsuranceRequestStatus.READY_FOR_QUOTE)
     submissions = [
-        await _draft_submission(session, request, i, request.insurance_type, body.notes) for i in insurers
+        await _draft_submission(session, staff.full_name, request, i, request.insurance_type, body.notes)
+        for i in insurers
     ]
+    audit(session, staff, "emails_drafted", "request", request_id, insurers=[i.insurer_id for i in insurers])
     await session.commit()
     for submission in submissions:
         await session.refresh(submission)
@@ -932,6 +1177,7 @@ async def update_submission(
     submission_id: str,
     body: InsuranceSubmissionUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsuranceSubmissionResponse:
     """Edit the email before it goes out. Editing an approved email sends it back for approval."""
     submission = await _get_submission_or_404(session, submission_id)
@@ -948,7 +1194,7 @@ async def update_submission(
     if {"subject", "email_body"} & changes.keys():
         submission.status = InsuranceSubmissionStatus.PENDING_APPROVAL
         submission.approved_for_send = False
-    _audit(session, submission, "edited", "user", fields=sorted(changes))
+    _email_audit(session, submission, "edited", staff.full_name, fields=sorted(changes))
     await session.commit()
     await session.refresh(submission)
     return _submission_response(submission)
@@ -958,13 +1204,14 @@ async def update_submission(
 async def approve_submission(
     submission_id: str,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsuranceSubmissionResponse:
     submission = await _get_submission_or_404(session, submission_id)
     if submission.status == InsuranceSubmissionStatus.SENT:
         raise _error(409, "SUBMISSION_LOCKED", "This email was already sent")
     submission.approved_for_send = True
     submission.status = InsuranceSubmissionStatus.APPROVED
-    _audit(session, submission, "approved", "user", approved_for_send=True)
+    _email_audit(session, submission, "approved", staff.full_name, approved_for_send=True)
     await session.commit()
     await session.refresh(submission)
     return _submission_response(submission)
@@ -999,6 +1246,7 @@ def _build_insurer_email_message(
 async def send_submission(
     submission_id: str,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsuranceSubmissionResponse:
     """Email the approved submission to the insurer.
 
@@ -1035,12 +1283,12 @@ async def send_submission(
     except (smtplib.SMTPException, OSError) as exc:
         submission.status = InsuranceSubmissionStatus.FAILED
         submission.delivery_error = f"{type(exc).__name__}: {exc}"[:2000]
-        _audit(session, submission, "send_failed", "user", error=submission.delivery_error)
+        _email_audit(session, submission, "send_failed", staff.full_name, error=submission.delivery_error)
     else:
         submission.status = InsuranceSubmissionStatus.SENT
         submission.sent_at = datetime.now(UTC)
         submission.delivery_error = None
-        _audit(session, submission, "sent", "user", sent_at=submission.sent_at, to=insurer.email)
+        _email_audit(session, submission, "sent", staff.full_name, sent_at=submission.sent_at, to=insurer.email)
     await session.commit()
     await session.refresh(submission)
     return _submission_response(submission)
@@ -1051,6 +1299,7 @@ async def mark_submission_sent(
     submission_id: str,
     body: SubmissionMarkSentRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsuranceSubmissionResponse:
     """Record that an approved email was sent outside BUD (e.g. from the employee's mailbox)."""
     submission = await _get_submission_or_404(session, submission_id)
@@ -1061,7 +1310,7 @@ async def mark_submission_sent(
     submission.status = InsuranceSubmissionStatus.SENT
     submission.sent_at = datetime.now(UTC)
     submission.delivery_error = None
-    _audit(session, submission, "marked_sent", "user", sent_at=submission.sent_at, note=body.note)
+    _email_audit(session, submission, "marked_sent", staff.full_name, sent_at=submission.sent_at, note=body.note)
     await session.commit()
     await session.refresh(submission)
     return _submission_response(submission)
@@ -1075,6 +1324,7 @@ async def create_quote(
     submission_id: str,
     body: InsuranceQuoteCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsuranceQuoteResponse:
     submission = await _get_submission_or_404(session, submission_id)
     quote = InsuranceQuote(
@@ -1088,6 +1338,8 @@ async def create_quote(
         source_channel=body.source_channel or "email",
     )
     session.add(quote)
+    await session.flush()
+    audit(session, staff, "quote_recorded", "request", submission.request_id, premium=quote.premium)
     await session.commit()
     await session.refresh(quote)
     return InsuranceQuoteResponse.model_validate(quote)
@@ -1147,6 +1399,7 @@ async def select_quote_for_request(
     request_id: str,
     quote_id: str,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(get_current_staff),
 ) -> InsuranceQuoteResponse:
     request = await _get_request_or_404(session, request_id)
     quote = await session.get(InsuranceQuote, quote_id)
@@ -1164,6 +1417,7 @@ async def select_quote_for_request(
         request.status = InsuranceRequestStatus.READY_FOR_QUOTE
     _transition(request, InsuranceRequestStatus.QUOTE_SELECTED)
     request.selected_quote_id = quote.quote_id
+    audit(session, staff, "quote_selected", "request", request_id, quote_id=quote_id)
     await session.commit()
     await session.refresh(request)
     return InsuranceQuoteResponse.model_validate(quote)
@@ -1194,6 +1448,7 @@ async def issue_policy(
     request_id: str,
     body: InsurancePolicyCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurancePolicyResponse:
     request = await _get_request_or_404(session, request_id)
     if not request.selected_quote_id:
@@ -1231,6 +1486,8 @@ async def issue_policy(
         notes=body.notes,
     )
     session.add(policy)
+    await session.flush()
+    audit(session, staff, "policy_issued", "request", request_id, policy_number=policy.policy_number)
     await session.commit()
     await session.refresh(policy)
     return InsurancePolicyResponse.model_validate(policy)
@@ -1277,10 +1534,12 @@ async def get_policy_for_request(
 async def activate_policy(
     policy_id: str,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurancePolicyResponse:
     policy = await _get_or_404(session, InsurancePolicy, policy_id, "POLICY_NOT_FOUND", "policy")
     policy.status = InsurancePolicyStatus.ACTIVE
     policy.issued_at = policy.issued_at or datetime.now(UTC)
+    audit(session, staff, "policy_activated", "policy", policy_id)
     await session.commit()
     await session.refresh(policy)
     return InsurancePolicyResponse.model_validate(policy)
@@ -1291,11 +1550,13 @@ async def update_policy_status(
     policy_id: str,
     body: InsurancePolicyStatusUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
+    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
 ) -> InsurancePolicyResponse:
     policy = await _get_or_404(session, InsurancePolicy, policy_id, "POLICY_NOT_FOUND", "policy")
     policy.status = body.status
     if body.notes:
         policy.notes = body.notes
+    audit(session, staff, "policy_status_changed", "policy", policy_id, status=body.status.value)
     await session.commit()
     await session.refresh(policy)
     return InsurancePolicyResponse.model_validate(policy)
