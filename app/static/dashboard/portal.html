@@ -12,7 +12,7 @@
 .field textarea{height:auto;min-height:80px;padding:8px 10px;resize:vertical}.field span{font-size:9px;font-weight:600}.form-error{color:#B42318;font-size:10px}.subproducts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}.subproducts label{padding:7px 10px;border:1px solid var(--line);border-radius:5px;font-size:10px;cursor:pointer}.subproducts label:has(input:checked){border-color:var(--blue);background:var(--pale);font-weight:600}.subproducts input{accent-color:var(--blue)}.files{font-size:10px}
 </style>
 </head>
-<body><header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a><a class="top-link" href="index.html">دخول فريق العمل ←</a></header>
+<body><header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a><span><a class="top-link" href="track.html" style="margin-left:14px">تابع طلبك</a><a class="top-link" href="index.html">دخول فريق العمل ←</a></span></header>
 <main><div class="page-intro"><h1>اطلب تأمينك من بُعد</h1><p>اختر نوع التأمين وأدخل تفاصيل احتياجك، وسنطلب لك عروض الأسعار من شركات التأمين ونقارنها لك.</p></div>
 <div class="workspace"><section class="form-panel"><form id="quote-form" novalidate><div id="wizard">
 <div class="stepper" aria-label="خطوات الطلب"><div class="step active" data-step-indicator="1" aria-current="step"><span class="step-number">1</span><span>نوع التأمين وبياناتك</span></div><div class="step" data-step-indicator="2"><span class="step-number">2</span><span>تفاصيل الاحتياج</span></div><div class="step" data-step-indicator="3"><span class="step-number">3</span><span>المراجعة والإرسال</span></div></div>
@@ -42,7 +42,7 @@
 
 <div class="step-content" style="padding-top:0"><div id="form-error" class="form-error" role="alert"></div><div class="form-actions"><button id="back" class="button" type="button" hidden>رجوع</button><div class="action-group"><button id="next" class="button primary" type="button">متابعة</button><button id="submit" class="button primary" type="submit" hidden>إرسال الطلب</button></div></div></div>
 </div></form>
-<section id="success" class="success" aria-live="polite"><div class="success-symbol">✓</div><h2>وصلنا طلبك</h2><p>رقم طلبك:</p><span id="reference" class="reference"></span><p id="upload-note"></p><p>سيراجع فريقنا الطلب ويرسله لشركات التأمين، ونتواصل معك بالعروض.</p><a class="button" href="portal.html">بدء طلب آخر</a></section></section>
+<section id="success" class="success" aria-live="polite"><div class="success-symbol">✓</div><h2>وصلنا طلبك</h2><p>رقم طلبك:</p><span id="reference" class="reference"></span><p id="upload-note"></p><p>سيراجع فريقنا الطلب ويرسله لشركات التأمين، ونتواصل معك بالعروض.</p><a id="track-link" class="button primary" href="track.html">تابع حالة طلبك</a> <a class="button" href="portal.html">بدء طلب آخر</a></section></section>
 <aside class="aside-panel"><h2>طلبك في خطوات بسيطة</h2><div class="aside-grid"><div class="aside-line"><span class="aside-icon">1</span><span class="aside-text"><b>تفاصيل الاحتياج</b><small>فرع التأمين ومعلومات الخطر.</small></span></div><div class="aside-line"><span class="aside-icon">2</span><span class="aside-text"><b>طلب العروض</b><small>نرسل طلبك لشركات التأمين المناسبة.</small></span></div><div class="aside-line"><span class="aside-icon">3</span><span class="aside-text"><b>المقارنة والاختيار</b><small>نعرض لك العروض لتختار الأنسب.</small></span></div></div><div class="privacy"><b>خصوصيتك</b>تُستخدم بياناتك فقط لطلب عروض التأمين ومتابعتها.</div></aside></div>
 </main><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="bud-api.js"></script>
@@ -144,6 +144,7 @@ form.addEventListener('submit', async event => {
       catch (error) { failed.push(`${file.name} (${error.message})`); }
     }
     document.getElementById('reference').textContent = created.request_number;
+    document.getElementById('track-link').href = `track.html?request=${encodeURIComponent(created.request_number)}`;
     document.getElementById('upload-note').textContent = failed.length ? `تعذر رفع: ${failed.join('، ')}. سنطلبها منك لاحقًا.` : (files.length ? `استلمنا ${files.length} مستند.` : '');
     document.getElementById('wizard').hidden = true;
     document.getElementById('success').classList.add('show');

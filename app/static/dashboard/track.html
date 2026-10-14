@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | تابع طلبك</title>
+<link rel="stylesheet" href="bud.css">
+<style>
+body{font-size:14px}
+.topbar{height:62px;padding:0 clamp(15px,4vw,48px);display:flex;align-items:center;justify-content:space-between;background:var(--black);color:var(--white)}
+.topbar .brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--gray);border-radius:8px;font-size:10px;font-weight:700}
+.brand-name{font-size:16px;font-weight:700}.brand-name small{display:block;color:var(--pale);font-size:8px;font-weight:400}
+.top-link{color:var(--pale);font-size:10px;text-decoration:none}
+main{width:min(720px,calc(100% - 32px));margin:28px auto 45px;padding:0}
+h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-size:11px}
+.card{padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--white);margin-bottom:12px}
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:14px 0}
+.step{padding:9px 6px;border-radius:6px;background:var(--pale);color:var(--muted);font-size:9px;text-align:center}
+.step.done{background:#E3EAFF;color:var(--blue)}.step.current{background:var(--blue);color:var(--white);font-weight:600}
+.message{font-size:12px;font-weight:600}
+.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:11px}.row:last-child{border:0}
+@media(max-width:560px){.steps{grid-template-columns:1fr}.step{text-align:right}}
+</style>
+</head>
+<body class="ui">
+<header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a><a class="top-link" href="portal.html">طلب تأمين جديد ←</a></header>
+<main>
+<h1>تابع طلبك</h1><p class="lead">أدخل رقم الطلب ورقم الجوال المسجل، وسنرسل لك رمز تحقق.</p>
+<div id="error" class="notice error" hidden></div>
+<section id="step-start" class="card"><form id="start-form" class="form-grid">
+<label class="field"><span>رقم الطلب</span><input name="request_number" required placeholder="IR-20261014-XXXXXXXX" dir="ltr" autocomplete="off"></label>
+<label class="field"><span>رقم الجوال</span><input name="mobile" type="tel" required placeholder="05xxxxxxxx" dir="ltr" autocomplete="tel"></label>
+<div class="full"><button class="button primary" type="submit">إرسال رمز التحقق</button></div></form></section>
+<section id="step-code" class="card" hidden><form id="code-form">
+<p class="muted" style="margin-top:0">إذا كانت البيانات صحيحة ستصلك رسالة برمز من 6 أرقام خلال لحظات.</p>
+<div id="dev-code" class="notice" hidden></div>
+<label class="field"><span>رمز التحقق</span><input name="code" required inputmode="numeric" pattern="\d{6}" maxlength="6" dir="ltr" autocomplete="one-time-code"></label>
+<div class="actions"><button class="button primary" type="submit">تحقق</button><button id="back" class="button" type="button">تعديل البيانات</button></div></form></section>
+<section id="status" hidden></section>
+</main>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="bud-api.js"></script>
+<script>
+const { el, money } = BUD;
+const ERRORS = { INVALID_CODE: 'الرمز غير صحيح أو انتهت صلاحيته.', TOO_MANY_REQUESTS: 'محاولات كثيرة. حاول بعد عشر دقائق.', TRACKING_EXPIRED: 'انتهت الجلسة. اطلب رمزًا جديدًا.' };
+let lookup = null, token = null;  // kept in memory only, never stored in the browser
+
+function showError(text) { const b = document.getElementById('error'); b.textContent = text || ''; b.hidden = !text; }
+async function call(path, options = {}) {
+  const response = await fetch(`/insurance/portal/track${path}`, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const code = data?.detail?.error_code;
+    throw new Error(ERRORS[code] || (Array.isArray(data?.detail) ? 'تحقق من رقم الطلب ورقم الجوال.' : 'تعذر إكمال الطلب.'));
+  }
+  return data;
+}
+const d = value => (value ? new Date(value).toLocaleDateString('ar-SA-u-ca-gregory-nu-latn') : '—');
+
+document.getElementById('start-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const f = e.currentTarget;
+  lookup = { request_number: f.request_number.value.trim(), mobile: f.mobile.value.trim() };
+  showError('');
+  try {
+    const r = await call('/start', { method: 'POST', body: JSON.stringify(lookup) });
+    document.getElementById('step-start').hidden = true;
+    document.getElementById('step-code').hidden = false;
+    const dev = document.getElementById('dev-code');
+    dev.hidden = !r.dev_code; dev.textContent = r.dev_code ? `بيئة تطوير: الرمز ${r.dev_code}` : '';
+    document.querySelector('#code-form [name=code]').focus();
+  } catch (error) { showError(error.message); }
+});
+document.getElementById('back').addEventListener('click', () => { document.getElementById('step-code').hidden = true; document.getElementById('step-start').hidden = false; });
+document.getElementById('code-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  showError('');
+  try {
+    token = (await call('/verify', { method: 'POST', body: JSON.stringify({ ...lookup, code: e.currentTarget.code.value.trim() }) })).token;
+    await showStatus();
+  } catch (error) { showError(error.message); }
+});
+
+async function showStatus() {
+  const v = await call('', { headers: { 'X-Track-Token': token } });
+  document.getElementById('step-code').hidden = true;
+  const cards = [el('div', { class: 'card' },
+    el('div', { class: 'muted', text: `${v.request_number} · ${v.line} · ${v.product} · قُدّم ${d(v.created_at)}` }),
+    el('div', { class: 'steps' }, ...v.steps.map(s => el('div', { class: `step${s.done ? ' done' : ''}${s.current ? ' current' : ''}`, text: s.label }))),
+    el('div', { class: 'message', text: v.message }),
+    !v.policy && v.insurers_contacted ? el('p', { class: 'muted', text: `أرسلنا طلبك إلى ${v.insurers_contacted} شركة تأمين، ووصلنا ${v.quotes_received} عرض حتى الآن.` }) : null)];
+  if (v.policy) {
+    const p = v.policy;
+    cards.push(el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'وثيقتك' }),
+      ...[['رقم الوثيقة', p.policy_number], ['شركة التأمين', p.insurer], ['المدة', `${d(p.effective_from)} — ${d(p.effective_to)}`], ['القسط', money(p.premium)]]
+        .map(([k, val]) => el('div', { class: 'row' }, el('span', { class: 'muted', text: k }), el('b', { text: val }))),
+      p.installments.length > 1 ? el('div', { style: 'margin-top:10px' }, el('div', { class: 'muted', text: 'الأقساط' }),
+        ...p.installments.map(i => el('div', { class: 'row' }, el('span', { text: `#${i.sequence} · ${d(i.due_date)}` }), el('span', { text: money(i.amount) }),
+          el('span', { class: `pill ${i.paid ? 'blue' : ''}`, text: i.paid ? 'مدفوع' : 'مستحق' })))) : null));
+  }
+  if (v.claims.length) {
+    cards.push(el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'مطالباتك' }),
+      ...v.claims.map(c => el('div', { class: 'row' }, el('span', { text: `${c.claim_number} · ${d(c.incident_date)}` }), el('b', { text: c.status })))));
+  }
+  cards.push(el('p', { class: 'muted', text: 'لأي استفسار تواصل مع فريق بُعد. تنتهي هذه الجلسة بعد 30 دقيقة.' }));
+  const box = document.getElementById('status');
+  box.replaceChildren(...cards); box.hidden = false;
+}
+const number = new URLSearchParams(location.search).get('request');
+if (number) document.querySelector('#start-form [name=request_number]').value = number;
+</script>
+</body></html>

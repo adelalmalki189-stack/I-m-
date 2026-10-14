@@ -19,6 +19,8 @@ MODES = ("sandbox", "live")
 CHANNELS = ("whatsapp", "sms")
 DEFAULTS = {"messaging_mode": "sandbox", "customer_channel": "whatsapp"}
 MAX_ATTEMPTS = 5
+# Messages the customer asked for themselves (e.g. a verification code) ignore the opt-out.
+TRANSACTIONAL = {"otp"}
 BACKOFF = [timedelta(minutes=1), timedelta(minutes=5), timedelta(minutes=30), timedelta(hours=2)]
 
 
@@ -50,7 +52,7 @@ async def enqueue(
 ) -> CustomerNotification | None:
     """Add a message to the outbox (committed with the caller's transaction).
 
-    `kind` is a rule key from RULES, or "manual" with an explicit `body`. Returns None when
+    `kind` is a rule key from RULES, or "manual"/"otp" with an explicit `body`. Returns None when
     the rule is switched off or the same `dedupe_key` was already queued.
     """
     if dedupe_key:
@@ -62,7 +64,7 @@ async def enqueue(
 
     template: str | None = None
     params: list[str] = []
-    if kind != "manual":
+    if kind not in ("manual", "otp"):
         rule = await get_rule(session, kind)
         if not rule.enabled or rule.message is None:
             return None
@@ -73,7 +75,7 @@ async def enqueue(
         raise ValueError("A message body is required")
 
     status, error = NotificationStatus.QUEUED, None
-    if customer.messaging_opt_out:
+    if customer.messaging_opt_out and kind not in TRANSACTIONAL:
         status, error = NotificationStatus.SKIPPED, "العميل ألغى الاشتراك في الرسائل"
     elif not customer.phone:
         status, error = NotificationStatus.SKIPPED, "لا يوجد رقم جوال للعميل"
@@ -110,6 +112,45 @@ async def _deliver(client: httpx.AsyncClient, n: CustomerNotification) -> channe
     return await channels.send_sms(client, n.to_phone, n.body)
 
 
+async def _send_one(
+    client: httpx.AsyncClient, n: CustomerNotification, customer: Customer | None, mode: str, now: datetime
+) -> str:
+    """Try to deliver one message; returns the outcome key (sent/simulated/retry/failed/skipped)."""
+    opted_out = customer is not None and customer.messaging_opt_out and n.kind not in TRANSACTIONAL
+    if customer is None or opted_out or not customer.phone:
+        n.status, n.last_error = NotificationStatus.SKIPPED, "العميل ألغى الاشتراك أو لا يوجد رقم"
+        return "skipped"
+    n.to_phone = customer.phone  # use the latest number
+    n.attempts += 1
+    if mode != "live":
+        n.status, n.sent_at = NotificationStatus.SIMULATED, now
+        return "simulated"
+    try:
+        delivery = await _deliver(client, n)
+    except (channels.DeliveryError, httpx.HTTPError) as exc:
+        n.last_error = str(exc)[:2000]
+        if getattr(exc, "retryable", True) and n.attempts < MAX_ATTEMPTS:
+            n.next_attempt_at = now + BACKOFF[min(n.attempts - 1, len(BACKOFF) - 1)]
+            return "retry"
+        n.status = NotificationStatus.FAILED
+        return "failed"
+    n.status, n.sent_at = NotificationStatus.SENT, now
+    n.provider_message_id, n.last_error = delivery.provider_message_id, None
+    return "sent"
+
+
+async def deliver_now(
+    session: AsyncSession, n: CustomerNotification, client: httpx.AsyncClient | None = None
+) -> str:
+    """Send one message immediately (verification codes can't wait for the worker cycle)."""
+    customer = await session.get(Customer, n.customer_id)
+    mode = await get_setting(session, "messaging_mode")
+    if client is not None:
+        return await _send_one(client, n, customer, mode, datetime.now(UTC))
+    async with httpx.AsyncClient() as own:
+        return await _send_one(own, n, customer, mode, datetime.now(UTC))
+
+
 async def dispatch_outbox(
     session: AsyncSession, client: httpx.AsyncClient | None = None, now: datetime | None = None, limit: int = 50
 ) -> dict[str, int]:
@@ -138,32 +179,7 @@ async def dispatch_outbox(
     client = client or httpx.AsyncClient()
     try:
         for n in batch:
-            customer = customers.get(n.customer_id)
-            if customer is None or customer.messaging_opt_out or not customer.phone:
-                n.status, n.last_error = NotificationStatus.SKIPPED, "العميل ألغى الاشتراك أو لا يوجد رقم"
-                counts["skipped"] += 1
-                continue
-            n.to_phone = customer.phone  # use the latest number
-            n.attempts += 1
-            if mode != "live":
-                n.status, n.sent_at = NotificationStatus.SIMULATED, now
-                counts["simulated"] += 1
-                continue
-            try:
-                delivery = await _deliver(client, n)
-            except (channels.DeliveryError, httpx.HTTPError) as exc:
-                retryable = getattr(exc, "retryable", True)
-                n.last_error = str(exc)[:2000]
-                if retryable and n.attempts < MAX_ATTEMPTS:
-                    n.next_attempt_at = now + BACKOFF[min(n.attempts - 1, len(BACKOFF) - 1)]
-                    counts["retry"] += 1
-                else:
-                    n.status = NotificationStatus.FAILED
-                    counts["failed"] += 1
-                continue
-            n.status, n.sent_at = NotificationStatus.SENT, now
-            n.provider_message_id, n.last_error = delivery.provider_message_id, None
-            counts["sent"] += 1
+            counts[await _send_one(client, n, customers.get(n.customer_id), mode, now)] += 1
     finally:
         if own_client:
             await client.aclose()

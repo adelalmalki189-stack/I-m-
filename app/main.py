@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import aftersales, auth, automation, insurance
+from app.api.routes import aftersales, auth, automation, insurance, tracking
 from app.core.config import settings
 from app.core.observability import configure_logging, health, init_error_tracking, install_middleware
 
@@ -29,6 +29,7 @@ install_middleware(app)
 app.include_router(health)
 app.include_router(auth.router)
 app.include_router(insurance.public_router)
+app.include_router(tracking.router)
 app.include_router(insurance.router)
 app.include_router(aftersales.router)
 app.include_router(automation.router)

@@ -21,6 +21,7 @@ def test_dashboard_pages_load():
         portal_response = client.get("/dashboard/portal.html")
         underwriting_response = client.get("/dashboard/underwriting.html")
         login_response = client.get("/dashboard/login.html")
+        track_response = client.get("/dashboard/track.html")
     assert response.status_code == 200
     assert "BUD | بُعد للوساطة التأمينية" in response.text
     assert "رحلة طلبات التأمين" in response.text
@@ -58,3 +59,5 @@ def test_dashboard_pages_load():
     assert "قوالب الرسائل" in underwriting_response.text
     assert login_response.status_code == 200
     assert "دخول فريق العمل" in login_response.text
+    assert track_response.status_code == 200
+    assert "تابع طلبك" in track_response.text

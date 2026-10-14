@@ -10,6 +10,7 @@ from app.api.auth import get_current_staff
 from app.api.deps import get_db_session
 from app.api.routes import auth as auth_routes
 from app.api.routes import insurance as insurance_routes
+from app.api.routes import tracking as tracking_routes
 from app.core import database
 from app.insurance.models import SalesEmployee
 from app.main import app
@@ -53,6 +54,8 @@ def staff_auth(request):
     """API tests act as a logged-in manager unless marked `real_auth`."""
     auth_routes.login_limiter.clear()
     insurance_routes.portal_limiter.clear()
+    tracking_routes.ip_limiter.clear()
+    tracking_routes.request_limiter.clear()
     if request.node.get_closest_marker("real_auth"):
         yield
         return

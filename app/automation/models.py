@@ -115,3 +115,20 @@ class InboundEmail(Base, TimestampMixin):
     quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     extraction: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON of what the AI returned
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class PortalAccess(Base, TimestampMixin):
+    """A one-time code sent to the customer's mobile, then a short-lived tracking token.
+
+    Only hashes are stored. One row per code request."""
+
+    __tablename__ = "portal_access"
+
+    access_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    request_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
