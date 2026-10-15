@@ -37,6 +37,7 @@ OPEN = (
     InsuranceRequestStatus.READY_FOR_QUOTE,
     InsuranceRequestStatus.QUOTE_SELECTED,
 )
+GENERATED_FILES = (catalog.AUTHORIZATION_LETTER, "formatted_list")
 # Requests still with sales: collecting documents and the signature.
 WITH_SALES = (InsuranceRequestStatus.NEW, InsuranceRequestStatus.NEEDS_INFO)
 
@@ -122,8 +123,8 @@ async def load_review(session: AsyncSession, request: InsuranceRequest) -> dict[
         customer.customer_type if customer else "individual",
         details(request),
         request.coverage_amount,
-        # The signed letter copy is shown through the letter, not as a file of its own.
-        [document_view(d) for d in docs if d.document_type != catalog.AUTHORIZATION_LETTER],
+        # Files BUD produces (the signed letter copy, formatted lists) are not the customer's to provide.
+        [document_view(d) for d in docs if d.document_type not in GENERATED_FILES],
         letter.status.value if letter else None,
     )
     result["letter"] = letter_view(letter)

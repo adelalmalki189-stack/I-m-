@@ -13,6 +13,17 @@
 .tpl-list button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:0;border-bottom:1px solid var(--line);background:none;text-align:right;font-size:10px}
 .tpl-list button.active{background:#F3F6FF;color:var(--blue);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.list-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding:7px 0;border-bottom:1px solid var(--line);font-size:10px}
+.analysis{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.analysis h3{margin:12px 0 6px;font-size:11px}.analysis h3:first-child{margin-top:0}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:6px}
+.stat{padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--white)}.stat b{display:block;font-size:15px}.stat span{color:var(--muted);font-size:9px}
+.stat.bad b{color:#B42318}.stat.warn b{color:#8A5A00}
+.grid-table{width:100%;border-collapse:collapse;font-size:10px;background:var(--white)}.grid-table th,.grid-table td{padding:5px 6px;border:1px solid var(--line);text-align:right}
+.grid-table th{background:#F3F6FF;font-weight:600}.grid-table select,.grid-table input[type=text]{width:100%;min-height:26px;font-size:10px}
+.issues{max-height:220px;overflow:auto;margin:0;padding-inline-start:16px;font-size:10px}.issues .error{color:#B42318}.issues .warning{color:#8A5A00}
+.opt{display:flex;align-items:center;gap:6px;font-size:10px;margin:4px 0}
+.scroll-x{overflow-x:auto}
 </style>
 </head>
 <body class="ui"><div class="app">
@@ -30,6 +41,7 @@
 <div class="panel-body">
 <div class="section-title">بيانات الطلب</div><dl id="case-details" class="kv"></dl>
 <div class="section-title">المستندات</div><div id="case-docs" class="docs"></div>
+<div class="section-title">كشوف Excel: المراجعة والتحليل</div><div id="case-lists"></div><div id="analysis"></div>
 <div class="section-title">تغيير الحالة</div><div id="case-actions" class="actions"></div>
 <div id="send-block"><div class="section-title">الإرسال لشركات التأمين</div><p class="muted">تُجهز رسالة لكل شركة من قالب الفرع (أو قالب الشركة الخاص إن وُجد)، ثم تراجعها وتعتمدها قبل الإرسال.</p>
 <div id="insurer-choices" class="check-list"></div><div class="actions" style="margin-top:9px"><button id="draft" class="button primary" type="button">تجهيز الرسائل</button></div></div>
@@ -132,6 +144,7 @@ async function openCase(requestId) {
   document.getElementById('case-actions').replaceChildren(...(actions.length ? actions : [el('span', { class: 'muted', text: 'لا توجد انتقالات متاحة' })]));
   document.getElementById('send-block').hidden = !OPEN.includes(current.status) || current.status === 'quote_selected';
   await renderEmails();
+  await renderLists();
 }
 
 async function refreshCase() { await loadRequests(); await openCase(current.request_id); }
@@ -231,6 +244,116 @@ document.getElementById('draft').addEventListener('click', e => {
   run(e.currentTarget, () => api(`/requests/${current.request_id}/submissions`, { method: 'POST', body: { insurer_ids: ids } }), `جُهزت ${ids.length} رسالة للمراجعة`).then(refreshCase);
 });
 document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderQueue(); });
+
+// ---------- كشوف Excel ----------
+let analysis = null;
+const SHEET_DOCS = () => (cat.line(current.insurance_type)?.documents || []).filter(d => d.spreadsheet && (!d.products || d.products.includes(current.product_type)));
+
+async function renderLists() {
+  const lists = await api(`/requests/${current.request_id}/lists`);
+  const types = SHEET_DOCS();
+  const typeSel = el('select', { class: 'search', style: 'width:auto' }, ...(types.length ? types : [{ key: 'customer_upload', label: 'كشف' }]).map(d => el('option', { value: d.key, text: d.label })));
+  const file = el('input', { type: 'file', accept: '.xlsx', onchange: e => {
+    const data = new FormData(); data.append('file', e.currentTarget.files[0]); data.append('document_type', typeSel.value);
+    run(null, () => api(`/requests/${current.request_id}/documents`, { method: 'POST', form: data }), 'رُفع الكشف').then(renderLists);
+  } });
+  const STATUS = { draft: ['مسودة تحليل', ''], finalized: ['منسّق ومعتمد', 'blue'] };
+  document.getElementById('case-lists').replaceChildren(
+    ...(lists.length ? lists.map(l => el('div', { class: 'list-row' },
+      el('span', {}, el('b', { text: l.document_label }), ' · ', el('a', { href: `/insurance/documents/${l.document_id}/download`, target: '_blank', rel: 'noopener', text: l.file_name })),
+      el('span', { class: 'actions' }, l.analysis ? pill(STATUS, l.analysis.status) : el('span', { class: 'muted', text: 'لم يُحلَّل' }),
+        l.analysis?.output_document_id ? el('a', { class: 'button', href: `/insurance/documents/${l.analysis.output_document_id}/download`, text: 'الملف المنسّق' }) : null,
+        el('button', { class: 'button primary', type: 'button', text: l.analysis ? 'فتح التحليل' : 'تحليل الكشف',
+          onclick: e => run(e.currentTarget, () => api(`/documents/${l.document_id}/analysis`, { method: 'POST' })).then(renderAnalysis) }))))
+      : [el('p', { class: 'muted', text: 'لا توجد كشوف Excel لهذا الطلب.' })]),
+    el('div', { class: 'actions', style: 'margin-top:6px' }, el('span', { class: 'muted', text: 'رفع كشف:' }), typeSel, file));
+  if (analysis && !lists.some(l => l.document_id === analysis.document_id)) { analysis = null; document.getElementById('analysis').replaceChildren(); }
+}
+
+function currentOptions(box) {
+  const o = structuredClone(analysis.options);
+  box.querySelectorAll('[data-map]').forEach(s => { o.column_mapping[s.dataset.map] = s.value === '' ? null : Number(s.value); });
+  o.class_mapping = {};
+  box.querySelectorAll('[data-class]').forEach(i => { if (i.value.trim() && i.value.trim() !== i.dataset.class) o.class_mapping[i.dataset.class] = i.value.trim(); });
+  o.default_class = box.querySelector('[name=default_class]').value.trim() || null;
+  const targets = [...box.querySelectorAll('[data-include]')];
+  const chosen = targets.filter(c => c.checked).map(c => c.dataset.include);
+  o.include_classes = chosen.length === targets.length ? null : chosen;
+  o.target_insurer_ids = [...box.querySelectorAll('[data-insurer]:checked')].map(c => c.dataset.insurer);
+  o.exclude_invalid = box.querySelector('[name=exclude_invalid]').checked;
+  o.split_by_class = box.querySelector('[name=split_by_class]').checked;
+  const sheet = box.querySelector('[name=sheet_name]'); if (sheet) o.sheet_name = sheet.value;
+  const profile = box.querySelector('[name=profile]').value;
+  if (profile !== o.profile) { o.profile = profile; o.column_mapping = null; o.class_mapping = {}; o.include_classes = null; }
+  return o;
+}
+
+function renderAnalysis(a) {
+  analysis = a;
+  const s = a.summary, o = a.options;
+  const box = el('div', { class: 'analysis' });
+  const reanalyze = (opts, msg) => api(`/documents/${a.document_id}/analysis`, { method: 'POST', body: opts }).then(r => { if (msg) notify(msg); return r; });
+  const stat = (label, value, tone) => el('div', { class: `stat ${tone || ''}` }, el('b', { text: value ?? '—' }), el('span', { text: label }));
+  const stats = [stat('السجلات', s.total_rows), stat('في الملف النهائي', s.included_rows),
+    stat('أخطاء', a.issue_counts.error, a.issue_counts.error ? 'bad' : ''), stat('تنبيهات', a.issue_counts.warning, a.issue_counts.warning ? 'warn' : '')];
+  if (a.profile === 'people') stats.push(stat('موظفون', s.employees), stat('تابعون', s.dependents), stat('سعوديون', s.saudis), stat('متوسط العمر', s.average_age), stat('65 فأكثر', s.over_65, s.over_65 ? 'warn' : ''));
+  else stats.push(stat('إجمالي القيمة', money(s.total_value)), a.profile === 'vehicles' ? stat('متوسط عمر المركبة', s.average_age) : null);
+
+  const targets = [...new Set(a.categories.map(c => c.mapped || 'غير محدد'))];
+  const datalist = el('datalist', { id: 'class-options' }, ...a.default_categories.map(c => el('option', { value: c })));
+  const activeInsurers = insurers.filter(i => i.is_active);
+
+  box.append(
+    el('div', { class: 'list-row', style: 'border:0;padding-top:0' }, el('b', { text: `${a.profile_label}: ${a.file_name}` }),
+      el('span', { class: 'muted', text: `صف العناوين ${a.header_row}${a.truncated ? ' · قُرئت أول 20,000 صف فقط' : ''}` })),
+    el('div', { class: 'actions' },
+      el('label', { class: 'opt' }, 'نوع الكشف', el('select', { name: 'profile' }, ...[['people', 'كشف أفراد'], ['vehicles', 'كشف مركبات'], ['generic', 'جدول بنود']].map(([v, t]) => el('option', { value: v, text: t, selected: v === a.profile })))),
+      a.sheet_names.length > 1 ? el('label', { class: 'opt' }, 'الورقة', el('select', { name: 'sheet_name' }, ...a.sheet_names.map(n => el('option', { value: n, text: n, selected: n === a.sheet_name })))) : null),
+    el('h3', { text: 'النتيجة' }), el('div', { class: 'stat-grid' }, ...stats.filter(Boolean)),
+    el('h3', { text: 'مطابقة الأعمدة' }), el('p', { class: 'muted', style: 'margin:0 0 4px', text: 'تعرّف النظام على الأعمدة تلقائيًا. صحّح أي عمود خاطئ ثم أعد التحليل.' }),
+    el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table' }, el('tr', {}, el('th', { text: 'الحقل' }), el('th', { text: 'العمود في الملف' })),
+      ...a.fields.map(f => el('tr', {}, el('td', { text: f.required ? `${f.label} *` : f.label }),
+        el('td', {}, el('select', { 'data-map': f.key }, el('option', { value: '', text: '— غير موجود —' }),
+          ...a.headers.map((h, i) => el('option', { value: i, text: h, selected: o.column_mapping[f.key] === i })))))))),
+    el('h3', { text: `${a.category_label}: التوحيد والاختيار` }), datalist,
+    el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table' }, el('tr', {}, el('th', { text: 'القيمة في الملف' }), el('th', { text: 'العدد' }), el('th', { text: `${a.category_label} المعتمدة` })),
+      ...a.categories.map(c => el('tr', {}, el('td', { text: c.raw || '(فارغ)' }), el('td', { text: c.count }),
+        el('td', {}, c.raw ? el('input', { type: 'text', 'data-class': c.raw, value: c.mapped, list: 'class-options' }) : el('span', { class: 'muted', text: 'تأخذ الفئة الافتراضية' })))))),
+    el('label', { class: 'opt' }, `${a.category_label} الافتراضية للصفوف الفارغة`, el('input', { name: 'default_class', value: o.default_class || '', list: 'class-options', style: 'width:110px' })),
+    el('div', { class: 'opt' }, el('b', { text: 'الفئات المشمولة في الملف:' }),
+      ...targets.map(t => el('label', { class: 'opt' }, el('input', { type: 'checkbox', 'data-include': t, checked: !o.include_classes || o.include_classes.includes(t) }), t))));
+
+  if (s.by_category.length) box.append(el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table', style: 'margin-top:6px' },
+    el('tr', {}, el('th', { text: a.category_label }), el('th', { text: 'العدد' }), ...(a.profile === 'people' ? [el('th', { text: 'موظفون' }), el('th', { text: 'تابعون' })] : [el('th', { text: 'القيمة' })])),
+    ...s.by_category.map(c => el('tr', {}, el('td', { text: c.category }), el('td', { text: c.count }),
+      ...(a.profile === 'people' ? [el('td', { text: c.employees || 0 }), el('td', { text: c.dependents || 0 })] : [el('td', { text: money(c.value) })]))))));
+  if (a.profile === 'people') box.append(el('h3', { text: 'التوزيع العمري' }), el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table' },
+    el('tr', {}, el('th', { text: 'الفئة العمرية' }), el('th', { text: 'ذكور' }), el('th', { text: 'إناث' })),
+    ...s.age_bands.map(b => el('tr', {}, el('td', { text: b.band }), el('td', { text: b['ذكر'] }), el('td', { text: b['أنثى'] }))))));
+  if (a.issues.length) box.append(el('h3', { text: `ملاحظات المراجعة (${a.issues.length})` }),
+    el('ul', { class: 'issues' }, ...a.issues.map(i => el('li', { class: i.level, text: `${i.row ? `صف ${i.row}: ` : ''}${i.message}` }))));
+
+  box.append(el('h3', { text: 'الشركات المستهدفة' }),
+    el('div', { class: 'check-list' }, ...(activeInsurers.length ? activeInsurers.map(i => el('label', {}, el('input', { type: 'checkbox', 'data-insurer': i.insurer_id, checked: o.target_insurer_ids.includes(i.insurer_id) }), el('span', { class: 'strong', text: i.name }))) : [el('span', { class: 'muted', text: 'لا توجد شركات مفعّلة.' })])),
+    el('label', { class: 'opt' }, el('input', { type: 'checkbox', name: 'exclude_invalid', checked: o.exclude_invalid }), 'استبعاد الصفوف التي فيها أخطاء من الملف النهائي'),
+    el('label', { class: 'opt' }, el('input', { type: 'checkbox', name: 'split_by_class', checked: o.split_by_class }), `ورقة مستقلة لكل ${a.category_label}`),
+    el('div', { class: 'actions', style: 'margin-top:8px' },
+      el('button', { class: 'button', type: 'button', text: 'إعادة التحليل بالتعديلات', onclick: e => run(e.currentTarget, () => reanalyze(currentOptions(box)), 'حُدّث التحليل').then(renderAnalysis) }),
+      el('button', { class: 'button primary', type: 'button', text: 'اعتماد وتنسيق الملف', onclick: e => run(e.currentTarget, async () => {
+        const saved = await reanalyze(currentOptions(box));
+        return api(`/analyses/${saved.analysis_id}/finalize`, { method: 'POST' });
+      }, 'جُهّز الملف المنسّق').then(r => { renderAnalysis(r); renderLists(); }) }),
+      a.status === 'finalized' ? el('a', { class: 'button', href: `/insurance/documents/${a.output_document_id}/download`, text: 'تنزيل الملف المنسّق' }) : null,
+      a.status === 'finalized' && o.target_insurer_ids.length ? el('button', { class: 'button primary', type: 'button', text: `تجهيز رسائل التسعير (${o.target_insurer_ids.length} شركة)`, onclick: e => run(e.currentTarget, async () => {
+        const done = new Set((await api(`/submissions?request_id=${current.request_id}`)).map(x => x.insurer_id));
+        const ids = o.target_insurer_ids.filter(id => !done.has(id));
+        if (!ids.length) throw new Error('جُهزت رسائل لكل الشركات المختارة مسبقًا.');
+        return api(`/requests/${current.request_id}/submissions`, { method: 'POST', body: { insurer_ids: ids, notes: 'الكشف المنسّق مرفق' } });
+      }, 'جُهزت الرسائل للمراجعة والاعتماد').then(refreshCase) }) : null),
+    a.status === 'finalized' ? el('p', { class: 'muted', text: 'الملف المنسّق يُرفق في رسائل الشركات بدل الكشف الأصلي.' }) : el('p', { class: 'muted', text: 'أي تعديل يعيد التحليل إلى مسودة حتى تعتمده من جديد.' }));
+  document.getElementById('analysis').replaceChildren(box);
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 
 // ---------- ردود الشركات ----------
 const INBOX_STATUS = { unmatched: ['تحتاج ربط', 'red'], matched: ['مربوطة', ''], quote_created: ['عرض بانتظار التحقق', 'blue'], declined: ['اعتذار', ''],

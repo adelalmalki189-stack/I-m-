@@ -15,6 +15,7 @@ dependencies = [
     "httpx>=0.27",
     "anthropic>=1.14",
     "sentry-sdk>=2.0",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,7 @@ dev = [
     "aiosqlite>=0.20",
     "ruff>=0.5",
     "mypy>=1.10",
+    "types-openpyxl",
     "httpx>=0.27",
 ]
 

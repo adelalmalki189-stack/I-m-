@@ -608,3 +608,28 @@ class AuthorizationLetter(Base, TimestampMixin):
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)  # sha256 of the signed record
     verification_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
     document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # signed copy in the request files
+
+
+class ListAnalysis(Base, TimestampMixin):
+    """An underwriter's review of an Excel list (census, fleet, assets) attached to a request.
+
+    Holds the decisions (which column is which, how raw classes map to target classes,
+    which classes and insurers are targeted) and the latest result; finalizing writes the
+    formatted, insurer-ready workbook into the request's files."""
+
+    __tablename__ = "insurance_list_analyses"
+
+    analysis_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)  # the uploaded list
+    profile: Mapped[str] = mapped_column(String(20), nullable=False)
+    sheet_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    options: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON: mapping, classes, insurers
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")  # draft | finalized
+    output_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    analyzed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import MANAGERS, UNDERWRITING, Role, audit, client_ip, get_current_staff, require_roles
 from app.api.deps import get_db_session
+from app.api.routes.sheets import superseded_lists
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
@@ -1296,14 +1297,17 @@ async def send_submission(
         )
 
     insurer = await _get_insurer_or_404(session, submission.insurer_id)
-    # Files the review or a staff member rejected are not sent to insurers.
+    # Files the review or a staff member rejected are not sent to insurers, nor a raw list
+    # the underwriter replaced with its formatted copy.
+    replaced = await superseded_lists(session, submission.request_id)
     documents = await session.execute(
         select(RequestDocument).where(
             RequestDocument.request_id == submission.request_id,
             RequestDocument.review_status.not_in(["failed", "rejected"]),
         )
     )
-    message = _build_insurer_email_message(submission, insurer, documents.scalars().all())
+    attachments = [d for d in documents.scalars().all() if d.document_id not in replaced]
+    message = _build_insurer_email_message(submission, insurer, attachments)
 
     try:
         await mailer.send(message)
