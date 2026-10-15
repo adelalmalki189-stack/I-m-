@@ -95,6 +95,22 @@ RULES: dict[str, RuleDef] = {
             None,
         ),
         RuleDef(
+            "offers_ready",
+            "العروض جاهزة للاختيار",
+            "عند إرسال الموظف عروض الشركات للعميل.",
+            "مرحبًا {customer_name}، وصلتنا {count} عروض لطلبك رقم {request_number}. قارنها واختر العرض "
+            "المناسب ووقّع القبول إلكترونيًا من هنا: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "count", "track_link"),
+        ),
+        RuleDef(
+            "offer_accepted",
+            "تأكيد قبول العرض",
+            "عند قبول العميل أحد العروض إلكترونيًا.",
+            "شكرًا {customer_name}، استلمنا قبولكم لعرض {insurer} لطلب رقم {request_number} بقسط {premium}. "
+            "نتواصل معكم لاستكمال الإصدار والسداد." + SIGNATURE,
+            ("customer_name", "request_number", "insurer", "premium"),
+        ),
+        RuleDef(
             "policy_issued",
             "إصدار الوثيقة",
             "عند إصدار الوثيقة.",

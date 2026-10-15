@@ -645,3 +645,52 @@ class ListAnalysis(Base, TimestampMixin):
     output_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     analyzed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OfferPresentationStatus(StrEnum):
+    PUBLISHED = "published"  # the customer can see and accept it
+    ACCEPTED = "accepted"
+    WITHDRAWN = "withdrawn"  # replaced by a newer presentation or taken back
+
+
+class OfferPresentation(Base, TimestampMixin):
+    """The offers BUD puts in front of the customer, and the customer's signed acceptance.
+
+    Staff choose which confirmed quotes to show (and may recommend one); the customer sees
+    them on the tracking page without the broker commission and accepts one after the
+    mobile one-time code. The acceptance is frozen like the authorization letter: exact
+    text, signer, time, a sha256 over the record and a verification code."""
+
+    __tablename__ = "insurance_offer_presentations"
+
+    presentation_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    status: Mapped[OfferPresentationStatus] = mapped_column(
+        Enum(
+            OfferPresentationStatus,
+            native_enum=False,
+            values_callable=_values,
+            name="offer_presentation_status",
+        ),
+        nullable=False,
+        default=OfferPresentationStatus.PUBLISHED,
+    )
+    quote_ids: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list, display order
+    recommended_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    note_to_customer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    customer_comments: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of {at, text}
+    accepted_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    acceptance_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    signer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    signer_id_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    signer_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    signed_mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # signed copy in the request files

@@ -30,7 +30,7 @@ from app.insurance.models import (
 _CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no 0/O or 1/I
 
 
-def _verification_code() -> str:
+def new_verification_code() -> str:
     raw = "".join(secrets.choice(_CODE_ALPHABET) for _ in range(12))
     return f"{raw[:4]}-{raw[4:8]}-{raw[8:]}"
 
@@ -39,7 +39,7 @@ def mask_mobile(mobile: str | None) -> str:
     return f"{mobile[:4]}•••{mobile[-3:]}" if mobile and len(mobile) > 7 else "—"
 
 
-def _ar_date(value: date) -> str:
+def ar_date(value: date) -> str:
     return value.strftime("%Y/%m/%d")
 
 
@@ -54,7 +54,7 @@ def letter_text(
     return "\n".join(
         [
             f"خطاب تفويض رقم {letter_number}",
-            f"التاريخ: {_ar_date(issued)}",
+            f"التاريخ: {ar_date(issued)}",
             "",
             "إلى من يهمه الأمر من شركات التأمين المرخّصة،",
             "",
@@ -68,7 +68,7 @@ def letter_text(
             "3. استلام المراسلات المتعلقة بالطلب من شركات التأمين.",
             "",
             "ولا يشمل هذا التفويض قبول أي وثيقة أو دفع أي قسط إلا بموافقتنا الصريحة.",
-            f"يسري هذا التفويض حتى {_ar_date(valid_until)}، ولنا إلغاؤه في أي وقت بإشعار الوسيط.",
+            f"يسري هذا التفويض حتى {ar_date(valid_until)}، ولنا إلغاؤه في أي وقت بإشعار الوسيط.",
             "ويقرّ الموقّع بأنه مخوّل بالتوقيع عن المنشأة.",
         ]
     )
@@ -115,14 +115,14 @@ async def issue(
         body_text=letter_text(number, request, customer, today, valid_until),
         valid_until=valid_until,
         issued_by_id=issued_by_id,
-        verification_code=_verification_code(),
+        verification_code=new_verification_code(),
     )
     session.add(letter)
     await session.flush()
     return letter
 
 
-def _utc_seconds(value: datetime | None) -> str | None:
+def utc_seconds(value: datetime | None) -> str | None:
     # Same string whether the database hands the time back aware (PostgreSQL) or naive (SQLite).
     if value is None:
         return None
@@ -139,7 +139,7 @@ def signature_hash(letter: AuthorizationLetter) -> str:
         "signed_mobile": letter.signed_mobile,
         # Added later; only part of the record when set, so earlier signatures still verify.
         **({"signer_title": letter.signer_title} if letter.signer_title else {}),
-        "signed_at": _utc_seconds(letter.signed_at),
+        "signed_at": utc_seconds(letter.signed_at),
     }
     return hashlib.sha256(json.dumps(record, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 

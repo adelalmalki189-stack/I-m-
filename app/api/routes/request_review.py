@@ -16,13 +16,14 @@ from app.api.deps import get_db_session
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter
-from app.insurance import authorization, catalog, documents, review, salesflow, workflow
+from app.insurance import authorization, catalog, documents, offers, review, salesflow, workflow
 from app.insurance.models import (
     AuthorizationLetter,
     AuthorizationLetterStatus,
     Customer,
     InsuranceRequest,
     InsuranceRequestStatus,
+    OfferPresentation,
     RequestDocument,
     SalesEmployee,
 )
@@ -182,13 +183,12 @@ async def verify_letter(
     if verify_limiter.blocked(ip):
         raise _error(429, "TOO_MANY_REQUESTS", "Too many attempts; try again later")
     verify_limiter.hit(ip)
+    code = code.strip().upper()
     letter = (
-        await session.execute(
-            select(AuthorizationLetter).where(AuthorizationLetter.verification_code == code.strip().upper())
-        )
+        await session.execute(select(AuthorizationLetter).where(AuthorizationLetter.verification_code == code))
     ).scalar_one_or_none()
     if letter is None or letter.signed_at is None:
-        raise _error(404, "LETTER_NOT_FOUND", "No signed letter has this code")
+        return await _verify_acceptance(session, code)
     request = await session.get(InsuranceRequest, letter.request_id)
     expired = letter.valid_until < datetime.now(UTC).date()
     return {
@@ -205,4 +205,29 @@ async def verify_letter(
         "body_text": letter.body_text,
         "content_hash": letter.content_hash,
         "broker": settings.broker_legal_name,
+        "kind": "authorization",
+        "kind_label": "خطاب تفويض",
+    }
+
+
+async def _verify_acceptance(session: AsyncSession, code: str) -> dict[str, Any]:
+    p = (
+        await session.execute(select(OfferPresentation).where(OfferPresentation.verification_code == code))
+    ).scalar_one_or_none()
+    if p is None or p.signed_at is None:
+        raise _error(404, "LETTER_NOT_FOUND", "No signed document has this code")
+    request = await session.get(InsuranceRequest, p.request_id)
+    return {
+        "letter_number": f"قبول عرض {p.verification_code}",
+        "request_number": request.request_number if request else None,
+        "status": "valid",
+        "intact": p.content_hash == offers.signature_hash(p),
+        "signer_name": f"{p.signer_name} ({p.signer_title})" if p.signer_title else p.signer_name,
+        "signed_at": p.signed_at,
+        "valid_until": None,
+        "body_text": p.acceptance_text,
+        "content_hash": p.content_hash,
+        "broker": settings.broker_legal_name,
+        "kind": "acceptance",
+        "kind_label": "قبول عرض",
     }

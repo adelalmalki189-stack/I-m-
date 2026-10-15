@@ -19,7 +19,7 @@ from app.automation import service
 from app.automation.models import PortalAccess
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_token, new_token
-from app.insurance import aftersales, authorization, catalog, documents, salesflow
+from app.insurance import aftersales, authorization, catalog, documents, offers, salesflow
 from app.insurance.models import (
     AuthorizationLetterStatus,
     ClaimStatus,
@@ -255,6 +255,7 @@ async def status(
         "quotes_received": quotes or 0,
         "policy": None,
         "claims": [],
+        "offers": await offers.view(session, await offers.current(session, request.request_id)),
     }
     if request.status not in (InsuranceRequestStatus.POLICY_ISSUED, InsuranceRequestStatus.CLOSED):
         result = await salesflow.load_review(session, request)
@@ -389,3 +390,87 @@ async def sign_letter(
     await salesflow.maybe_hand_off(session, request)
     await session.commit()
     return {"letter_number": letter.letter_number, "verification_code": letter.verification_code}
+
+
+class AcceptOffer(BaseModel):
+    quote_id: str = Field(..., max_length=36)
+    signer_name: str = Field(..., min_length=3, max_length=200)
+    signer_title: str = Field(..., min_length=2, max_length=120)
+    id_number: str = Field(..., pattern=r"^[12]\d{9}$")
+    accept: bool
+
+
+@router.post("/offers/accept")
+async def accept_offer(
+    body: AcceptOffer,
+    http: Request,
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    request = await _tracked_request(session, x_track_token)
+    if not body.accept:
+        raise _error(422, "CONSENT_REQUIRED", "Tick the box to confirm you accept the offer")
+    customer = await session.get(Customer, request.customer_id)
+    assert customer is not None
+    try:
+        p = await offers.accept(
+            session,
+            request,
+            customer,
+            body.quote_id,
+            body.signer_name,
+            body.id_number,
+            body.signer_title,
+            request.contact_mobile or customer.phone or "",
+            client_ip(http),
+            http.headers.get("user-agent") or "",
+        )
+    except offers.OfferError as exc:
+        raise _error(exc.status, exc.code, str(exc)) from exc
+    shown = await offers.view(session, p)
+    assert shown is not None
+    accepted = next(q for q in shown["quotes"] if q["quote_id"] == body.quote_id)
+    await service.enqueue(
+        session,
+        "offer_accepted",
+        customer,
+        {
+            "customer_name": salesflow.display_name(customer),
+            "request_number": request.request_number,
+            "insurer": accepted["insurer"],
+            "premium": f"{accepted['premium']:,.2f} ر.س" if accepted["premium"] is not None else "—",
+        },
+        dedupe_key=f"offer_accepted:{p.presentation_id}",
+        request_id=request.request_id,
+    )
+    audit(
+        session,
+        None,
+        "offer_accepted",
+        "request",
+        request.request_id,
+        ip=client_ip(http),
+        quote_id=body.quote_id,
+    )
+    await session.commit()
+    return {"verification_code": p.verification_code}
+
+
+class OfferComment(BaseModel):
+    text: str = Field(..., min_length=2, max_length=1000)
+
+
+@router.post("/offers/comment", status_code=204)
+async def comment_on_offers(
+    body: OfferComment,
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    """A question or a change the customer wants before choosing; staff see it with the offers."""
+    request = await _tracked_request(session, x_track_token)
+    p = await offers.current(session, request.request_id)
+    if p is None:
+        raise _error(409, "NO_OFFERS_TO_ACCEPT", "There are no offers to comment on")
+    offers.add_comment(p, body.text)
+    audit(session, None, "offer_comment", "request", request.request_id)
+    await session.commit()

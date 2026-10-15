@@ -7,6 +7,9 @@
 <style>
 td.best{background:#F3F6FF}
 .badge{margin-right:6px}
+.offer-pick{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:10px}
+.offer-pick label{display:flex;align-items:center;gap:6px}.comment{padding:6px 8px;margin:4px 0;border-radius:6px;background:#FFF4D6;font-size:10px}
+.acceptance{white-space:pre-line;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:10px;line-height:1.8}
 @media print{.side,.top,.no-print{display:none!important}.app{display:block}}
 </style>
 </head>
@@ -25,6 +28,8 @@ td.best{background:#F3F6FF}
 <section class="panel"><div class="panel-head"><div><h2>العروض المستلمة</h2><div class="muted">تُسجَّل العروض من صفحة الاكتتاب عند وصول رد الشركة</div></div><a id="uw-link" class="button no-print" href="underwriting.html">الاكتتاب ←</a></div>
 <div class="table-wrap"><table><thead><tr><th>البند</th></tr></thead><tbody id="matrix"></tbody></table><div id="no-quotes" class="empty" hidden>لا توجد عروض مسجلة لهذا الطلب بعد.</div></div></section>
 <section class="stack no-print">
+<section id="offers-panel" class="panel" hidden><div class="panel-head"><div><h2>إرسال العروض للعميل</h2><div class="muted">يختار العميل ويوقّع القبول من صفحة المتابعة. لا تظهر له العمولة.</div></div><span id="offers-state"></span></div>
+<div id="offers-body" class="panel-body"></div></section>
 <section id="issue-panel" class="panel" hidden><div class="panel-head"><div><h2>إصدار الوثيقة</h2><div class="muted">بعد موافقة العميل وتأكيد الشركة</div></div></div>
 <form id="issue-form" class="panel-body"><div class="form-grid">
 <label class="field"><span>بداية التغطية</span><input name="effective_from" type="date" required></label>
@@ -33,7 +38,7 @@ td.best{background:#F3F6FF}
 <label class="field"><span>ملاحظات</span><input name="notes"></label></div>
 <button class="button primary" type="submit">إصدار الوثيقة</button></form></section>
 <section id="policy-panel" class="panel" hidden><div class="panel-head"><div><h2>الوثيقة الصادرة</h2></div></div><div class="panel-body"><dl id="policy" class="kv"></dl><div class="actions" style="margin-top:10px"><a class="button" href="policies.html">الوثائق والتجديدات ←</a></div></div></section>
-<section class="panel"><div class="panel-body muted">اختيار عرض يغير حالة الطلب إلى «عرض مختار». يمكن تغيير الاختيار قبل الإصدار، وبعد إصدار الوثيقة يُقفل الطلب.</div></section>
+<section class="panel"><div class="panel-body muted">الأفضل أن يختار العميل بنفسه ويوقّع القبول عبر «إرسال العروض للعميل». ويبقى الاختيار اليدوي متاحًا، ويغيّر حالة الطلب إلى «عرض مختار». بعد إصدار الوثيقة يُقفل الطلب.</div></section>
 </section>
 </div></main></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -86,6 +91,7 @@ async function loadRequest(requestId) {
   noQuotes.hidden = quotes.length > 0 && !pendingReview;
   noQuotes.textContent = pendingReview ? `${pendingReview} عرض مستخرج آليًا بانتظار التحقق في صفحة الاكتتاب قبل ظهوره هنا.` : 'لا توجد عروض مسجلة لهذا الطلب بعد.';
 
+  await renderOffers(request, quotes, insurerOf, best);
   document.getElementById('issue-panel').hidden = request.status !== 'quote_selected';
   const policyPanel = document.getElementById('policy-panel');
   policyPanel.hidden = request.status !== 'policy_issued';
@@ -94,6 +100,54 @@ async function loadRequest(requestId) {
     document.getElementById('policy').replaceChildren(...[['رقم الوثيقة', p.policy_number], ['الشركة', insurers[p.insurer_id]], ['القسط', money(p.premium_amount)],
       ['من', date(p.effective_from)], ['إلى', date(p.effective_to)]].flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v || '—' })]));
   }
+}
+
+const OFFER_STATE = { published: ['بانتظار اختيار العميل', 'blue'], accepted: ['قبِل العميل', 'dark'] };
+async function renderOffers(request, quotes, insurerOf, best) {
+  const panel = document.getElementById('offers-panel');
+  const sent = await api(`/requests/${request.request_id}/offers`);
+  const canSend = ['ready_for_quote', 'under_review'].includes(request.status) && quotes.length && sent?.status !== 'accepted';
+  panel.hidden = !sent && !canSend;
+  if (panel.hidden) return;
+  document.getElementById('offers-state').replaceChildren(sent ? pill(OFFER_STATE, sent.status) : el('span', { class: 'muted', text: 'لم تُرسل بعد' }));
+  const body = document.getElementById('offers-body');
+  const parts = [];
+  if (sent) {
+    parts.push(el('div', { class: 'muted', text: `أُرسلت ${date(sent.published_at)} · ${sent.quotes.length} عرض` }));
+    if (sent.comments.length) parts.push(el('div', { class: 'section-title', text: 'أسئلة العميل' }), ...sent.comments.map(c => el('div', { class: 'comment', text: `${date(c.at)}: ${c.text}` })));
+    if (sent.status === 'accepted') {
+      const q = sent.quotes.find(x => x.quote_id === sent.accepted_quote_id);
+      parts.push(el('dl', { class: 'kv' }, ...[['العرض المقبول', q ? `${q.insurer} · ${money(q.premium)}` : '—'], ['الموقّع', `${sent.signer_name} (${sent.signer_title})`],
+        ['الجوال', sent.signed_mobile], ['وقت التوقيع', date(sent.signed_at)], ['رمز التحقق', sent.verification_code]].flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v || '—' })])),
+        el('div', { class: 'actions' }, el('a', { class: 'button', href: `/insurance/documents/${sent.document_id}/download`, target: '_blank', rel: 'noopener', text: 'نسخة القبول الموقّعة' }),
+          el('a', { class: 'button', href: `verify.html?code=${sent.verification_code}`, target: '_blank', rel: 'noopener', text: 'التحقق' })),
+        el('details', {}, el('summary', { class: 'muted', text: 'نص القبول' }), el('div', { class: 'acceptance', text: sent.acceptance_text })));
+    }
+  }
+  if (canSend) {
+    const shown = new Set(sent?.quotes.map(q => q.quote_id) || quotes.filter(q => !q.validity_date || new Date(q.validity_date) > new Date()).map(q => q.quote_id));
+    const recommended = sent?.recommended_quote_id || best?.quote_id;
+    const note = el('textarea', { rows: 2, maxlength: 1000, placeholder: 'ملاحظة للعميل (اختياري)، مثل سبب التوصية' });
+    note.value = sent?.note || '';
+    parts.push(el('div', { class: 'section-title', text: sent ? 'تعديل العروض المرسلة' : 'اختر العروض' }),
+      ...quotes.map(q => el('div', { class: 'offer-pick' },
+        el('label', {}, el('input', { type: 'checkbox', 'data-offer': q.quote_id, checked: shown.has(q.quote_id) }), el('b', { text: insurerOf[q.submission_id] }), money(q.premium)),
+        el('label', { class: 'muted' }, el('input', { type: 'radio', name: 'recommended', value: q.quote_id, checked: q.quote_id === recommended }), 'نوصي به'))),
+      el('label', { class: 'field', style: 'margin-top:8px' }, note),
+      el('div', { class: 'actions' },
+        el('button', { class: 'button primary', type: 'button', text: sent ? 'إعادة الإرسال' : 'إرسال للعميل (واتساب)', onclick: e => {
+          const ids = [...body.querySelectorAll('[data-offer]:checked')].map(i => i.dataset.offer);
+          if (!ids.length) { BUD.notify('اختر عرضًا واحدًا على الأقل'); return; }
+          const rec = body.querySelector('[name=recommended]:checked')?.value;
+          run(e.currentTarget, () => api(`/requests/${request.request_id}/offers`, { method: 'POST', body: { quote_ids: ids, recommended_quote_id: ids.includes(rec) ? rec : null, note: note.value.trim() || null } }),
+            'أُرسلت العروض للعميل').then(() => loadRequest(request.request_id));
+        } }),
+        sent?.status === 'published' ? el('button', { class: 'button', type: 'button', text: 'سحب العروض', onclick: e => {
+          if (!confirm('سحب العروض من صفحة العميل؟')) return;
+          run(e.currentTarget, () => api(`/requests/${request.request_id}/offers/withdraw`, { method: 'POST' }), 'سُحبت العروض').then(() => loadRequest(request.request_id));
+        } }) : null));
+  }
+  body.replaceChildren(...parts);
 }
 
 const issueForm = document.getElementById('issue-form');

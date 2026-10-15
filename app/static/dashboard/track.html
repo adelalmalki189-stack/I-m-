@@ -23,6 +23,10 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 .doc .notes{flex-basis:100%;margin:0;padding-inline-start:16px;color:#8A5A00;font-size:10px}.doc input{font-size:10px;max-width:220px}
 .badge{padding:3px 8px;border-radius:10px;background:var(--pale);font-size:9px;white-space:nowrap}.badge.ok{background:#E3F4E8;color:#1E6B3A}.badge.bad{background:#FDEDEB;color:#B42318}.badge.wait{background:#FFF4D6;color:#8A5A00}
 .letter{white-space:pre-line;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:12px;line-height:1.9}
+.offer{padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;cursor:pointer}.offer:has(input:checked){border-color:var(--blue);background:#F3F6FF}
+.offer.expired{opacity:.5;cursor:not-allowed}.offer-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.offer-head b{font-size:13px}
+.price{font-size:16px;font-weight:700;color:var(--blue)}.offer dl{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin:8px 0 0;font-size:11px}.offer dt{color:var(--muted)}
+.rec{padding:2px 8px;border-radius:10px;background:var(--blue);color:var(--white);font-size:9px}
 .sign-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px;margin-top:12px}
 .consent{display:flex;gap:8px;align-items:flex-start;margin:4px 0 12px;font-size:11px;line-height:1.7}
 @media(max-width:560px){.steps{grid-template-columns:1fr}.step{text-align:right}.sign-grid{grid-template-columns:1fr}}
@@ -49,6 +53,7 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 <script>
 const { el, money } = BUD;
 const ERRORS = { INVALID_CODE: 'الرمز غير صحيح أو انتهت صلاحيته.', TOO_MANY_REQUESTS: 'محاولات كثيرة. حاول بعد عشر دقائق.', TRACKING_EXPIRED: 'انتهت الجلسة. اطلب رمزًا جديدًا.',
+  NO_OFFERS_TO_ACCEPT: 'لا توجد عروض بانتظار اختيارك.', QUOTE_EXPIRED: 'انتهت صلاحية هذا العرض. تواصل مع بُعد لتجديده.', QUOTE_NOT_OFFERED: 'هذا العرض غير متاح.',
   NO_LETTER_TO_SIGN: 'لا يوجد خطاب بانتظار توقيعك.', LETTER_EXPIRED: 'انتهت صلاحية الخطاب. تواصل مع بُعد لإصدار خطاب جديد.', CONSENT_REQUIRED: 'أكّد موافقتك على نص الخطاب.',
   UNSUPPORTED_FILE_TYPE: 'نقبل PDF أو صور JPG/PNG (وجداول Excel للكشوف).', FILE_TOO_LARGE: 'حجم الملف أكبر من المسموح.', TOO_MANY_DOCUMENTS: 'وصلت للحد الأقصى من المستندات.' };
 let lookup = null, token = null;  // kept in memory only, never stored in the browser
@@ -110,12 +115,57 @@ async function showStatus() {
     cards.push(el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'مطالباتك' }),
       ...v.claims.map(c => el('div', { class: 'row' }, el('span', { text: `${c.claim_number} · ${d(c.incident_date)}` }), el('b', { text: c.status })))));
   }
+  if (v.offers) cards.push(offersCard(v.offers));
   if (v.letter) cards.push(letterCard(v.letter));
   if (v.documents) cards.push(documentsCard(v.documents, v.documents_complete));
   cards.push(el('p', { class: 'muted', text: 'لأي استفسار تواصل مع فريق بُعد. تنتهي هذه الجلسة بعد 30 دقيقة.' }));
   const box = document.getElementById('status');
   box.replaceChildren(...cards); box.hidden = false;
 }
+function offersCard(o) {
+  const card = el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 6px;font-size:14px', text: 'عروض التأمين' }));
+  if (o.status === 'accepted') {
+    const q = o.quotes.find(x => x.quote_id === o.accepted_quote_id);
+    card.append(el('p', { class: 'message', text: `✓ قبلتم عرض ${q?.insurer || ''} بقسط ${money(q?.premium)} في ${d(o.signed_at)}.` }),
+      el('p', { class: 'muted', text: `رمز التحقق: ${o.verification_code}. نتواصل معكم لاستكمال السداد والإصدار.` }));
+    return card;
+  }
+  if (o.note) card.append(el('div', { class: 'notice', style: 'margin-bottom:8px', text: o.note }));
+  const form = el('form', {});
+  form.append(...o.quotes.map(q => el('label', { class: `offer${q.expired ? ' expired' : ''}` },
+    el('div', { class: 'offer-head' }, el('span', {}, el('input', { type: 'radio', name: 'quote_id', value: q.quote_id, required: true, disabled: q.expired }), ' ', el('b', { text: q.insurer })),
+      q.quote_id === o.recommended_quote_id ? el('span', { class: 'rec', text: 'نوصي به' }) : null, el('span', { class: 'price', text: money(q.premium) })),
+    el('dl', {}, ...[['حد التغطية', q.coverage_limit != null ? money(q.coverage_limit) : null], ['الشروط والتحمل', q.conditions], ['الاستثناءات', q.exclusions],
+      ['صالح حتى', q.validity_date ? d(q.validity_date) : null]].filter(([, v]) => v).flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
+    q.expired ? el('div', { class: 'muted', text: 'انتهت صلاحية هذا العرض' }) : null)),
+    el('div', { class: 'sign-grid' },
+      el('label', { class: 'field' }, el('span', { text: 'اسمك الكامل' }), el('input', { name: 'signer_name', required: true, minlength: 3, maxlength: 200 })),
+      el('label', { class: 'field' }, el('span', { text: 'رقم الهوية أو الإقامة' }), el('input', { name: 'id_number', required: true, inputmode: 'numeric', pattern: '[12][0-9]{9}', maxlength: 10, dir: 'ltr' })),
+      el('label', { class: 'field' }, el('span', { text: 'صفتك في المنشأة' }), el('input', { name: 'signer_title', required: true, minlength: 2, maxlength: 120 }))),
+    el('label', { class: 'consent' }, el('input', { type: 'checkbox', name: 'accept', required: true }),
+      el('span', { text: 'نقبل العرض المختار نيابة عن المنشأة، وأقرّ بأني مخوّل بالتوقيع عنها، وبأن هذا توقيعي الإلكتروني بعد التحقق من جوالي.' })),
+    el('button', { class: 'button primary', type: 'submit', text: 'قبول العرض المختار' }));
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    showError('');
+    form.querySelector('[type=submit]').disabled = true;
+    try {
+      await call('/offers/accept', { method: 'POST', headers: { 'X-Track-Token': token }, body: JSON.stringify({ quote_id: form.quote_id.value,
+        signer_name: form.signer_name.value.trim(), id_number: form.id_number.value.trim(), signer_title: form.signer_title.value.trim(), accept: form.accept.checked }) });
+      await showStatus();
+    } catch (error) { showError(error.message); form.querySelector('[type=submit]').disabled = false; }
+  });
+  const ask = el('form', { class: 'actions', style: 'margin-top:10px' }, el('input', { name: 'text', required: true, minlength: 2, maxlength: 1000, placeholder: 'لديك سؤال أو تريد تعديلًا قبل الاختيار؟', style: 'flex:1' }),
+    el('button', { class: 'button', type: 'submit', text: 'إرسال' }));
+  ask.addEventListener('submit', async e => {
+    e.preventDefault();
+    try { await call('/offers/comment', { method: 'POST', headers: { 'X-Track-Token': token }, body: JSON.stringify({ text: ask.text.value.trim() }) });
+      ask.replaceChildren(el('span', { class: 'muted', text: 'وصلنا سؤالك، وسيرد عليك فريقنا.' })); } catch (error) { showError(error.message); }
+  });
+  card.append(el('p', { class: 'muted', style: 'margin:0 0 8px', text: 'اختر العرض المناسب لمنشأتك ووقّع القبول إلكترونيًا. القبول لا يعني الدفع الآن؛ نتواصل معكم لاستكمال السداد والإصدار.' }), form, ask);
+  return card;
+}
+
 const TONE = { missing: 'bad', failed: 'bad', rejected: 'bad', warning: 'wait', pending_signature: 'wait', not_issued: '', passed: 'ok', accepted: 'ok', signed: 'ok' };
 
 function letterCard(letter) {

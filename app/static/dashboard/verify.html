@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
-<title>BUD | التحقق من خطاب التفويض</title>
+<title>BUD | التحقق من المستندات الموقّعة</title>
 <link rel="stylesheet" href="bud.css">
 <style>
 body{font-size:14px}
@@ -22,7 +22,7 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 <body class="ui">
 <header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a></header>
 <main>
-<h1>التحقق من خطاب التفويض</h1><p class="lead">أدخل رمز التحقق المطبوع على الخطاب للتأكد من أنه صادر من بُعد وموقّع ولم يُعدَّل.</p>
+<h1>التحقق من المستندات الموقّعة</h1><p class="lead">أدخل رمز التحقق المطبوع على خطاب التفويض أو قبول العرض للتأكد من أنه صادر من بُعد وموقّع ولم يُعدَّل.</p>
 <section class="card"><form id="form" class="form-grid">
 <label class="field"><span>رمز التحقق</span><input name="code" required placeholder="XXXX-XXXX-XXXX" dir="ltr" autocomplete="off"></label>
 <div class="full"><button class="button primary" type="submit">تحقق</button></div></form></section>
@@ -32,7 +32,7 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 <script>
 const { el } = BUD;
 const d = value => (value ? new Date(value).toLocaleString('ar-SA-u-ca-gregory-nu-latn') : '—');
-const STATUS = { valid: ['ok', 'الخطاب صحيح وساري المفعول'], expired: ['wait', 'الخطاب صحيح لكن انتهت مدته'], revoked: ['bad', 'هذا الخطاب أُلغي وصدر بدلًا منه خطاب أحدث'] };
+const STATUS = { valid: ['ok', 'المستند صحيح وساري المفعول'], expired: ['wait', 'الخطاب صحيح لكن انتهت مدته'], revoked: ['bad', 'هذا الخطاب أُلغي وصدر بدلًا منه خطاب أحدث'] };
 const form = document.getElementById('form');
 const box = document.getElementById('result');
 
@@ -42,12 +42,12 @@ async function check(code) {
   const v = response?.ok ? await response.json() : null;
   if (!v) {
     const tooMany = response?.status === 429;
-    box.replaceChildren(el('div', { class: 'card' }, el('div', { class: 'verdict bad', text: tooMany ? 'محاولات كثيرة. حاول بعد قليل.' : 'لا يوجد خطاب موقّع بهذا الرمز.' })));
+    box.replaceChildren(el('div', { class: 'card' }, el('div', { class: 'verdict bad', text: tooMany ? 'محاولات كثيرة. حاول بعد قليل.' : 'لا يوجد مستند موقّع بهذا الرمز.' })));
     return;
   }
-  const [tone, label] = v.intact ? STATUS[v.status] : ['bad', 'تحذير: بيانات الخطاب لا تطابق التوقيع، فلا تعتمد عليه'];
+  const [tone, label] = v.intact ? STATUS[v.status] : ['bad', 'تحذير: بيانات المستند لا تطابق التوقيع، فلا تعتمد عليه'];
   box.replaceChildren(el('div', { class: 'card' }, el('div', { class: `verdict ${tone}`, text: label }),
-    ...[['رقم الخطاب', v.letter_number], ['رقم طلب التأمين', v.request_number], ['الوسيط', v.broker], ['الموقّع', v.signer_name],
+    ...[['النوع', v.kind_label], ['الرقم', v.letter_number], ['رقم طلب التأمين', v.request_number], ['الوسيط', v.broker], ['الموقّع', v.signer_name],
       ['وقت التوقيع', d(v.signed_at)], ['ساري حتى', v.valid_until], ['بصمة التوقيع (SHA-256)', v.content_hash]]
       .map(([k, val]) => el('div', { class: 'row' }, el('span', { class: 'muted', text: k }), el('b', { text: val || '—' }))),
     el('div', { class: 'letter', text: v.body_text })));

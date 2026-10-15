@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import aftersales, auth, automation, insurance, request_review, sheets, tracking
+from app.api.routes import aftersales, auth, automation, insurance, offers, request_review, sheets, tracking
 from app.core.config import settings
 from app.core.observability import configure_logging, health, init_error_tracking, install_middleware
 
@@ -36,6 +36,7 @@ app.include_router(aftersales.router)
 app.include_router(automation.router)
 app.include_router(request_review.router)
 app.include_router(sheets.router)
+app.include_router(offers.router)
 
 DASHBOARD_DIR = Path(__file__).parent / "static" / "dashboard"
 app.mount("/dashboard", StaticFiles(directory=DASHBOARD_DIR, html=True), name="dashboard")
