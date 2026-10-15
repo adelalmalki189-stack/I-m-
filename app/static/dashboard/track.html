@@ -19,7 +19,13 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 .step.done{background:#E3EAFF;color:var(--blue)}.step.current{background:var(--blue);color:var(--white);font-weight:600}
 .message{font-size:12px;font-weight:600}
 .row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:11px}.row:last-child{border:0}
-@media(max-width:560px){.steps{grid-template-columns:1fr}.step{text-align:right}}
+.doc{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line);font-size:11px}.doc:last-child{border:0}
+.doc .notes{flex-basis:100%;margin:0;padding-inline-start:16px;color:#8A5A00;font-size:10px}.doc input{font-size:10px;max-width:220px}
+.badge{padding:3px 8px;border-radius:10px;background:var(--pale);font-size:9px;white-space:nowrap}.badge.ok{background:#E3F4E8;color:#1E6B3A}.badge.bad{background:#FDEDEB;color:#B42318}.badge.wait{background:#FFF4D6;color:#8A5A00}
+.letter{white-space:pre-line;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:12px;line-height:1.9}
+.sign-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px;margin-top:12px}
+.consent{display:flex;gap:8px;align-items:flex-start;margin:4px 0 12px;font-size:11px;line-height:1.7}
+@media(max-width:560px){.steps{grid-template-columns:1fr}.step{text-align:right}.sign-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body class="ui">
@@ -42,7 +48,9 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 <script src="bud-api.js"></script>
 <script>
 const { el, money } = BUD;
-const ERRORS = { INVALID_CODE: 'الرمز غير صحيح أو انتهت صلاحيته.', TOO_MANY_REQUESTS: 'محاولات كثيرة. حاول بعد عشر دقائق.', TRACKING_EXPIRED: 'انتهت الجلسة. اطلب رمزًا جديدًا.' };
+const ERRORS = { INVALID_CODE: 'الرمز غير صحيح أو انتهت صلاحيته.', TOO_MANY_REQUESTS: 'محاولات كثيرة. حاول بعد عشر دقائق.', TRACKING_EXPIRED: 'انتهت الجلسة. اطلب رمزًا جديدًا.',
+  NO_LETTER_TO_SIGN: 'لا يوجد خطاب بانتظار توقيعك.', LETTER_EXPIRED: 'انتهت صلاحية الخطاب. تواصل مع بُعد لإصدار خطاب جديد.', CONSENT_REQUIRED: 'أكّد موافقتك على نص الخطاب.',
+  UNSUPPORTED_FILE_TYPE: 'نقبل PDF أو صور JPG/PNG (وجداول Excel للكشوف).', FILE_TOO_LARGE: 'حجم الملف أكبر من المسموح.', TOO_MANY_DOCUMENTS: 'وصلت للحد الأقصى من المستندات.' };
 let lookup = null, token = null;  // kept in memory only, never stored in the browser
 
 function showError(text) { const b = document.getElementById('error'); b.textContent = text || ''; b.hidden = !text; }
@@ -102,10 +110,68 @@ async function showStatus() {
     cards.push(el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'مطالباتك' }),
       ...v.claims.map(c => el('div', { class: 'row' }, el('span', { text: `${c.claim_number} · ${d(c.incident_date)}` }), el('b', { text: c.status })))));
   }
+  if (v.letter) cards.push(letterCard(v.letter));
+  if (v.documents) cards.push(documentsCard(v.documents, v.documents_complete));
   cards.push(el('p', { class: 'muted', text: 'لأي استفسار تواصل مع فريق بُعد. تنتهي هذه الجلسة بعد 30 دقيقة.' }));
   const box = document.getElementById('status');
   box.replaceChildren(...cards); box.hidden = false;
 }
+const TONE = { missing: 'bad', failed: 'bad', rejected: 'bad', warning: 'wait', pending_signature: 'wait', not_issued: '', passed: 'ok', accepted: 'ok', signed: 'ok' };
+
+function letterCard(letter) {
+  const card = el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'خطاب التفويض' }));
+  if (letter.status === 'signed') {
+    card.append(el('p', { class: 'message', text: `✓ وقّعت الخطاب ${letter.letter_number} إلكترونيًا في ${d(letter.signed_at)}.` }),
+      el('p', { class: 'muted', text: `رمز التحقق: ${letter.verification_code}. تستطيع شركات التأمين التحقق منه من صفحة التحقق في بُعد.` }),
+      el('a', { class: 'button', href: `verify.html?code=${encodeURIComponent(letter.verification_code)}`, target: '_blank', rel: 'noopener', text: 'صفحة التحقق' }));
+    return card;
+  }
+  const form = el('form', {},
+    el('div', { class: 'sign-grid' },
+      el('label', { class: 'field' }, el('span', { text: 'اسمك الكامل كما في الهوية' }), el('input', { name: 'signer_name', required: true, minlength: 3, maxlength: 200, autocomplete: 'name' })),
+      el('label', { class: 'field' }, el('span', { text: 'رقم الهوية أو الإقامة' }), el('input', { name: 'id_number', required: true, inputmode: 'numeric', pattern: '[12][0-9]{9}', maxlength: 10, dir: 'ltr' }))),
+    el('label', { class: 'consent' }, el('input', { type: 'checkbox', name: 'accept', required: true }),
+      el('span', { text: 'قرأت نص الخطاب وأوافق عليه، وأقرّ بأن هذا توقيعي الإلكتروني بعد التحقق من رقم جوالي.' })),
+    el('button', { class: 'button primary', type: 'submit', text: 'توقيع الخطاب' }));
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    showError('');
+    form.querySelector('button').disabled = true;
+    try {
+      await call('/letter/sign', { method: 'POST', headers: { 'X-Track-Token': token }, body: JSON.stringify({
+        signer_name: form.signer_name.value.trim(), id_number: form.id_number.value.trim(), accept: form.accept.checked }) });
+      await showStatus();
+    } catch (error) { showError(error.message); form.querySelector('button').disabled = false; }
+  });
+  card.append(el('p', { class: 'muted', text: 'يفوّض هذا الخطاب بُعد بطلب عروض الأسعار من شركات التأمين نيابة عنك. لا يُلزمك بأي وثيقة أو دفع.' }),
+    el('div', { class: 'letter', text: letter.body_text }), form);
+  return card;
+}
+
+async function upload(key, input) {
+  const data = new FormData(); data.append('file', input.files[0]); data.append('document_type', key);
+  showError('');
+  input.disabled = true;
+  try {
+    const response = await fetch('/insurance/portal/track/documents', { method: 'POST', headers: { 'X-Track-Token': token }, body: data });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) throw new Error(ERRORS[body?.detail?.error_code] || 'تعذر رفع الملف.');
+    await showStatus();
+  } catch (error) { showError(error.message); input.disabled = false; }
+}
+
+function documentsCard(items, complete) {
+  const uploadable = items.filter(i => !i.generated);
+  return el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 4px;font-size:14px', text: 'مستندات طلبك' }),
+    el('p', { class: 'muted', style: 'margin:0 0 6px', text: complete ? 'مستنداتك مكتملة، شكرًا لك.' : 'ارفع المستندات الناقصة أو استبدل ما عليه ملاحظة.' }),
+    ...uploadable.map(i => el('div', { class: 'doc' },
+      el('span', {}, el('b', { text: i.label }), i.required ? '' : el('span', { class: 'muted', text: ' (اختياري)' }), i.hint ? el('div', { class: 'muted', text: i.hint }) : null),
+      el('span', { class: `badge ${TONE[i.status] || ''}`, text: i.status_label }),
+      ['missing', 'failed', 'rejected', 'warning'].includes(i.status)
+        ? el('input', { type: 'file', accept: i.spreadsheet ? '.pdf,.jpg,.jpeg,.png,.xlsx' : '.pdf,.jpg,.jpeg,.png', onchange: e => upload(i.key, e.currentTarget) }) : null,
+      i.notes.length ? el('ul', { class: 'notes' }, ...i.notes.map(n => el('li', { text: n }))) : null)));
+}
+
 const number = new URLSearchParams(location.search).get('request');
 if (number) document.querySelector('#start-form [name=request_number]').value = number;
 </script>

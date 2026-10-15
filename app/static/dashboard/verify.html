@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | التحقق من خطاب التفويض</title>
+<link rel="stylesheet" href="bud.css">
+<style>
+body{font-size:14px}
+.topbar{height:62px;padding:0 clamp(15px,4vw,48px);display:flex;align-items:center;justify-content:space-between;background:var(--black);color:var(--white)}
+.topbar .brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--gray);border-radius:8px;font-size:10px;font-weight:700}
+.brand-name{font-size:16px;font-weight:700}.brand-name small{display:block;color:var(--pale);font-size:8px;font-weight:400}
+main{width:min(720px,calc(100% - 32px));margin:28px auto 45px;padding:0}
+h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-size:11px}
+.card{padding:18px;border:1px solid var(--line);border-radius:8px;background:var(--white);margin-bottom:12px}
+.verdict{padding:12px 14px;border-radius:6px;font-size:13px;font-weight:700;margin-bottom:12px}
+.verdict.ok{background:#E3F4E8;color:#1E6B3A}.verdict.bad{background:#FDEDEB;color:#B42318}.verdict.wait{background:#FFF4D6;color:#8A5A00}
+.row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:11px}.row b{word-break:break-all;text-align:left}
+.letter{white-space:pre-line;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:12px;line-height:1.9}
+</style>
+</head>
+<body class="ui">
+<header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a></header>
+<main>
+<h1>التحقق من خطاب التفويض</h1><p class="lead">أدخل رمز التحقق المطبوع على الخطاب للتأكد من أنه صادر من بُعد وموقّع ولم يُعدَّل.</p>
+<section class="card"><form id="form" class="form-grid">
+<label class="field"><span>رمز التحقق</span><input name="code" required placeholder="XXXX-XXXX-XXXX" dir="ltr" autocomplete="off"></label>
+<div class="full"><button class="button primary" type="submit">تحقق</button></div></form></section>
+<section id="result" hidden></section>
+</main>
+<script src="bud-api.js"></script>
+<script>
+const { el } = BUD;
+const d = value => (value ? new Date(value).toLocaleString('ar-SA-u-ca-gregory-nu-latn') : '—');
+const STATUS = { valid: ['ok', 'الخطاب صحيح وساري المفعول'], expired: ['wait', 'الخطاب صحيح لكن انتهت مدته'], revoked: ['bad', 'هذا الخطاب أُلغي وصدر بدلًا منه خطاب أحدث'] };
+const form = document.getElementById('form');
+const box = document.getElementById('result');
+
+async function check(code) {
+  box.hidden = false;
+  const response = await fetch(`/insurance/portal/verify/${encodeURIComponent(code)}`).catch(() => null);
+  const v = response?.ok ? await response.json() : null;
+  if (!v) {
+    const tooMany = response?.status === 429;
+    box.replaceChildren(el('div', { class: 'card' }, el('div', { class: 'verdict bad', text: tooMany ? 'محاولات كثيرة. حاول بعد قليل.' : 'لا يوجد خطاب موقّع بهذا الرمز.' })));
+    return;
+  }
+  const [tone, label] = v.intact ? STATUS[v.status] : ['bad', 'تحذير: بيانات الخطاب لا تطابق التوقيع، فلا تعتمد عليه'];
+  box.replaceChildren(el('div', { class: 'card' }, el('div', { class: `verdict ${tone}`, text: label }),
+    ...[['رقم الخطاب', v.letter_number], ['رقم طلب التأمين', v.request_number], ['الوسيط', v.broker], ['الموقّع', v.signer_name],
+      ['وقت التوقيع', d(v.signed_at)], ['ساري حتى', v.valid_until], ['بصمة التوقيع (SHA-256)', v.content_hash]]
+      .map(([k, val]) => el('div', { class: 'row' }, el('span', { class: 'muted', text: k }), el('b', { text: val || '—' }))),
+    el('div', { class: 'letter', text: v.body_text })));
+}
+form.addEventListener('submit', e => { e.preventDefault(); check(form.code.value.trim()); });
+const code = new URLSearchParams(location.search).get('code');
+if (code) { form.code.value = code; check(code); }
+</script>
+</body></html>

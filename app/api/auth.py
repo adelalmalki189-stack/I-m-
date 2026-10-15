@@ -23,10 +23,18 @@ from app.insurance.models import AuditEvent, InsuranceEmployeeRole, SalesEmploye
 SESSION_COOKIE = "bud_session"
 
 Role = InsuranceEmployeeRole
-ROLE_LABELS = {Role.SALES_AGENT.value: "مبيعات", Role.UNDERWRITER.value: "اكتتاب", Role.MANAGER.value: "مدير"}
+ROLE_LABELS = {
+    Role.SALES_AGENT.value: "مبيعات",
+    Role.UNDERWRITER.value: "اكتتاب",
+    Role.CLAIMS_OFFICER.value: "مطالبات",
+    Role.CUSTOMER_SERVICE.value: "خدمة عملاء",
+    Role.MANAGER.value: "مدير",
+}
 
 # Common permission groups.
 UNDERWRITING = (Role.UNDERWRITER, Role.MANAGER)
+# Underwriters keep claim updates until the claims portal takes them over.
+CLAIMS = (Role.CLAIMS_OFFICER, Role.UNDERWRITER, Role.MANAGER)
 MANAGERS = (Role.MANAGER,)
 
 

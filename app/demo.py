@@ -2,7 +2,7 @@
 
     python -m app.cli seed-demo
 
-Creates fictional insurers (example.com addresses), two staff accounts and customers with
+Creates fictional insurers (example.com addresses), one staff account per department and customers with
 requests at every stage, so every dashboard page has something to show.
 """
 
@@ -42,6 +42,9 @@ INSURERS = [
 STAFF = [
     ("سارة (تجريبي)", "sales@demo.bud.example", "sales_agent"),
     ("خالد (تجريبي)", "underwriter@demo.bud.example", "underwriter"),
+    ("ليلى (تجريبي)", "claims@demo.bud.example", "claims_officer"),
+    ("عبدالله (تجريبي)", "service@demo.bud.example", "customer_service"),
+    ("منيرة (تجريبي)", "manager@demo.bud.example", "manager"),
 ]
 CUSTOMERS = [
     # (name, company, mobile, line, product, details, coverage, stage)
@@ -122,7 +125,14 @@ class ProductionRefused(Exception):
 async def seed_demo(session: AsyncSession, environment: str) -> dict[str, int]:
     if environment == "production":
         raise ProductionRefused("Demo data is never created in production")
+    # Staff first, so re-running adds any new demo department to an already seeded database.
+    for name, email, role in STAFF:
+        if not (await session.execute(select(SalesEmployee).where(SalesEmployee.email == email))).first():
+            session.add(
+                SalesEmployee(full_name=name, email=email, role=role, password_hash=hash_password(DEMO_PASSWORD))
+            )
     if (await session.execute(select(Customer).where(Customer.phone == CUSTOMERS[0][2]))).first():
+        await session.commit()
         return {"created": 0}  # already seeded
 
     insurers = []
@@ -131,11 +141,6 @@ async def seed_demo(session: AsyncSession, environment: str) -> dict[str, int]:
         insurer = existing or Insurer(name=name, email=email, contact_name=contact)
         session.add(insurer)
         insurers.append(insurer)
-    for name, email, role in STAFF:
-        if not (await session.execute(select(SalesEmployee).where(SalesEmployee.email == email))).first():
-            session.add(
-                SalesEmployee(full_name=name, email=email, role=role, password_hash=hash_password(DEMO_PASSWORD))
-            )
     await session.flush()
 
     now = datetime.now(UTC)

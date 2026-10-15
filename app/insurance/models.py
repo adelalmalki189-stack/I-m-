@@ -58,6 +58,8 @@ class InstallmentStatus(StrEnum):
 class InsuranceEmployeeRole(StrEnum):
     SALES_AGENT = "sales_agent"
     UNDERWRITER = "underwriter"
+    CLAIMS_OFFICER = "claims_officer"
+    CUSTOMER_SERVICE = "customer_service"
     MANAGER = "manager"
 
 
@@ -168,6 +170,14 @@ class RequestDocument(Base, TimestampMixin):
         ForeignKey("insurance_sales_employees.employee_id"),
         nullable=True,
     )
+    # Automatic review on upload (app/insurance/review.py), then a staff decision.
+    # review_status: passed | warning | failed (automatic), accepted | rejected (staff).
+    review_status: Mapped[str] = mapped_column(String(20), nullable=False, default="passed")
+    review_findings: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of Arabic sentences
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reviewed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="documents")
     uploaded_by_employee: Mapped[SalesEmployee | None] = relationship(foreign_keys=[uploaded_by_employee_id])
@@ -554,3 +564,47 @@ class InsuranceClaim(Base, TimestampMixin):
     insurer_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AuthorizationLetterStatus(StrEnum):
+    PENDING_SIGNATURE = "pending_signature"
+    SIGNED = "signed"
+    REVOKED = "revoked"
+
+
+class AuthorizationLetter(Base, TimestampMixin):
+    """The customer authorizes BUD to request quotes from insurers on their behalf.
+
+    BUD issues the text; the customer signs it after proving their mobile with a one-time
+    code. The signed text is frozen (body_text + content_hash) and anyone holding the
+    verification code can check it on the public verification page."""
+
+    __tablename__ = "insurance_authorization_letters"
+
+    letter_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    letter_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    status: Mapped[AuthorizationLetterStatus] = mapped_column(
+        Enum(
+            AuthorizationLetterStatus,
+            native_enum=False,
+            values_callable=_values,
+            name="authorization_letter_status",
+        ),
+        nullable=False,
+        default=AuthorizationLetterStatus.PENDING_SIGNATURE,
+    )
+    body_text: Mapped[str] = mapped_column(Text, nullable=False)
+    valid_until: Mapped[date] = mapped_column(Date, nullable=False)
+    issued_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    signer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    signer_id_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)  # never the full ID
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    signed_mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)  # verified by the one-time code
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)  # sha256 of the signed record
+    verification_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # signed copy in the request files

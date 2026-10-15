@@ -33,7 +33,7 @@ const BUD = (() => {
     TOO_MANY_REQUESTS: 'طلبات كثيرة من نفس الجهاز. حاول بعد قليل.',
     UPLOAD_NOT_ALLOWED: 'انتهت صلاحية رابط رفع المستندات.',
     FILE_TOO_LARGE: 'حجم الملف أكبر من المسموح.',
-    UNSUPPORTED_FILE_TYPE: 'نقبل ملفات PDF أو JPG أو PNG فقط.',
+    UNSUPPORTED_FILE_TYPE: 'نقبل ملفات PDF أو JPG أو PNG، وجداول Excel للكشوف فقط.',
     CHANNEL_NOT_CONFIGURED: 'بيانات مزوّد الرسائل غير موجودة على الخادم. أضفها أولًا ثم فعّل الوضع الفعلي.',
     AMOUNT_REQUIRED: 'أدخل المبلغ لهذه المرحلة.',
     COMMISSION_ALREADY_RECEIVED: 'العمولة مسجلة كمستلمة مسبقًا.',
@@ -61,6 +61,10 @@ const BUD = (() => {
     TOO_MANY_ATTEMPTS: 'محاولات كثيرة. حاول بعد ربع ساعة.',
     TOO_MANY_DOCUMENTS: 'وصلت للحد الأقصى من المستندات.',
     UNDERWRITER_ID_REQUIRED: 'اختر المكتتب.',
+    REASON_REQUIRED: 'اكتب سبب الرفض ليظهر للعميل.',
+    NOTHING_MISSING: 'لا توجد مستندات ناقصة أو مرفوضة.',
+    UNKNOWN_DOCUMENT_TYPE: 'نوع المستند لا يخص هذا الطلب.',
+    LETTER_IS_SIGNED: 'خطاب التفويض موثّق بالتوقيع الإلكتروني.',
   };
 
   class ApiError extends Error {

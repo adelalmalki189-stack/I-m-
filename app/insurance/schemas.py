@@ -34,7 +34,7 @@ class CustomerResponse(BaseModel):
     updated_at: datetime
 
 
-STAFF_ROLE_PATTERN = "^(sales_agent|underwriter|manager)$"
+STAFF_ROLE_PATTERN = "^(sales_agent|underwriter|claims_officer|customer_service|manager)$"
 
 
 class SalesEmployeeCreateRequest(BaseModel):
@@ -142,6 +142,8 @@ class RequestDocumentResponse(BaseModel):
     is_verified: bool
     uploaded_by_employee_id: str | None = None
     claim_id: str | None = None
+    review_status: str = "passed"
+    rejection_reason: str | None = None
     created_at: datetime
 
 
@@ -559,3 +561,6 @@ class PortalRequestResponse(BaseModel):
 class PortalDocumentResponse(BaseModel):
     document_id: str
     file_name: str
+    document_type: str = "customer_upload"
+    review_status: str = "passed"
+    findings: list[str] = []

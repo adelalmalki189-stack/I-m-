@@ -4,7 +4,16 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
 <title>BUD | صندوق الطلبات الرقمية</title>
 <link rel="stylesheet" href="bud.css">
-<style>.section-title{margin:14px 0 7px;font-size:11px;font-weight:700}.section-title:first-child{margin-top:0}</style>
+<style>.section-title{margin:14px 0 7px;font-size:11px;font-weight:700}.section-title:first-child{margin-top:0}
+.review-head{padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}.review-head b{font-size:11px}
+.bar{height:6px;margin:7px 0;border-radius:3px;background:var(--line);overflow:hidden}.bar span{display:block;height:100%;background:var(--blue)}
+.findings{margin:6px 0 0;padding-inline-start:16px;font-size:10px}.findings li.missing{color:#B42318}.findings li.warning{color:#8A5A00}.findings li.ok{color:#1E6B3A}
+.doc-item{padding:8px 0;border-bottom:1px solid var(--line);font-size:10px}.doc-item:last-child{border:0}
+.doc-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
+.doc-file{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:5px}.doc-file ul{flex-basis:100%;margin:2px 0 0;padding-inline-start:16px;color:var(--muted)}
+.tone-ok{background:#E3F4E8;color:#1E6B3A}.tone-bad{background:#FDEDEB;color:#B42318}.tone-wait{background:#FFF4D6;color:#8A5A00}
+.mini{min-height:26px;padding:0 8px;font-size:9px}.upload-input{font-size:9px;max-width:190px}
+.letter-text{white-space:pre-line;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--paper);font-size:10px;line-height:1.8}</style>
 </head>
 <body class="ui"><div class="app">
 <aside class="side"></aside><script src="bud-shell.js"></script>
@@ -23,7 +32,8 @@
 <div class="table-wrap"><table><thead><tr><th>العميل / الطلب</th><th>الفرع والمنتج</th><th>المصدر</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا توجد طلبات تطابق البحث أو التصفية.</div></div></section>
 <section id="detail" class="panel" hidden><div class="panel-head"><div><h2 id="d-title"></h2><div id="d-sub" class="muted"></div></div><span id="d-status"></span></div>
 <div class="panel-body"><div class="section-title">بيانات الطلب</div><dl id="d-details" class="kv"></dl>
-<div class="section-title">المستندات</div><div id="d-docs" class="actions"></div>
+<div class="section-title">المراجعة الآلية للمستندات</div><div id="d-review"><span class="muted">جارٍ الفحص…</span></div>
+<div class="section-title">خطاب التفويض</div><div id="d-letter"></div>
 <div class="section-title">الإجراءات</div><div class="actions"><a id="d-uw" class="button primary" href="underwriting.html">فتح في الاكتتاب</a><a id="d-compare" class="button" href="comparison.html">مقارنة العروض</a></div></div></section>
 <section id="detail-empty" class="panel"><div class="empty">اختر طلبًا من القائمة.</div></section>
 </div></main></div>
@@ -68,9 +78,75 @@ function select(id) {
   const rows = [['مبلغ التغطية', money(r.coverage_amount)], ...Object.entries(r.request_details).map(([k, v]) => [cat.fieldLabel(r.insurance_type, k), v]),
     ['الأولوية', r.customer_priority], ['ملاحظات', r.notes || r.summary], ['آخر تغيير للحالة', date(r.last_status_change_at)]].filter(([, v]) => v != null && v !== '');
   document.getElementById('d-details').replaceChildren(...rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
-  document.getElementById('d-docs').replaceChildren(...(r.documents.length ? r.documents.map(d => el('a', { class: 'pill blue', href: `/insurance/documents/${d.document_id}/download`, target: '_blank', rel: 'noopener', text: d.file_name })) : [el('span', { class: 'muted', text: 'لا توجد مستندات' })]));
+  loadReview(id);
   document.getElementById('d-uw').href = `underwriting.html?request=${id}`;
   document.getElementById('d-compare').href = `comparison.html?request=${id}`;
+}
+
+const TONE = { missing: 'tone-bad', failed: 'tone-bad', rejected: 'tone-bad', warning: 'tone-wait', pending_signature: 'tone-wait', not_issued: '', passed: '', accepted: 'tone-ok', signed: 'tone-ok' };
+const FILE_LABEL = { passed: 'سليم', warning: 'ملاحظات', failed: 'غير صالح', accepted: 'تم التحقق', rejected: 'مرفوض' };
+const badge = (status, text) => el('span', { class: `pill ${TONE[status] || ''}`, text });
+
+async function loadReview(id) {
+  try { renderReview(id, await api(`/requests/${id}/review`)); }
+  catch (error) { document.getElementById('d-review').replaceChildren(el('span', { class: 'muted', text: error.message })); }
+}
+
+function fileLine(id, f) {
+  const decide = (decision, reason) => api(`/documents/${f.document_id}/decision`, { method: 'POST', body: { decision, reason } });
+  return el('div', { class: 'doc-file' },
+    el('a', { class: 'pill blue', href: `/insurance/documents/${f.document_id}/download`, target: '_blank', rel: 'noopener', text: f.file_name }),
+    badge(f.review_status, FILE_LABEL[f.review_status] || f.review_status),
+    f.review_status !== 'accepted' ? el('button', { class: 'button mini', type: 'button', text: 'تحقق ✓', onclick: e => run(e.currentTarget, () => decide('accept'), 'تم التحقق').then(v => renderReview(id, v)) }) : null,
+    f.review_status !== 'rejected' ? el('button', { class: 'button mini', type: 'button', text: 'رفض', onclick: e => {
+      const reason = prompt('سبب الرفض (يظهر للعميل):');
+      if (reason) run(e.currentTarget, () => decide('reject', reason), 'رُفض المستند').then(v => renderReview(id, v));
+    } }) : null,
+    (f.findings.length || f.rejection_reason) ? el('ul', {}, f.rejection_reason ? el('li', { text: `سبب الرفض: ${f.rejection_reason}` }) : null, ...f.findings.map(t => el('li', { text: t }))) : null);
+}
+
+function uploadInput(id, key, spreadsheet) {
+  return el('input', { class: 'upload-input', type: 'file', accept: spreadsheet ? '.pdf,.jpg,.jpeg,.png,.xlsx' : '.pdf,.jpg,.jpeg,.png', onchange: e => {
+    const data = new FormData(); data.append('file', e.currentTarget.files[0]); data.append('document_type', key);
+    run(null, () => api(`/requests/${id}/documents`, { method: 'POST', form: data }), 'رُفع المستند').then(() => loadReview(id));
+  } });
+}
+
+function renderReview(id, v) {
+  const items = v.items.filter(i => !i.generated);
+  const canAsk = v.items.some(i => i.required && !i.generated && ['missing', 'failed', 'rejected'].includes(i.status));
+  document.getElementById('d-review').replaceChildren(
+    el('div', { class: 'review-head' }, el('b', { text: v.headline }),
+      el('div', { class: 'bar' }, el('span', { style: `width:${v.completeness}%` })),
+      el('ul', { class: 'findings' }, ...v.findings.map(f => el('li', { class: f.level, text: f.text }))),
+      el('div', { class: 'muted', text: `آخر فحص: ${date(v.checked_at)} · فحص آلي بالقواعد، والقرار النهائي للموظف` }),
+      canAsk ? el('div', { class: 'actions', style: 'margin-top:8px' }, el('button', { class: 'button primary mini', type: 'button', text: 'اطلب النواقص من العميل (واتساب)',
+        onclick: e => run(e.currentTarget, () => api(`/requests/${id}/request-documents`, { method: 'POST' }), 'أُرسل الطلب للعميل').then(r => { renderReview(id, r); load(); }) })) : null),
+    ...items.map(i => el('div', { class: 'doc-item' },
+      el('div', { class: 'doc-row' }, el('span', {}, el('b', { text: i.label }), i.required ? '' : el('span', { class: 'muted', text: ' (اختياري)' })),
+        el('span', {}, badge(i.status, i.status_label), ' ', uploadInput(id, i.key, i.spreadsheet))),
+      ...i.documents.map(f => fileLine(id, f)))),
+    v.extra_documents.length ? el('div', { class: 'doc-item' }, el('b', { text: 'مستندات بدون تصنيف' }),
+      ...v.extra_documents.map(f => el('div', {}, fileLine(id, f),
+        el('select', { class: 'mini', onchange: e => e.currentTarget.value && run(null, () => api(`/documents/${f.document_id}`, { method: 'PATCH', body: { document_type: e.currentTarget.value } }), 'تم التصنيف').then(r => renderReview(id, r)) },
+          el('option', { value: '', text: 'صنّف المستند…' }), ...items.map(i => el('option', { value: i.key, text: i.label })))))) : null);
+  renderLetter(id, v.letter);
+}
+
+function renderLetter(id, letter) {
+  const issue = el('button', { class: 'button mini', type: 'button', text: letter ? 'إعادة إصدار' : 'إصدار الخطاب وإرساله للعميل', onclick: e => {
+    if (letter && !confirm('سيُلغى الخطاب الحالي ويصدر خطاب جديد يحتاج توقيعًا جديدًا. متابعة؟')) return;
+    run(e.currentTarget, () => api(`/requests/${id}/authorization-letter`, { method: 'POST' }), 'صدر الخطاب وأُرسل رابط التوقيع').then(r => renderReview(id, r));
+  } });
+  if (!letter) { document.getElementById('d-letter').replaceChildren(el('span', { class: 'muted', text: 'لم يصدر خطاب بعد. ' }), issue); return; }
+  const signed = letter.status === 'signed';
+  document.getElementById('d-letter').replaceChildren(
+    el('div', { class: 'doc-row' }, el('span', {}, el('b', { text: letter.letter_number }), ' ', badge(letter.status, signed ? 'موقّع إلكترونيًا' : 'بانتظار توقيع العميل')),
+      el('span', { class: 'actions' }, signed ? el('a', { class: 'button mini', href: `/insurance/documents/${letter.document_id}/download`, target: '_blank', rel: 'noopener', text: 'النسخة الموقّعة' }) : null,
+        signed ? el('a', { class: 'button mini', href: `verify.html?code=${letter.verification_code}`, target: '_blank', rel: 'noopener', text: 'التحقق' }) : null, issue)),
+    signed ? el('dl', { class: 'kv' }, ...[['الموقّع', letter.signer_name], ['آخر 4 من الهوية', letter.signer_id_last4], ['الجوال', letter.signed_mobile],
+      ['وقت التوقيع', date(letter.signed_at)], ['ساري حتى', letter.valid_until], ['رمز التحقق', letter.verification_code]].flatMap(([k, val]) => [el('dt', { text: k }), el('dd', { text: val || '—' })])) : null,
+    el('details', {}, el('summary', { class: 'muted', text: 'نص الخطاب' }), el('div', { class: 'letter-text', text: letter.body_text })));
 }
 
 async function load() {

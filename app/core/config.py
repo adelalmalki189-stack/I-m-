@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     environment: str = "development"  # "development" | "test" | "production"
     sentry_dsn: str | None = None  # error tracking; empty = off
     public_base_url: str = "http://localhost:8000"  # used in links sent to customers
+    # Name printed on the customer's authorization letter: put the licensed legal name here.
+    broker_legal_name: str = "بُعد للوساطة التأمينية"
+    authorization_valid_days: int = 90
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/bud"
 
@@ -27,6 +30,9 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = False
     login_max_attempts: int = 5
     login_lock_minutes: int = 15
+    # Testing only: pick a staff member on the login page and enter without a password.
+    # Never honoured when ENVIRONMENT=production.
+    dev_login_enabled: bool = False
     # Public portal abuse limits (per client IP, per hour).
     portal_requests_per_hour: int = 10
     portal_max_upload_mb: int = 10

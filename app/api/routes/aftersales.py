@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import UNDERWRITING, audit, get_current_staff, require_roles
+from app.api.auth import CLAIMS, UNDERWRITING, audit, get_current_staff, require_roles
 from app.api.deps import get_db_session
 from app.automation import service as notifications
 from app.insurance import aftersales, catalog, documents
@@ -461,7 +461,7 @@ async def update_claim_status(
     claim_id: str,
     body: ClaimStatusUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
-    staff: SalesEmployee = Depends(require_roles(*UNDERWRITING)),
+    staff: SalesEmployee = Depends(require_roles(*CLAIMS)),
 ) -> ClaimView:
     claim = await _get(session, InsuranceClaim, claim_id, "CLAIM_NOT_FOUND")
     if body.status not in aftersales.CLAIM_TRANSITIONS[claim.status]:

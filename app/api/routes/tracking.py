@@ -7,19 +7,22 @@ import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import audit, client_ip
 from app.api.deps import get_db_session
+from app.api.routes import request_review
+from app.api.routes.insurance import PORTAL_MAX_DOCUMENTS, store_customer_document
 from app.automation import service
 from app.automation.models import PortalAccess
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_token, new_token
-from app.insurance import aftersales, catalog
+from app.insurance import aftersales, authorization, catalog, documents
 from app.insurance.models import (
+    AuthorizationLetterStatus,
     ClaimStatus,
     Customer,
     InstallmentStatus,
@@ -32,6 +35,7 @@ from app.insurance.models import (
     InsuranceSubmissionStatus,
     Insurer,
     PremiumInstallment,
+    RequestDocument,
 )
 from app.insurance.schemas import normalize_saudi_mobile
 
@@ -178,18 +182,46 @@ async def verify(
     return {"token": token, "expires_in": int(TOKEN_TTL.total_seconds())}
 
 
-@router.get("")
-async def status(
-    x_track_token: str = Header(...),
-    session: AsyncSession = Depends(get_db_session),
-) -> dict[str, Any]:
+async def _tracked_request(session: AsyncSession, token: str) -> InsuranceRequest:
     access = (
-        await session.execute(select(PortalAccess).where(PortalAccess.token_hash == hash_token(x_track_token)))
+        await session.execute(select(PortalAccess).where(PortalAccess.token_hash == hash_token(token)))
     ).scalar_one_or_none()
     if access is None or access.token_expires_at is None or _utc(access.token_expires_at) < datetime.now(UTC):
         raise _error(401, "TRACKING_EXPIRED", "Session expired; request a new code")
     request = await session.get(InsuranceRequest, access.request_id)
     assert request is not None
+    return request
+
+
+def _customer_checklist(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """What the customer sees: each required document, its state, and why a file was refused."""
+    return [
+        {
+            "key": item["key"],
+            "label": item["label"],
+            "hint": item["hint"],
+            "required": item["required"],
+            "generated": item["generated"],
+            "spreadsheet": item["spreadsheet"],
+            "status": item["status"],
+            "status_label": item["status_label"],
+            "notes": [
+                note
+                for d in item["documents"]
+                for note in ([d["rejection_reason"]] if d["rejection_reason"] else [])
+                + (d["findings"] if d["review_status"] in ("warning", "failed") else [])
+            ],
+        }
+        for item in result["items"]
+    ]
+
+
+@router.get("")
+async def status(
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    request = await _tracked_request(session, x_track_token)
     step, message = STAGE[request.status]
 
     contacted = await session.scalar(
@@ -225,6 +257,19 @@ async def status(
         "policy": None,
         "claims": [],
     }
+    if request.status not in (InsuranceRequestStatus.POLICY_ISSUED, InsuranceRequestStatus.CLOSED):
+        result = await request_review.load_review(session, request)
+        view["documents"] = _customer_checklist(result)
+        view["documents_complete"] = result["ready"]
+        letter = result["letter"]
+        view["letter"] = (
+            {
+                k: letter[k]
+                for k in ("letter_number", "status", "body_text", "valid_until", "signed_at", "verification_code")
+            }
+            if letter
+            else None
+        )
     policy = (
         await session.execute(select(InsurancePolicy).where(InsurancePolicy.request_id == request.request_id))
     ).scalar_one_or_none()
@@ -277,3 +322,67 @@ async def status(
             for c in claims
         ]
     return view
+
+
+@router.post("/documents", status_code=201)
+async def upload_document(
+    file: UploadFile = File(...),
+    document_type: str = Form(..., max_length=80),
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """The customer adds a missing (or replaces a refused) document from the tracking page."""
+    request = await _tracked_request(session, x_track_token)
+    count = await session.scalar(select(func.count()).where(RequestDocument.request_id == request.request_id))
+    if (count or 0) >= PORTAL_MAX_DOCUMENTS + 10:
+        raise _error(409, "TOO_MANY_DOCUMENTS", "Too many documents on this request")
+    customer = await session.get(Customer, request.customer_id)
+    assert customer is not None
+    document = await store_customer_document(session, request, customer, file, document_type)
+    await session.commit()
+    return {"review_status": document.review_status, "findings": documents.findings_of(document)}
+
+
+class SignLetter(BaseModel):
+    signer_name: str = Field(..., min_length=3, max_length=200)
+    id_number: str = Field(..., pattern=r"^[12]\d{9}$")  # Saudi national ID (1…) or iqama (2…)
+    accept: bool
+
+
+@router.post("/letter/sign")
+async def sign_letter(
+    body: SignLetter,
+    http: Request,
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    request = await _tracked_request(session, x_track_token)
+    if not body.accept:
+        raise _error(422, "CONSENT_REQUIRED", "Tick the box to confirm you agree to the letter")
+    letter = await authorization.current(session, request.request_id)
+    if letter is None or letter.status != AuthorizationLetterStatus.PENDING_SIGNATURE:
+        raise _error(409, "NO_LETTER_TO_SIGN", "There is no letter awaiting your signature")
+    if letter.valid_until < datetime.now(UTC).date():
+        raise _error(409, "LETTER_EXPIRED", "This letter has expired; ask BUD for a new one")
+    customer = await session.get(Customer, request.customer_id)
+    assert customer is not None
+    await authorization.sign(
+        session,
+        letter,
+        body.signer_name,
+        body.id_number,
+        customer.phone or "",
+        client_ip(http),
+        http.headers.get("user-agent") or "",
+    )
+    audit(
+        session,
+        None,
+        "authorization_letter_signed",
+        "request",
+        request.request_id,
+        ip=client_ip(http),
+        letter_number=letter.letter_number,
+    )
+    await session.commit()
+    return {"letter_number": letter.letter_number, "verification_code": letter.verification_code}

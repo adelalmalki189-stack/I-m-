@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.cli import create_manager
+from app.core.config import settings
 from app.core.security import hash_password
 from app.insurance.models import AuditEvent, SalesEmployee
 from app.main import app
@@ -197,3 +198,33 @@ async def test_cli_creates_first_manager(db_session):
     assert await create_manager("first@bud.example", "المدير الأول", PASSWORD) == "updated"
     with TestClient(app) as client:
         assert _login(client, "first@bud.example").json()["role"] == "manager"
+
+
+async def test_dev_login_is_off_by_default(db_session):
+    employee = await _employee(db_session, "dev@bud.example", "sales_agent")
+    with TestClient(app) as client:
+        assert client.get("/auth/dev-login").status_code == 404
+        assert client.post("/auth/dev-login", json={"employee_id": employee.employee_id}).status_code == 404
+
+
+async def test_dev_login_picks_a_staff_member_without_password(db_session, monkeypatch):
+    monkeypatch.setattr(settings, "dev_login_enabled", True)
+    employee = await _employee(db_session, "claims@bud.example", "claims_officer", password=None)
+    with TestClient(app) as client:
+        staff = client.get("/auth/dev-login").json()
+        assert [s["role_label"] for s in staff] == ["مطالبات"]
+        response = client.post("/auth/dev-login", json={"employee_id": employee.employee_id})
+        assert response.status_code == 200
+        assert client.get("/auth/me").json()["role"] == "claims_officer"
+        assert client.post("/auth/dev-login", json={"employee_id": "missing"}).status_code == 404
+    actions = (await db_session.execute(select(AuditEvent.action))).scalars().all()
+    assert "dev_login" in actions
+
+
+async def test_dev_login_is_refused_in_production(db_session, monkeypatch):
+    monkeypatch.setattr(settings, "dev_login_enabled", True)
+    monkeypatch.setattr(settings, "environment", "production")
+    employee = await _employee(db_session, "prod@bud.example", "manager")
+    with TestClient(app) as client:
+        assert client.get("/auth/dev-login").status_code == 404
+        assert client.post("/auth/dev-login", json={"employee_id": employee.employee_id}).status_code == 404

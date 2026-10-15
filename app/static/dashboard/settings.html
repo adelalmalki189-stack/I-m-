@@ -39,7 +39,7 @@
 <form id="member-form" class="panel-body">
 <label class="field"><span>الاسم الكامل</span><input name="full_name" required minlength="2" maxlength="200"></label>
 <label class="field"><span>البريد الإلكتروني (اسم الدخول)</span><input name="email" type="email" required dir="ltr"></label>
-<label class="field"><span>الدور</span><select name="role"><option value="sales_agent">مبيعات</option><option value="underwriter">اكتتاب</option><option value="manager">مدير</option></select></label>
+<label class="field"><span>الدور</span><select name="role"><option value="sales_agent">مبيعات</option><option value="underwriter">اكتتاب</option><option value="claims_officer">مطالبات</option><option value="customer_service">خدمة عملاء</option><option value="manager">مدير</option></select></label>
 <label class="field"><span id="password-label">كلمة المرور الأولية</span><input name="password" type="password" minlength="10" autocomplete="new-password" dir="ltr"><span class="hint">سلّمها للموظف بشكل آمن واطلب منه تغييرها من «حسابي».</span></label>
 <label class="field" id="active-field" style="display:flex;align-items:center;gap:8px" hidden><input type="checkbox" name="is_active" style="width:auto;min-height:0"> <span>الحساب مفعّل</span></label>
 <div class="actions"><button class="button primary" type="submit">حفظ</button></div>
@@ -76,7 +76,7 @@
 <script src="bud-api.js"></script>
 <script>
 const { api, el, run, date } = BUD;
-const ROLE = { sales_agent: 'مبيعات', underwriter: 'اكتتاب', manager: 'مدير' };
+const ROLE = { sales_agent: 'مبيعات', underwriter: 'اكتتاب', claims_officer: 'مطالبات', customer_service: 'خدمة عملاء', manager: 'مدير' };
 const ENTITIES = { request: 'طلب', template: 'قالب', insurer: 'شركة تأمين', employee: 'موظف', policy: 'وثيقة', customer: 'عميل', claim: 'مطالبة', automation: 'الأتمتة' };
 const ACTIONS = {
   login: 'تسجيل دخول', login_failed: 'محاولة دخول فاشلة', password_changed: 'تغيير كلمة المرور', password_reset: 'إعادة تعيين كلمة مرور',

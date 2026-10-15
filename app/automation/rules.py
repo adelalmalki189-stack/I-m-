@@ -48,6 +48,22 @@ RULES: dict[str, RuleDef] = {
             ("customer_name", "request_number"),
         ),
         RuleDef(
+            "authorization_letter",
+            "طلب توقيع خطاب التفويض",
+            "عند إصدار خطاب التفويض: يصل العميل رابط صفحة المتابعة ليوقّعه إلكترونيًا.",
+            "مرحبًا {customer_name}، جهزنا خطاب التفويض لطلبك رقم {request_number} حتى نطلب لك العروض "
+            "من شركات التأمين. وقّعه إلكترونيًا من هنا: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "track_link"),
+        ),
+        RuleDef(
+            "documents_missing",
+            "طلب مستندات ناقصة",
+            "عندما يطلب الموظف من العميل المستندات الناقصة بعد المراجعة الآلية.",
+            "مرحبًا {customer_name}، لإكمال طلبك رقم {request_number} نحتاج: {missing}. "
+            "ارفعها من صفحة المتابعة: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "missing", "track_link"),
+        ),
+        RuleDef(
             "policy_issued",
             "إصدار الوثيقة",
             "عند إصدار الوثيقة.",

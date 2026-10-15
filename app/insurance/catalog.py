@@ -214,6 +214,199 @@ LINES: list[dict[str, Any]] = [
     },
 ]
 
+Doc = dict[str, Any]
+
+
+def _d(
+    key: str,
+    label: str,
+    hint: str = "",
+    required: bool = True,
+    products: list[str] | None = None,
+    who: str = "all",
+    generated: bool = False,
+    spreadsheet: bool = False,
+) -> Doc:
+    """A document the request needs.
+
+    products: only for these product keys (None = every product of the line).
+    who: "individual", "business" or "all" (customer type).
+    generated: BUD issues it (the authorization letter); the customer signs, never uploads.
+    spreadsheet: an Excel/CSV list is accepted besides PDF and images.
+    """
+    return {
+        "key": key,
+        "label": label,
+        "hint": hint,
+        "required": required,
+        "products": products,
+        "who": who,
+        "generated": generated,
+        "spreadsheet": spreadsheet,
+    }
+
+
+AUTHORIZATION_LETTER = "authorization_letter"
+# Every request: who the customer is, and the letter authorizing BUD to ask insurers on their behalf.
+COMMON_DOCUMENTS = [
+    _d("national_id", "الهوية الوطنية أو الإقامة", "صورة واضحة للوجهين، سارية المفعول", who="individual"),
+    _d("commercial_registration", "السجل التجاري", "ساري المفعول، ويظهر فيه النشاط", who="business"),
+    _d(
+        AUTHORIZATION_LETTER,
+        "خطاب التفويض",
+        "يصدره النظام ويوقّعه العميل إلكترونيًا من صفحة متابعة الطلب",
+        generated=True,
+    ),
+]
+LINE_DOCUMENTS: dict[str, list[Doc]] = {
+    "motor": [
+        _d(
+            "vehicle_registration",
+            "استمارة المركبة",
+            "سارية، ويظهر فيها الرقم التسلسلي",
+            products=["motor_tpl", "motor_comprehensive"],
+        ),
+        _d("driving_license", "رخصة القيادة", "للسائق الرئيسي", products=["motor_tpl", "motor_comprehensive"]),
+        _d("customs_card", "البطاقة الجمركية", "للمركبات الجديدة غير المسجلة", required=False),
+        _d(
+            "vehicle_photos",
+            "صور المركبة",
+            "أربع جهات وعداد المسافة، للتأمين الشامل",
+            required=False,
+            products=["motor_comprehensive"],
+        ),
+        _d(
+            "vehicle_list",
+            "كشف المركبات",
+            "لكل مركبة: الرقم التسلسلي، الطراز، السنة، القيمة",
+            products=["motor_fleet"],
+            spreadsheet=True,
+        ),
+        _d("previous_policy", "الوثيقة السابقة", "إن وجدت، مع سجل المطالبات", required=False),
+    ],
+    "medical": [
+        _d(
+            "employee_census",
+            "كشف الموظفين والتابعين",
+            "الاسم، الهوية، تاريخ الميلاد، الجنس، الفئة",
+            products=["medical_group"],
+            spreadsheet=True,
+        ),
+        _d("members_ids", "هويات المؤمَّن لهم", "لكل أفراد العائلة", products=["medical_individual"]),
+        _d("passport", "جواز السفر", "صفحة البيانات", products=["medical_visitors"]),
+        _d("visa", "التأشيرة", "", products=["medical_visitors"]),
+        _d(
+            "claims_experience",
+            "تقرير الخبرة التأمينية",
+            "من شركة التأمين الحالية لآخر سنتين",
+            required=False,
+            products=["medical_group"],
+        ),
+    ],
+    "property": [
+        _d("ownership_deed", "صك الملكية أو عقد الإيجار", ""),
+        _d("asset_schedule", "جدول الأصول وقيمها", "المبنى، المحتويات، المخزون", spreadsheet=True),
+        _d(
+            "civil_defense",
+            "رخصة الدفاع المدني",
+            "",
+            required=False,
+            products=["property_fire", "property_all_risks"],
+        ),
+        _d("site_photos", "صور الموقع", "", required=False),
+    ],
+    "engineering": [
+        _d("project_contract", "عقد المشروع", "", products=["eng_car", "eng_ear"]),
+        _d("bill_of_quantities", "جدول الكميات", "", products=["eng_car", "eng_ear"], spreadsheet=True),
+        _d("project_schedule", "الجدول الزمني للمشروع", "", required=False, products=["eng_car", "eng_ear"]),
+        _d(
+            "equipment_list",
+            "كشف المعدات",
+            "النوع، الرقم التسلسلي، سنة الصنع، القيمة",
+            products=["eng_machinery", "eng_plant"],
+            spreadsheet=True,
+        ),
+    ],
+    "marine": [
+        _d(
+            "commercial_invoice",
+            "الفاتورة التجارية",
+            "",
+            products=["marine_cargo_single", "marine_inland"],
+        ),
+        _d("bill_of_lading", "بوليصة الشحن", "", required=False, products=["marine_cargo_single"]),
+        _d("packing_list", "قائمة التعبئة", "", required=False, products=["marine_cargo_single"]),
+        _d(
+            "shipment_forecast",
+            "تقدير الشحنات السنوية",
+            "عدد الشحنات وقيمتها المتوقعة",
+            products=["marine_cargo_open"],
+            spreadsheet=True,
+        ),
+        _d("vessel_registration", "شهادة تسجيل السفينة", "", products=["marine_hull"]),
+        _d("class_certificate", "شهادة التصنيف", "", products=["marine_hull"]),
+    ],
+    "liability": [
+        _d("activity_license", "رخصة مزاولة النشاط", ""),
+        _d(
+            "professional_license",
+            "الترخيص المهني",
+            "هيئة التخصصات الصحية أو الهيئة المهنية",
+            products=["liability_professional", "liability_medical_malpractice"],
+        ),
+        _d("financial_statements", "القوائم المالية", "آخر سنة", required=False),
+        _d("claims_history", "سجل المطالبات", "آخر 3 سنوات", required=False),
+    ],
+    "general_accident": [
+        _d(
+            "insured_list",
+            "كشف المؤمَّن لهم",
+            "الاسم، الهوية، المهنة",
+            products=["ga_personal_accident", "ga_fidelity"],
+            spreadsheet=True,
+        ),
+        _d("cash_procedures", "إجراءات نقل وحفظ الأموال", "", required=False, products=["ga_money"]),
+    ],
+    "protection": [
+        _d(
+            "members_list",
+            "كشف المؤمَّن لهم",
+            "الاسم، الهوية، تاريخ الميلاد، مبلغ التغطية",
+            products=["protection_group_life", "protection_credit_life"],
+            spreadsheet=True,
+        ),
+        _d("health_declaration", "إقرار صحي", "", required=False, products=["protection_individual"]),
+    ],
+    "travel": [
+        _d("passport", "جواز السفر", "لكل مسافر، صفحة البيانات"),
+        _d("visa", "التأشيرة", "إن كانت الوجهة تتطلبها", required=False),
+    ],
+    "domestic_workers": [
+        _d("labor_contract", "عقد العمل", "من منصة مساند"),
+        _d("worker_passport", "جواز العامل", "صفحة البيانات"),
+    ],
+}
+
+
+def required_documents(line_key: str, product_key: str, customer_type: str) -> list[Doc]:
+    """The documents this request needs, in display order (common first)."""
+    return [
+        doc
+        for doc in COMMON_DOCUMENTS + LINE_DOCUMENTS.get(line_key, [])
+        if (doc["products"] is None or product_key in doc["products"]) and doc["who"] in ("all", customer_type)
+    ]
+
+
+def document_label(key: str) -> str:
+    for doc in COMMON_DOCUMENTS + [d for docs in LINE_DOCUMENTS.values() for d in docs]:
+        if doc["key"] == key:
+            return str(doc["label"])
+    return "مستند آخر"
+
+
+for _line in LINES:
+    _line["documents"] = COMMON_DOCUMENTS + LINE_DOCUMENTS.get(_line["key"], [])
+
 LINES_BY_KEY = {line["key"]: line for line in LINES}
 
 

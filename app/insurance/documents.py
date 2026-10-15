@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.insurance import catalog, review
 from app.insurance.models import RequestDocument
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -19,12 +23,25 @@ PDF_AND_IMAGES = {
     b"\xff\xd8\xff": "image/jpeg",
     b"\x89PNG\r\n\x1a\n": "image/png",
 }
+# Lists (census, fleet, assets) may also be Excel; review_file checks it really is a workbook.
+WITH_SPREADSHEETS = {**PDF_AND_IMAGES, b"PK\x03\x04": review.XLSX_MIME}
 
 
 class DocumentRejected(Exception):
     def __init__(self, status: int, code: str, message: str):
         super().__init__(message)
         self.status, self.code = status, code
+
+
+def allowed_for(spec: catalog.Doc | None) -> dict[bytes, str]:
+    return WITH_SPREADSHEETS if spec is None or spec.get("spreadsheet") else PDF_AND_IMAGES
+
+
+def spec_for(line: str, product: str, customer_type: str, document_type: str) -> catalog.Doc | None:
+    return next(
+        (d for d in catalog.required_documents(line, product, customer_type) if d["key"] == document_type),
+        None,
+    )
 
 
 async def store(
@@ -36,6 +53,7 @@ async def store(
     max_bytes: int,
     allowed: dict[bytes, str] | None = None,
     claim_id: str | None = None,
+    spec: catalog.Doc | None = None,
 ) -> RequestDocument:
     # Keep only the final path component so a crafted name like "../../x" can't escape the uploads folder.
     file_name = Path(file.filename or "").name
@@ -50,6 +68,40 @@ async def store(
         if detected is None:
             raise DocumentRejected(415, "UNSUPPORTED_FILE_TYPE", "Only PDF, JPEG and PNG files are accepted")
         mime_type = detected
+    return await store_bytes(
+        session, request_id, content, file_name, mime_type, document_type, uploader_id, claim_id, spec
+    )
+
+
+async def store_bytes(
+    session: AsyncSession,
+    request_id: str,
+    content: bytes,
+    file_name: str,
+    mime_type: str,
+    document_type: str,
+    uploader_id: str | None = None,
+    claim_id: str | None = None,
+    spec: catalog.Doc | None = None,
+    reviewed: bool = True,
+) -> RequestDocument:
+    sha256 = hashlib.sha256(content).hexdigest()
+    status, findings = review.PASSED, list[str]()
+    if reviewed and claim_id is None:
+        duplicate = (
+            await session.execute(
+                select(RequestDocument.document_type).where(
+                    RequestDocument.request_id == request_id, RequestDocument.content_sha256 == sha256
+                )
+            )
+        ).scalar()
+        status, findings = review.review_file(
+            content,
+            mime_type,
+            document_type,
+            spec,
+            catalog.document_label(duplicate) if duplicate else None,
+        )
 
     folder = UPLOAD_ROOT / request_id
     folder.mkdir(parents=True, exist_ok=True)
@@ -64,10 +116,20 @@ async def store(
         size_bytes=len(content),
         storage_key=str(path.relative_to(PROJECT_ROOT)),
         uploaded_by_employee_id=uploader_id,
+        content_sha256=sha256,
+        review_status=status,
+        review_findings=json.dumps(findings, ensure_ascii=False) if findings else None,
     )
     session.add(document)
     await session.flush()
     return document
+
+
+def findings_of(document: RequestDocument) -> list[str]:
+    try:
+        return list(json.loads(document.review_findings or "[]"))
+    except json.JSONDecodeError:
+        return []
 
 
 def resolve_path(storage_key: str | None) -> Path | None:

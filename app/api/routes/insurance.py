@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import MANAGERS, UNDERWRITING, Role, audit, client_ip, get_current_staff, require_roles
 from app.api.deps import get_db_session
+from app.api.routes import request_review
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
@@ -174,9 +175,12 @@ async def _store_document(
     uploader_id: str | None,
     max_bytes: int,
     allowed: dict[bytes, str] | None = None,
+    spec: catalog.Doc | None = None,
 ) -> RequestDocument:
     try:
-        return await documents.store(session, request_id, file, document_type, uploader_id, max_bytes, allowed)
+        return await documents.store(
+            session, request_id, file, document_type, uploader_id, max_bytes, allowed, spec=spec
+        )
     except documents.DocumentRejected as exc:
         raise _error(exc.status, exc.code, str(exc)) from exc
 
@@ -678,6 +682,8 @@ async def create_portal_request(
         dedupe_key=f"request_received:{request.request_id}",
         request_id=request.request_id,
     )
+    # The customer signs it from the tracking page; the success screen links there.
+    await request_review.issue_letter(session, request, customer, None, notify=False)
     await session.commit()
     return PortalRequestResponse(
         request_id=request.request_id,
@@ -693,6 +699,7 @@ async def create_portal_request(
 async def upload_portal_document(
     request_id: str,
     file: UploadFile = File(...),
+    document_type: str = Form(default="customer_upload", max_length=80),
     upload_token: str = Header(..., alias="X-Upload-Token"),
     session: AsyncSession = Depends(get_db_session),
 ) -> PortalDocumentResponse:
@@ -712,18 +719,46 @@ async def upload_portal_document(
     count = await session.scalar(select(func.count()).where(RequestDocument.request_id == request_id))
     if (count or 0) >= PORTAL_MAX_DOCUMENTS:
         raise _error(409, "TOO_MANY_DOCUMENTS", f"At most {PORTAL_MAX_DOCUMENTS} documents per request")
+    customer = await _get_customer_or_404(session, request.customer_id)
+    document = await store_customer_document(session, request, customer, file, document_type)
+    await session.commit()
+    return PortalDocumentResponse(
+        document_id=document.document_id,
+        file_name=document.file_name,
+        document_type=document.document_type,
+        review_status=document.review_status,
+        findings=documents.findings_of(document),
+    )
+
+
+async def store_customer_document(
+    session: AsyncSession, request: InsuranceRequest, customer: Customer, file: UploadFile, document_type: str
+) -> RequestDocument:
+    """A customer upload (portal or tracking page): typed by the catalog, reviewed automatically."""
+    spec = documents.spec_for(request.insurance_type, request.product_type, customer.customer_type, document_type)
+    if spec is not None and spec["generated"]:
+        raise _error(422, "UNKNOWN_DOCUMENT_TYPE", "This document is issued by BUD, not uploaded")
     document = await _store_document(
         session,
-        request_id,
+        request.request_id,
         file,
-        "customer_upload",
+        document_type if spec else "customer_upload",
         None,
         max_bytes=settings.portal_max_upload_mb * 1024 * 1024,
-        allowed=documents.PDF_AND_IMAGES,
+        allowed=documents.allowed_for(spec),
+        spec=spec,
     )
-    audit(session, None, "portal_document_uploaded", "request", request_id, file_name=document.file_name)
-    await session.commit()
-    return PortalDocumentResponse(document_id=document.document_id, file_name=document.file_name)
+    audit(
+        session,
+        None,
+        "portal_document_uploaded",
+        "request",
+        request.request_id,
+        file_name=document.file_name,
+        document_type=document.document_type,
+        review=document.review_status,
+    )
+    return document
 
 
 @router.post("/requests", response_model=InsuranceRequestResponse, status_code=201)
@@ -835,9 +870,12 @@ async def upload_document(
     session: AsyncSession = Depends(get_db_session),
     staff: SalesEmployee = Depends(get_current_staff),
 ) -> RequestDocumentResponse:
-    await _get_request_or_404(session, request_id)
+    request = await _get_request_or_404(session, request_id)
     if uploaded_by_employee_id:
         await _get_employee_or_404(session, uploaded_by_employee_id)
+    if document_type == catalog.AUTHORIZATION_LETTER:
+        raise _error(422, "UNKNOWN_DOCUMENT_TYPE", "The authorization letter is issued and signed, not uploaded")
+    customer = await _get_customer_or_404(session, request.customer_id)
     document = await _store_document(
         session,
         request_id,
@@ -845,6 +883,9 @@ async def upload_document(
         document_type,
         uploaded_by_employee_id or staff.employee_id,
         max_bytes=documents.STAFF_MAX_UPLOAD_BYTES,
+        spec=documents.spec_for(
+            request.insurance_type, request.product_type, customer.customer_type, document_type
+        ),
     )
     audit(session, staff, "document_uploaded", "request", request_id, file_name=document.file_name)
     await session.commit()
@@ -1249,8 +1290,12 @@ async def send_submission(
         )
 
     insurer = await _get_insurer_or_404(session, submission.insurer_id)
+    # Files the review or a staff member rejected are not sent to insurers.
     documents = await session.execute(
-        select(RequestDocument).where(RequestDocument.request_id == submission.request_id)
+        select(RequestDocument).where(
+            RequestDocument.request_id == submission.request_id,
+            RequestDocument.review_status.not_in(["failed", "rejected"]),
+        )
     )
     message = _build_insurer_email_message(submission, insurer, documents.scalars().all())
 

@@ -98,7 +98,7 @@ function select(id) {
   document.getElementById('d-kv').replaceChildren(...kv.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })]),
     el('dt', { text: 'الوثيقة' }), el('dd', {}, el('a', { href: `policies.html?policy=${c.policy_id}`, text: c.policy_number })));
   loadDocs(id);
-  const canMove = ['underwriter', 'manager'].includes(role) && c.allowed_transitions.length;
+  const canMove = ['claims_officer', 'underwriter', 'manager'].includes(role) && c.allowed_transitions.length;
   document.getElementById('d-move').hidden = !canMove;
   moveForm.reset();
   moveForm.status.replaceChildren(...c.allowed_transitions.map(s => el('option', { value: s, text: STATUS[s][0] })));

@@ -10,6 +10,13 @@
 @media(max-width:840px){.workspace{grid-template-columns:minmax(0,1fr) 230px}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){main{width:calc(100% - 22px);margin:18px auto 30px}.workspace{grid-template-columns:1fr}.aside-panel{order:-1}.aside-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}.aside-panel h2,.privacy{grid-column:1/-1}.stepper{padding:12px 10px}.step{gap:5px;font-size:8px}.step-number{width:21px;height:21px}.step-content{padding:14px}.field-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.review{gap:0 8px}.options{grid-template-columns:1fr}.page-intro h1{font-size:21px}}
 .field textarea{height:auto;min-height:80px;padding:8px 10px;resize:vertical}.field span{font-size:9px;font-weight:600}.form-error{color:#B42318;font-size:10px}.subproducts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}.subproducts label{padding:7px 10px;border:1px solid var(--line);border-radius:5px;font-size:10px;cursor:pointer}.subproducts label:has(input:checked){border-color:var(--blue);background:var(--pale);font-weight:600}.subproducts input{accent-color:var(--blue)}.files{font-size:10px}
+.docs-title{margin:6px 0 0;font-size:12px}.doc-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.doc-slot{display:grid;gap:4px;padding:10px;border:1px solid var(--line);border-radius:5px}.doc-slot b{font-size:10px}.doc-slot small{color:var(--muted);font-size:8px}
+.doc-slot .req{color:#B42318}.doc-slot input{font-size:9px;max-width:100%}
+.review-box{max-width:520px;margin:14px auto;text-align:right}.review-box h3{margin:0 0 6px;font-size:12px}
+.review-item{padding:8px 10px;border:1px solid var(--line);border-radius:5px;margin-bottom:6px;font-size:10px}.review-item ul{margin:4px 0 0;padding-inline-start:16px;color:var(--muted)}
+.review-item.warning{border-color:#E8B44A;background:#FFF8E6}.review-item.failed{border-color:#E59A92;background:#FDEDEB}
+@media(max-width:640px){.doc-slots{grid-template-columns:1fr}}
 </style>
 </head>
 <body><header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a><span><a class="top-link" href="track.html" style="margin-left:14px">تابع طلبك</a><a class="top-link" href="index.html">دخول فريق العمل ←</a></span></header>
@@ -34,15 +41,16 @@
 <label class="field"><span>مبلغ التغطية المطلوب (ر.س، اختياري)</span><input name="coverage_amount" type="number" min="0" step="1"></label>
 <label class="field"><span>ما الأهم لك؟</span><select name="customer_priority"><option value="متوازنة">تغطية متوازنة</option><option value="أقل قسط">قسط أقل</option><option value="تغطية أوسع">تغطية أوسع</option></select></label>
 <label class="field full"><span>ملاحظات إضافية (اختياري)</span><textarea name="notes" maxlength="2000" rows="3"></textarea></label>
-<label class="field full"><span>مستندات داعمة (اختياري)</span><input id="files" class="files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"><span class="field-help">مثل الهوية، استمارة المركبة، أو جدول الموظفين. PDF أو صور.</span></label>
-</div></section>
+</div>
+<h3 class="docs-title">المستندات المطلوبة</h3><p class="step-hint">ارفع كل مستند في مكانه. ما لا يتوفر الآن تقدر ترفعه لاحقًا من صفحة متابعة الطلب. خطاب التفويض نجهزه لك لتوقّعه إلكترونيًا.</p>
+<div id="doc-slots" class="doc-slots"></div></section>
 
 <section class="step-content" data-step="3" hidden><h2 class="step-title">راجع طلبك قبل الإرسال</h2><p class="step-hint">تأكد من صحة المعلومات.</p><div id="summary" class="review"></div>
 <label class="consent"><input id="consent" type="checkbox"><span>أوافق على استخدام بيانات الطلب ومشاركتها مع شركات التأمين لغرض الحصول على عروض الأسعار، والتواصل معي بشأنها.</span></label></section>
 
 <div class="step-content" style="padding-top:0"><div id="form-error" class="form-error" role="alert"></div><div class="form-actions"><button id="back" class="button" type="button" hidden>رجوع</button><div class="action-group"><button id="next" class="button primary" type="button">متابعة</button><button id="submit" class="button primary" type="submit" hidden>إرسال الطلب</button></div></div></div>
 </div></form>
-<section id="success" class="success" aria-live="polite"><div class="success-symbol">✓</div><h2>وصلنا طلبك</h2><p>رقم طلبك:</p><span id="reference" class="reference"></span><p id="upload-note"></p><p>سيراجع فريقنا الطلب ويرسله لشركات التأمين، ونتواصل معك بالعروض.</p><a id="track-link" class="button primary" href="track.html">تابع حالة طلبك</a> <a class="button" href="portal.html">بدء طلب آخر</a></section></section>
+<section id="success" class="success" aria-live="polite"><div class="success-symbol">✓</div><h2>وصلنا طلبك</h2><p>رقم طلبك:</p><span id="reference" class="reference"></span><p id="upload-note"></p><div id="review-box" class="review-box" hidden></div><p>الخطوة التالية: <b>وقّع خطاب التفويض</b> إلكترونيًا من صفحة المتابعة حتى نطلب لك العروض من شركات التأمين.</p><a id="track-link" class="button primary" href="track.html">وقّع الخطاب وتابع طلبك</a> <a class="button" href="portal.html">بدء طلب آخر</a></section></section>
 <aside class="aside-panel"><h2>طلبك في خطوات بسيطة</h2><div class="aside-grid"><div class="aside-line"><span class="aside-icon">1</span><span class="aside-text"><b>تفاصيل الاحتياج</b><small>فرع التأمين ومعلومات الخطر.</small></span></div><div class="aside-line"><span class="aside-icon">2</span><span class="aside-text"><b>طلب العروض</b><small>نرسل طلبك لشركات التأمين المناسبة.</small></span></div><div class="aside-line"><span class="aside-icon">3</span><span class="aside-text"><b>المقارنة والاختيار</b><small>نعرض لك العروض لتختار الأنسب.</small></span></div></div><div class="privacy"><b>خصوصيتك</b>تُستخدم بياناتك فقط لطلب عروض التأمين ومتابعتها.</div></aside></div>
 </main><div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script src="bud-api.js"></script>
@@ -64,7 +72,7 @@ function renderLine() {
   const line = currentLine();
   document.getElementById('step2-title').textContent = `تفاصيل ${line.label}`;
   document.getElementById('products').replaceChildren(...line.products.map((p, i) => el('label', {},
-    el('input', { type: 'radio', name: 'product', value: p.key, checked: i === 0 }), ` ${p.label}`)));
+    el('input', { type: 'radio', name: 'product', value: p.key, checked: i === 0, onchange: renderDocs }), ` ${p.label}`)));
   document.getElementById('product-fields').replaceChildren(...line.fields.map(f => {
     let input;
     if (f.type === 'select') input = el('select', { name: `d_${f.key}`, required: f.required }, el('option', { value: '', text: 'اختر' }), ...f.options.map(o => el('option', { value: o, text: o })));
@@ -72,7 +80,24 @@ function renderLine() {
     else input = el('input', { name: `d_${f.key}`, type: f.type, required: f.required, min: f.min, max: f.max, placeholder: f.placeholder });
     return el('label', { class: `field${f.type === 'textarea' ? ' full' : ''}` }, el('span', { text: f.required ? f.label : `${f.label} (اختياري)` }), input);
   }));
+  renderDocs();
 }
+
+// Documents the chosen product needs, for this customer type; the letter is issued by BUD.
+function neededDocs() {
+  const product = form.querySelector('[name="product"]:checked')?.value;
+  return (currentLine().documents || []).filter(d => !d.generated && (!d.products || d.products.includes(product))
+    && (d.who === 'all' || d.who === form.customer_type.value));
+}
+
+function renderDocs() {
+  document.getElementById('doc-slots').replaceChildren(...neededDocs().map(d => el('label', { class: 'doc-slot' },
+    el('b', {}, d.label, d.required ? el('span', { class: 'req', text: ' *' }) : ' (اختياري)'),
+    d.hint ? el('small', { text: d.hint }) : null,
+    el('input', { type: 'file', 'data-doc': d.key, accept: d.spreadsheet ? '.pdf,.jpg,.jpeg,.png,.xlsx' : '.pdf,.jpg,.jpeg,.png' }))));
+}
+const chosenFiles = () => [...document.querySelectorAll('#doc-slots input[type=file]')].filter(i => i.files.length)
+  .map(i => ({ key: i.dataset.doc, file: i.files[0], label: neededDocs().find(d => d.key === i.dataset.doc)?.label }));
 
 function details() {
   const out = {};
@@ -101,7 +126,7 @@ function renderSummary() {
     ['الجوال', form.mobile.value], ['البريد', form.email.value || '—'],
     ...line.fields.filter(f => f.key in d).map(f => [f.label, d[f.key]]),
     ['مبلغ التغطية', form.coverage_amount.value || '—'], ['الأولوية', form.customer_priority.value],
-    ['المستندات', `${document.getElementById('files').files.length} ملف`]];
+    ['المستندات', `${chosenFiles().length} من ${neededDocs().filter(d => d.required).length} مطلوبة`]];
   document.getElementById('summary').replaceChildren(...rows.map(([k, v]) => el('div', { class: 'review-row' }, el('span', { class: 'review-label', text: k }), el('span', { class: 'review-value', text: String(v) }))));
 }
 
@@ -120,7 +145,7 @@ function showStep(n) {
   setError('');
 }
 
-form.customer_type.addEventListener('change', () => { document.getElementById('company-field').hidden = form.customer_type.value !== 'business'; });
+form.customer_type.addEventListener('change', () => { document.getElementById('company-field').hidden = form.customer_type.value !== 'business'; renderDocs(); });
 document.getElementById('next').addEventListener('click', () => { if (validateStep()) showStep(step + 1); });
 document.getElementById('back').addEventListener('click', () => showStep(step - 1));
 form.addEventListener('submit', async event => {
@@ -136,13 +161,14 @@ form.addEventListener('submit', async event => {
       insurance_type: currentLine().key, product_type: form.product.value, details: details(),
       coverage_amount: form.coverage_amount.value || null, customer_priority: form.customer_priority.value,
       notes: form.notes.value.trim() || null, consent: true } });
-    const files = [...document.getElementById('files').files];
-    const failed = [];
-    for (const file of files) {
-      const data = new FormData(); data.append('file', file);
-      try { await api(`/portal/requests/${created.request_id}/documents`, { method: 'POST', form: data, headers: { 'X-Upload-Token': created.upload_token } }); }
-      catch (error) { failed.push(`${file.name} (${error.message})`); }
+    const files = chosenFiles();
+    const failed = [], reviewed = [];
+    for (const { key, file, label } of files) {
+      const data = new FormData(); data.append('file', file); data.append('document_type', key);
+      try { reviewed.push({ label, ...(await api(`/portal/requests/${created.request_id}/documents`, { method: 'POST', form: data, headers: { 'X-Upload-Token': created.upload_token } })) }); }
+      catch (error) { failed.push(`${label} (${error.message})`); }
     }
+    showReview(reviewed);
     document.getElementById('reference').textContent = created.request_number;
     document.getElementById('track-link').href = `track.html?request=${encodeURIComponent(created.request_number)}`;
     document.getElementById('upload-note').textContent = failed.length ? `تعذر رفع: ${failed.join('، ')}. سنطلبها منك لاحقًا.` : (files.length ? `استلمنا ${files.length} مستند.` : '');
@@ -151,6 +177,19 @@ form.addEventListener('submit', async event => {
   } catch (error) { setError(error.message); }
   finally { submit.disabled = false; }
 });
+
+// The automatic review's verdict on each file, straight after upload.
+function showReview(items) {
+  const box = document.getElementById('review-box');
+  if (!items.length) { box.hidden = true; return; }
+  const mark = { passed: '✓', warning: '!', failed: '✕' };
+  box.replaceChildren(el('h3', { text: 'نتيجة المراجعة الآلية لمستنداتك' }),
+    ...items.map(r => el('div', { class: `review-item ${r.review_status}` },
+      el('b', { text: `${mark[r.review_status] || ''} ${r.label}` }),
+      el('ul', {}, ...r.findings.map(f => el('li', { text: f }))))),
+    items.some(r => r.review_status !== 'passed') ? el('p', { class: 'muted', text: 'تقدر تستبدل أي ملف عليه ملاحظة من صفحة متابعة الطلب.' }) : null);
+  box.hidden = false;
+}
 
 BUD.catalog().then(c => { cat = c; renderLines(); renderLine(); })
   .catch(error => setError(`تعذر تحميل أنواع التأمين: ${error.message}`));

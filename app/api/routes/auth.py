@@ -84,6 +84,13 @@ async def login(
         raise _error(401, "INVALID_CREDENTIALS", "Wrong email or password")
 
     login_limiter.reset(key)
+    await _start_session(session, employee, request, response, "login")
+    return profile(employee)
+
+
+async def _start_session(
+    session: AsyncSession, employee: SalesEmployee, request: Request, response: Response, action: str
+) -> None:
     token, token_hash = new_token()
     session.add(
         StaffSession(
@@ -95,7 +102,7 @@ async def login(
         )
     )
     employee.last_login_at = datetime.now(UTC)
-    audit(session, employee, "login", "employee", employee.employee_id, ip=client_ip(request))
+    audit(session, employee, action, "employee", employee.employee_id, ip=client_ip(request))
     await session.commit()
     response.set_cookie(
         SESSION_COOKIE,
@@ -106,6 +113,44 @@ async def login(
         samesite="lax",
         path="/",
     )
+
+
+# --- Test login: choose a staff member, no password -------------------------------------
+
+
+class DevLoginRequest(BaseModel):
+    employee_id: str
+
+
+def _dev_login_on() -> bool:
+    return settings.dev_login_enabled and settings.environment != "production"
+
+
+def _require_dev_login() -> None:
+    # 404 (not 403) so a normal deployment doesn't advertise the endpoint.
+    if not _dev_login_on():
+        raise _error(404, "NOT_FOUND", "Not found")
+
+
+@router.get("/dev-login", response_model=list[StaffProfile], dependencies=[Depends(_require_dev_login)])
+async def dev_login_staff(session: AsyncSession = Depends(get_db_session)) -> list[StaffProfile]:
+    result = await session.execute(
+        select(SalesEmployee).where(SalesEmployee.is_active.is_(True)).order_by(SalesEmployee.full_name)
+    )
+    return [profile(e) for e in result.scalars()]
+
+
+@router.post("/dev-login", response_model=StaffProfile, dependencies=[Depends(_require_dev_login)])
+async def dev_login(
+    body: DevLoginRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db_session),
+) -> StaffProfile:
+    employee = await session.get(SalesEmployee, body.employee_id)
+    if employee is None or not employee.is_active:
+        raise _error(404, "EMPLOYEE_NOT_FOUND", "No active employee with this id")
+    await _start_session(session, employee, request, response, "dev_login")
     return profile(employee)
 
 
