@@ -64,6 +64,37 @@ RULES: dict[str, RuleDef] = {
             ("customer_name", "request_number", "missing", "track_link"),
         ),
         RuleDef(
+            "signature_reminder",
+            "تذكير توقيع خطاب التفويض",
+            "إذا لم يوقّع العميل الخطاب بعد عدد الساعات المحدد من إصداره.",
+            "تذكير: خطاب التفويض لطلبك رقم {request_number} بانتظار توقيعك حتى نطلب لك العروض من شركات "
+            "التأمين. التوقيع يأخذ دقيقة: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "track_link"),
+            {"after_hours": [24, 72]},
+        ),
+        RuleDef(
+            "documents_reminder",
+            "تذكير المستندات الناقصة",
+            "إذا بقيت مستندات مطلوبة ناقصة بعد عدد الساعات المحدد من تقديم الطلب.",
+            "مرحبًا {customer_name}، طلبك رقم {request_number} ما زال ينقصه: {missing}. "
+            "ارفعها من هنا: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "missing", "track_link"),
+            {"after_hours": [48, 120]},
+        ),
+        RuleDef(
+            "auto_assign_sales",
+            "توزيع الطلبات على المبيعات",
+            "يسند كل طلب جديد بلا موظف إلى موظف المبيعات الأقل طلبات مفتوحة.",
+            None,
+        ),
+        RuleDef(
+            "auto_handoff_underwriting",
+            "التحويل الآلي للاكتتاب",
+            "عند اكتمال المستندات المطلوبة بلا ملاحظات وتوقيع خطاب التفويض: يحوّل الطلب إلى «قيد الاكتتاب» "
+            "ويسنده للمكتتب الأقل طلبات.",
+            None,
+        ),
+        RuleDef(
             "policy_issued",
             "إصدار الوثيقة",
             "عند إصدار الوثيقة.",

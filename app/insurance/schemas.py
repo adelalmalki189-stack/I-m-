@@ -161,6 +161,8 @@ class InsuranceRequestResponse(BaseModel):
     sales_employee_id: str | None = None
     underwriter_id: str | None = None
     underwriter_status: str | None = None
+    sales_employee_name: str | None = None
+    underwriter_name: str | None = None
     preferred_insurer: str | None = None
     preferred_insurers: list[str] = Field(default_factory=list)
     preferred_premium_range: str | None = None

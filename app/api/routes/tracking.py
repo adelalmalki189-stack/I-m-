@@ -14,13 +14,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import audit, client_ip
 from app.api.deps import get_db_session
-from app.api.routes import request_review
 from app.api.routes.insurance import PORTAL_MAX_DOCUMENTS, store_customer_document
 from app.automation import service
 from app.automation.models import PortalAccess
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_token, new_token
-from app.insurance import aftersales, authorization, catalog, documents
+from app.insurance import aftersales, authorization, catalog, documents, salesflow
 from app.insurance.models import (
     AuthorizationLetterStatus,
     ClaimStatus,
@@ -258,7 +257,7 @@ async def status(
         "claims": [],
     }
     if request.status not in (InsuranceRequestStatus.POLICY_ISSUED, InsuranceRequestStatus.CLOSED):
-        result = await request_review.load_review(session, request)
+        result = await salesflow.load_review(session, request)
         view["documents"] = _customer_checklist(result)
         view["documents_complete"] = result["ready"]
         letter = result["letter"]
@@ -339,6 +338,7 @@ async def upload_document(
     customer = await session.get(Customer, request.customer_id)
     assert customer is not None
     document = await store_customer_document(session, request, customer, file, document_type)
+    await salesflow.maybe_hand_off(session, request)
     await session.commit()
     return {"review_status": document.review_status, "findings": documents.findings_of(document)}
 
@@ -384,5 +384,6 @@ async def sign_letter(
         ip=client_ip(http),
         letter_number=letter.letter_number,
     )
+    await salesflow.maybe_hand_off(session, request)
     await session.commit()
     return {"letter_number": letter.letter_number, "verification_code": letter.verification_code}

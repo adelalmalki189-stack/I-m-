@@ -161,7 +161,7 @@ async function loadAudit() {
 document.getElementById('audit-refresh').addEventListener('click', e => run(e.currentTarget, loadAudit));
 
 const MSG_STATUS = { queued: ['بالانتظار', ''], sent: ['أُرسلت', 'blue'], simulated: ['تجريبية', ''], failed: ['فشلت', 'red'], skipped: ['لم تُرسل', 'red'] };
-const PARAM_LABELS = { days: 'قبل الانتهاء بـ (أيام، افصل بفاصلة)', days_before: 'قبل الاستحقاق بـ (أيام)', days_after: 'بعد الاستحقاق بـ (أيام، افصل بفاصلة)', hours: 'بعد (ساعات) بدون رد', max_followups: 'أقصى عدد متابعات' };
+const PARAM_LABELS = { days: 'قبل الانتهاء بـ (أيام، افصل بفاصلة)', days_before: 'قبل الاستحقاق بـ (أيام)', days_after: 'بعد الاستحقاق بـ (أيام، افصل بفاصلة)', hours: 'بعد (ساعات) بدون رد', max_followups: 'أقصى عدد متابعات', after_hours: 'بعد (ساعات، افصل بفاصلة)' };
 let automation;
 
 function ruleCard(rule) {

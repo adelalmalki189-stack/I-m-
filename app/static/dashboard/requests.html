@@ -29,7 +29,7 @@
 <div class="layout">
 <section class="panel"><div class="panel-head"><div><h2>الطلبات</h2><div class="muted">الأحدث أولًا · اختر طلبًا لعرض تفاصيله</div></div><span id="visible-count" class="muted"></span></div>
 <div id="filters" class="filters" role="group" aria-label="تصفية حسب الحالة"></div>
-<div class="table-wrap"><table><thead><tr><th>العميل / الطلب</th><th>الفرع والمنتج</th><th>المصدر</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا توجد طلبات تطابق البحث أو التصفية.</div></div></section>
+<div class="table-wrap"><table><thead><tr><th>العميل / الطلب</th><th>الفرع والمنتج</th><th>المصدر والموظف</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا توجد طلبات تطابق البحث أو التصفية.</div></div></section>
 <section id="detail" class="panel" hidden><div class="panel-head"><div><h2 id="d-title"></h2><div id="d-sub" class="muted"></div></div><span id="d-status"></span></div>
 <div class="panel-body"><div class="section-title">بيانات الطلب</div><dl id="d-details" class="kv"></dl>
 <div class="section-title">المراجعة الآلية للمستندات</div><div id="d-review"><span class="muted">جارٍ الفحص…</span></div>
@@ -41,8 +41,9 @@
 <script src="bud-api.js"></script>
 <script>
 const { api, el, pill, run, date, money, REQUEST_STATUS } = BUD;
-const FILTERS = [['all', 'الكل'], ...Object.entries(REQUEST_STATUS).map(([k, [label]]) => [k, label])];
-let cat, requests = [], filter = 'all', query = '', selectedId = new URLSearchParams(location.search).get('request');
+const FILTERS = [['all', 'الكل'], ['mine', 'طلباتي'], ...Object.entries(REQUEST_STATUS).map(([k, [label]]) => [k, label])];
+let cat, me, requests = [], filter = 'all', query = '', selectedId = new URLSearchParams(location.search).get('request');
+const mine = r => me && (r.sales_employee_id === me.employee_id || r.underwriter_id === me.employee_id);
 
 function render() {
   const count = s => requests.filter(r => r.status === s).length;
@@ -51,13 +52,13 @@ function render() {
   document.getElementById('m-quote').textContent = count('ready_for_quote');
   document.getElementById('m-issued').textContent = count('policy_issued');
   document.getElementById('filters').replaceChildren(...FILTERS.map(([key, label]) => el('button', { class: `filter${key === filter ? ' active' : ''}`, type: 'button',
-    text: key === 'all' ? `${label} (${requests.length})` : `${label} (${count(key)})`, onclick: () => { filter = key; render(); } })));
-  const visible = requests.filter(r => (filter === 'all' || r.status === filter)
+    text: key === 'all' ? `${label} (${requests.length})` : key === 'mine' ? `${label} (${requests.filter(mine).length})` : `${label} (${count(key)})`, onclick: () => { filter = key; render(); } })));
+  const visible = requests.filter(r => (filter === 'all' || (filter === 'mine' ? mine(r) : r.status === filter))
     && `${r.request_number} ${r.customer_name} ${r.insurance_type_label} ${r.product_type_label}`.toLowerCase().includes(query));
   document.getElementById('rows').replaceChildren(...visible.map(r => el('tr', { class: `clickable${r.request_id === selectedId ? ' selected' : ''}`, onclick: () => select(r.request_id) },
     el('td', {}, el('div', { class: 'strong', text: r.customer_name || 'عميل' }), el('div', { class: 'sub', text: r.request_number })),
     el('td', { text: `${r.insurance_type_label} · ${r.product_type_label}` }),
-    el('td', { class: 'muted', text: r.request_source === 'portal' ? 'البوابة' : r.request_source }),
+    el('td', { class: 'muted' }, el('div', { text: r.request_source === 'portal' ? 'البوابة' : r.request_source }), el('div', { class: 'sub', text: r.sales_employee_name || 'غير مسند' })),
     el('td', {}, pill(REQUEST_STATUS, r.status)),
     el('td', { class: 'muted', text: date(r.created_at) }))));
   document.getElementById('empty').hidden = visible.length > 0;
@@ -76,6 +77,7 @@ function select(id) {
   document.getElementById('d-sub').textContent = `${r.request_number} · ${r.insurance_type_label} · ${r.product_type_label}`;
   document.getElementById('d-status').replaceChildren(pill(REQUEST_STATUS, r.status));
   const rows = [['مبلغ التغطية', money(r.coverage_amount)], ...Object.entries(r.request_details).map(([k, v]) => [cat.fieldLabel(r.insurance_type, k), v]),
+    ['موظف المبيعات', r.sales_employee_name || 'غير مسند'], ['المكتتب', r.underwriter_name],
     ['الأولوية', r.customer_priority], ['ملاحظات', r.notes || r.summary], ['آخر تغيير للحالة', date(r.last_status_change_at)]].filter(([, v]) => v != null && v !== '');
   document.getElementById('d-details').replaceChildren(...rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
   loadReview(id);
@@ -152,7 +154,7 @@ function renderLetter(id, letter) {
 async function load() {
   const box = document.getElementById('error');
   try {
-    [cat, requests] = await Promise.all([BUD.catalog(), api('/requests')]);
+    [cat, requests, me] = await Promise.all([BUD.catalog(), api('/requests'), BUD_ME]);
     box.hidden = true;
     render();
     if (selectedId) select(selectedId);

@@ -16,11 +16,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import MANAGERS, UNDERWRITING, Role, audit, client_ip, get_current_staff, require_roles
 from app.api.deps import get_db_session
-from app.api.routes import request_review
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
-from app.insurance import aftersales, catalog, documents, mailer, workflow
+from app.insurance import aftersales, catalog, documents, mailer, salesflow, workflow
 from app.insurance.models import (
     AuditEvent,
     Customer,
@@ -191,6 +190,8 @@ async def _store_document(
 async def _request_response(session: AsyncSession, request: InsuranceRequest) -> InsuranceRequestResponse:
     docs = await session.execute(select(RequestDocument).where(RequestDocument.request_id == request.request_id))
     customer = await session.get(Customer, request.customer_id)
+    sales = await session.get(SalesEmployee, request.sales_employee_id) if request.sales_employee_id else None
+    underwriter = await session.get(SalesEmployee, request.underwriter_id) if request.underwriter_id else None
     return InsuranceRequestResponse(
         request_id=request.request_id,
         customer_id=request.customer_id,
@@ -216,6 +217,8 @@ async def _request_response(session: AsyncSession, request: InsuranceRequest) ->
         summary=request.summary,
         notes=request.notes,
         customer_name=(customer.company_name or customer.full_name) if customer else None,
+        sales_employee_name=sales.full_name if sales else None,
+        underwriter_name=underwriter.full_name if underwriter else None,
         insurance_type_label=catalog.line_label(request.insurance_type),
         product_type_label=catalog.product_label(request.insurance_type, request.product_type),
         request_details=_details(request),
@@ -683,7 +686,8 @@ async def create_portal_request(
         request_id=request.request_id,
     )
     # The customer signs it from the tracking page; the success screen links there.
-    await request_review.issue_letter(session, request, customer, None, notify=False)
+    await salesflow.issue_letter(session, request, customer, None, notify=False)
+    await salesflow.assign_sales_agent(session, request)
     await session.commit()
     return PortalRequestResponse(
         request_id=request.request_id,
@@ -721,6 +725,7 @@ async def upload_portal_document(
         raise _error(409, "TOO_MANY_DOCUMENTS", f"At most {PORTAL_MAX_DOCUMENTS} documents per request")
     customer = await _get_customer_or_404(session, request.customer_id)
     document = await store_customer_document(session, request, customer, file, document_type)
+    await salesflow.maybe_hand_off(session, request)
     await session.commit()
     return PortalDocumentResponse(
         document_id=document.document_id,
@@ -888,6 +893,7 @@ async def upload_document(
         ),
     )
     audit(session, staff, "document_uploaded", "request", request_id, file_name=document.file_name)
+    await salesflow.maybe_hand_off(session, request)
     await session.commit()
     await session.refresh(document)
     return RequestDocumentResponse.model_validate(document)

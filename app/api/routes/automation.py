@@ -100,6 +100,8 @@ PARAM_RULES: dict[str, dict[str, tuple[int, int]]] = {
     "installment_overdue": {"days_after": (1, 90)},
     "auto_renewal_request": {"days": (7, 120)},
     "insurer_followup": {"hours": (4, 240), "max_followups": (0, 5)},
+    "signature_reminder": {"after_hours": (1, 336)},
+    "documents_reminder": {"after_hours": (1, 336)},
 }
 
 

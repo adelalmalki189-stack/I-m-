@@ -16,7 +16,7 @@ from app.api.auth import audit
 from app.automation.rules import get_rule
 from app.automation.service import enqueue
 from app.core.config import settings
-from app.insurance import aftersales, mailer
+from app.insurance import aftersales, authorization, mailer, salesflow
 from app.insurance.models import (
     Customer,
     EmailAuditLog,
@@ -238,6 +238,64 @@ async def insurer_followups(session: AsyncSession, now: datetime) -> dict[str, i
     return counts
 
 
+def _step(age: timedelta, hours: list[Any]) -> int | None:
+    """The latest reminder threshold (in hours) that `age` has passed, if any."""
+    return max((int(h) for h in hours if age >= timedelta(hours=int(h))), default=None)
+
+
+async def sales_cycle(session: AsyncSession, now: datetime) -> dict[str, int]:
+    """Sweep open requests: assign a sales agent, hand complete ones to underwriting, and
+    remind customers of an unsigned letter or missing documents."""
+    counts = {"assigned": 0, "handed_off": 0, "signature_reminders": 0, "documents_reminders": 0}
+    sign_rule = await get_rule(session, "signature_reminder")
+    docs_rule = await get_rule(session, "documents_reminder")
+    result = await session.execute(
+        select(InsuranceRequest)
+        .where(InsuranceRequest.status.in_(salesflow.OPEN))
+        .order_by(InsuranceRequest.created_at)
+    )
+    for request in result.scalars().all():
+        if await salesflow.assign_sales_agent(session, request):
+            counts["assigned"] += 1
+        if request.status not in salesflow.WITH_SALES:
+            continue
+        if await salesflow.maybe_hand_off(session, request):
+            counts["handed_off"] += 1
+            continue
+        customer = await session.get(Customer, request.customer_id)
+        assert customer is not None
+        context = {
+            "customer_name": customer_name(customer),
+            "request_number": request.request_number,
+            "track_link": salesflow.track_link(request),
+        }
+        letter = await authorization.current(session, request.request_id)
+        if sign_rule.enabled and letter and letter.status.value == "pending_signature":
+            step = _step(now - _utc(letter.created_at), sign_rule.params.get("after_hours", []))
+            if step and await enqueue(
+                session,
+                "signature_reminder",
+                customer,
+                context,
+                dedupe_key=f"sign_reminder:{letter.letter_id}:{step}",
+                request_id=request.request_id,
+            ):
+                counts["signature_reminders"] += 1
+        missing = salesflow.missing_uploads(await salesflow.load_review(session, request))
+        if docs_rule.enabled and missing:
+            step = _step(now - _utc(request.created_at), docs_rule.params.get("after_hours", []))
+            if step and await enqueue(
+                session,
+                "documents_reminder",
+                customer,
+                context | {"missing": "، ".join(missing)},
+                dedupe_key=f"docs_reminder:{request.request_id}:{step}",
+                request_id=request.request_id,
+            ):
+                counts["documents_reminders"] += 1
+    return counts
+
+
 async def run_daily_jobs(session: AsyncSession, now: datetime | None = None) -> dict[str, Any]:
     """All scheduled jobs in one transaction; safe to run as often as you like."""
     now = now or datetime.now(UTC)
@@ -248,6 +306,7 @@ async def run_daily_jobs(session: AsyncSession, now: datetime | None = None) -> 
         "auto_renewals": await auto_renewal_requests(session, today),
         "installments": await installment_reminders(session, today),
         "insurer_followups": await insurer_followups(session, now),
+        "sales_cycle": await sales_cycle(session, now),
     }
     await session.commit()
     return summary
