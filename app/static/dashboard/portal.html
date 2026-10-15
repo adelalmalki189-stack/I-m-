@@ -20,17 +20,19 @@
 </style>
 </head>
 <body><header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a><span><a class="top-link" href="track.html" style="margin-left:14px">تابع طلبك</a><a class="top-link" href="index.html">دخول فريق العمل ←</a></span></header>
-<main><div class="page-intro"><h1>اطلب تأمينك من بُعد</h1><p>اختر نوع التأمين وأدخل تفاصيل احتياجك، وسنطلب لك عروض الأسعار من شركات التأمين ونقارنها لك.</p></div>
+<main><div class="page-intro"><h1>اطلب تأمين منشأتك من بُعد</h1><p>اختر نوع التأمين وأدخل تفاصيل احتياج منشأتك، وسنطلب لك عروض الأسعار من شركات التأمين ونقارنها لك.</p></div>
 <div class="workspace"><section class="form-panel"><form id="quote-form" novalidate><div id="wizard">
 <div class="stepper" aria-label="خطوات الطلب"><div class="step active" data-step-indicator="1" aria-current="step"><span class="step-number">1</span><span>نوع التأمين وبياناتك</span></div><div class="step" data-step-indicator="2"><span class="step-number">2</span><span>تفاصيل الاحتياج</span></div><div class="step" data-step-indicator="3"><span class="step-number">3</span><span>المراجعة والإرسال</span></div></div>
 
-<section class="step-content" data-step="1"><h2 class="step-title">ما نوع التأمين الذي تبحث عنه؟</h2><p class="step-hint">اختر الفرع، ثم أدخل بيانات التواصل.</p>
+<section class="step-content" data-step="1"><h2 class="step-title">ما نوع التأمين الذي تبحث عنه؟</h2><p class="step-hint">نخدم المنشآت فقط. اختر الفرع، ثم أدخل بيانات المنشأة ومقدم الطلب.</p>
 <div id="lines" class="product-grid" role="radiogroup" aria-label="فرع التأمين"></div>
 <div class="field-grid">
-<label class="field"><span>نوع العميل</span><select name="customer_type"><option value="individual">فرد</option><option value="business">منشأة</option></select></label>
-<label class="field"><span>الاسم الكامل</span><input name="full_name" required minlength="2" maxlength="200" autocomplete="name"></label>
-<label class="field full" id="company-field" hidden><span>اسم المنشأة</span><input name="company_name" maxlength="200" autocomplete="organization"></label>
-<label class="field"><span>رقم الجوال</span><input name="mobile" type="tel" required inputmode="tel" autocomplete="tel" pattern="^(\+?966|0)?5[0-9]{8}$" placeholder="05xxxxxxxx" dir="ltr"><span class="field-help">نتواصل معك عبر الجوال أو واتساب بشأن طلبك</span></label>
+<label class="field full"><span>اسم المنشأة كما في السجل التجاري</span><input name="company_name" required minlength="2" maxlength="200" autocomplete="organization"></label>
+<label class="field"><span>رقم السجل التجاري أو الرقم الموحد</span><input name="cr_number" required inputmode="numeric" pattern="[1-7][0-9]{9}" maxlength="10" placeholder="10 أرقام" dir="ltr"></label>
+<label class="field"><span>الرقم الضريبي (اختياري)</span><input name="vat_number" inputmode="numeric" pattern="3[0-9]{13}3" maxlength="15" placeholder="15 رقمًا" dir="ltr"></label>
+<label class="field"><span>اسم مقدم الطلب</span><input name="full_name" required minlength="2" maxlength="200" autocomplete="name"></label>
+<label class="field"><span>المسمى الوظيفي</span><input name="contact_title" maxlength="120" placeholder="مثال: مدير الموارد البشرية" autocomplete="organization-title"></label>
+<label class="field"><span>رقم الجوال</span><input name="mobile" type="tel" required inputmode="tel" autocomplete="tel" pattern="^(\+?966|0)?5[0-9]{8}$" placeholder="05xxxxxxxx" dir="ltr"><span class="field-help">نتواصل معك عبر الجوال أو واتساب بشأن طلبك، ونرسل إليه رمز المتابعة والتوقيع</span></label>
 <label class="field"><span>البريد الإلكتروني (اختياري)</span><input name="email" type="email" autocomplete="email" dir="ltr"></label>
 </div></section>
 
@@ -46,7 +48,7 @@
 <div id="doc-slots" class="doc-slots"></div></section>
 
 <section class="step-content" data-step="3" hidden><h2 class="step-title">راجع طلبك قبل الإرسال</h2><p class="step-hint">تأكد من صحة المعلومات.</p><div id="summary" class="review"></div>
-<label class="consent"><input id="consent" type="checkbox"><span>أوافق على استخدام بيانات الطلب ومشاركتها مع شركات التأمين لغرض الحصول على عروض الأسعار، والتواصل معي بشأنها.</span></label></section>
+<label class="consent"><input id="consent" type="checkbox"><span>أقرّ بأني أمثّل المنشأة في هذا الطلب، وأوافق على استخدام بيانات الطلب ومشاركتها مع شركات التأمين لغرض الحصول على عروض الأسعار، والتواصل معي بشأنها.</span></label></section>
 
 <div class="step-content" style="padding-top:0"><div id="form-error" class="form-error" role="alert"></div><div class="form-actions"><button id="back" class="button" type="button" hidden>رجوع</button><div class="action-group"><button id="next" class="button primary" type="button">متابعة</button><button id="submit" class="button primary" type="submit" hidden>إرسال الطلب</button></div></div></div>
 </div></form>
@@ -87,7 +89,7 @@ function renderLine() {
 function neededDocs() {
   const product = form.querySelector('[name="product"]:checked')?.value;
   return (currentLine().documents || []).filter(d => !d.generated && (!d.products || d.products.includes(product))
-    && (d.who === 'all' || d.who === form.customer_type.value));
+    && (d.who === 'all' || d.who === 'business'));
 }
 
 function renderDocs() {
@@ -111,7 +113,6 @@ function details() {
 function validateStep() {
   const invalid = [...panels[step - 1].querySelectorAll('input,select,textarea')].find(i => !i.checkValidity());
   if (invalid) { invalid.reportValidity(); return false; }
-  if (step === 1 && form.customer_type.value === 'business' && !form.company_name.value.trim()) { form.company_name.focus(); setError('اسم المنشأة مطلوب'); return false; }
   setError('');
   return true;
 }
@@ -121,8 +122,8 @@ function renderSummary() {
   const line = currentLine();
   const product = line.products.find(p => p.key === form.product.value);
   const d = details();
-  const rows = [['فرع التأمين', `${line.label} · ${product.label}`], ['الاسم', form.full_name.value],
-    ...(form.customer_type.value === 'business' ? [['المنشأة', form.company_name.value]] : []),
+  const rows = [['فرع التأمين', `${line.label} · ${product.label}`], ['المنشأة', form.company_name.value],
+    ['السجل التجاري', form.cr_number.value], ['مقدم الطلب', `${form.full_name.value}${form.contact_title.value ? ` (${form.contact_title.value})` : ''}`],
     ['الجوال', form.mobile.value], ['البريد', form.email.value || '—'],
     ...line.fields.filter(f => f.key in d).map(f => [f.label, d[f.key]]),
     ['مبلغ التغطية', form.coverage_amount.value || '—'], ['الأولوية', form.customer_priority.value],
@@ -145,7 +146,6 @@ function showStep(n) {
   setError('');
 }
 
-form.customer_type.addEventListener('change', () => { document.getElementById('company-field').hidden = form.customer_type.value !== 'business'; renderDocs(); });
 document.getElementById('next').addEventListener('click', () => { if (validateStep()) showStep(step + 1); });
 document.getElementById('back').addEventListener('click', () => showStep(step - 1));
 form.addEventListener('submit', async event => {
@@ -156,7 +156,8 @@ form.addEventListener('submit', async event => {
   submit.disabled = true;
   try {
     const created = await api('/portal/requests', { method: 'POST', body: {
-      customer_type: form.customer_type.value, full_name: form.full_name.value.trim(), company_name: form.company_name.value.trim() || null,
+      company_name: form.company_name.value.trim(), cr_number: form.cr_number.value.trim(), vat_number: form.vat_number.value.trim() || null,
+      full_name: form.full_name.value.trim(), contact_title: form.contact_title.value.trim() || null,
       mobile: form.mobile.value.trim(), email: form.email.value.trim() || null,
       insurance_type: currentLine().key, product_type: form.product.value, details: details(),
       coverage_amount: form.coverage_amount.value || null, customer_priority: form.customer_priority.value,

@@ -38,6 +38,8 @@ def _request(client: TestClient, mobile: str = "0551234567") -> dict:
         json={
             "full_name": "نورة القحطاني",
             "mobile": mobile,
+            "company_name": "شركة اختبار",
+            "cr_number": "10" + str(mobile)[-8:],
             "insurance_type": "motor",
             "product_type": "motor_comprehensive",
             "details": DETAILS,
@@ -294,7 +296,7 @@ async def test_live_whatsapp_template_and_retries(db_session, monkeypatch):
     assert payload["to"] == "966551234567" and payload["type"] == "template"
     assert payload["template"]["name"] == "bud_request_received"
     params = [p["text"] for p in payload["template"]["components"][0]["parameters"]]
-    assert params == ["نورة القحطاني", first["request_number"], "المركبات"]
+    assert params == ["شركة اختبار", first["request_number"], "المركبات"]
     assert (await service.dispatch_outbox(db_session, http, now))["retry"] == 0  # backoff not elapsed
     assert (await service.dispatch_outbox(db_session, http, now + timedelta(minutes=2)))["sent"] == 1
     assert {n.provider_message_id for n in await _outbox(db_session)} == {"wamid.1", "wamid.3"}

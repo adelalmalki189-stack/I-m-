@@ -65,9 +65,7 @@ LINES: list[dict[str, Any]] = [
         "label": "التأمين الطبي",
         "icon": "＋",
         "products": [
-            {"key": "medical_individual", "label": "أفراد وعائلات"},
             {"key": "medical_group", "label": "جماعي للمنشآت"},
-            {"key": "medical_visitors", "label": "تأمين الزيارة"},
         ],
         "fields": [
             _f("members_count", "عدد المؤمَّن لهم", "number", min=1),
@@ -84,7 +82,6 @@ LINES: list[dict[str, Any]] = [
         "products": [
             {"key": "property_fire", "label": "الحريق والأخطار المضافة"},
             {"key": "property_all_risks", "label": "جميع أخطار الممتلكات"},
-            {"key": "property_home", "label": "المنازل"},
         ],
         "fields": [
             _f("property_type", "نوع العقار", "select", options=["سكني", "تجاري", "صناعي", "مستودع", "أخرى"]),
@@ -178,7 +175,6 @@ LINES: list[dict[str, Any]] = [
         "products": [
             {"key": "protection_group_life", "label": "الحماية الجماعية للموظفين"},
             {"key": "protection_credit_life", "label": "حماية الائتمان"},
-            {"key": "protection_individual", "label": "الحماية والادخار للأفراد"},
         ],
         "fields": [
             _f("members_count", "عدد المؤمَّن لهم", "number", min=1),
@@ -191,25 +187,14 @@ LINES: list[dict[str, Any]] = [
         "label": "السفر",
         "icon": "↗",
         "products": [
-            {"key": "travel_single", "label": "رحلة واحدة"},
-            {"key": "travel_annual", "label": "سنوي متعدد الرحلات"},
+            {"key": "travel_single", "label": "سفر الموظفين - رحلة واحدة"},
+            {"key": "travel_annual", "label": "سفر الموظفين - سنوي متعدد الرحلات"},
         ],
         "fields": [
             _f("destination", "الوجهة"),
             _f("travelers", "عدد المسافرين", "number", min=1, max=50),
             _f("start_date", "تاريخ السفر", "date"),
             _f("end_date", "تاريخ العودة", "date"),
-        ],
-    },
-    {
-        "key": "domestic_workers",
-        "label": "العمالة المنزلية",
-        "icon": "♙",
-        "products": [{"key": "dw_contract", "label": "تأمين عقد العمالة المنزلية"}],
-        "fields": [
-            _f("workers_count", "عدد العمالة", "number", min=1),
-            _f("worker_nationality", "الجنسية"),
-            _f("contract_start", "تاريخ بداية العقد", "date"),
         ],
     },
 ]
@@ -247,10 +232,13 @@ def _d(
 
 
 AUTHORIZATION_LETTER = "authorization_letter"
-# Every request: who the customer is, and the letter authorizing BUD to ask insurers on their behalf.
+# Every request (BUD serves businesses only): who the business is, who signs for it, and the
+# letter authorizing BUD to ask insurers on its behalf.
 COMMON_DOCUMENTS = [
-    _d("national_id", "الهوية الوطنية أو الإقامة", "صورة واضحة للوجهين، سارية المفعول", who="individual"),
-    _d("commercial_registration", "السجل التجاري", "ساري المفعول، ويظهر فيه النشاط", who="business"),
+    _d("commercial_registration", "السجل التجاري", "ساري المفعول، ويظهر فيه النشاط"),
+    _d("signatory_id", "هوية المفوّض بالتوقيع", "هوية من يوقّع خطاب التفويض عن المنشأة"),
+    _d("vat_certificate", "شهادة التسجيل في ضريبة القيمة المضافة", "إن كانت المنشأة مسجلة", required=False),
+    _d("national_address", "العنوان الوطني للمنشأة", "", required=False),
     _d(
         AUTHORIZATION_LETTER,
         "خطاب التفويض",
@@ -292,9 +280,6 @@ LINE_DOCUMENTS: dict[str, list[Doc]] = {
             products=["medical_group"],
             spreadsheet=True,
         ),
-        _d("members_ids", "هويات المؤمَّن لهم", "لكل أفراد العائلة", products=["medical_individual"]),
-        _d("passport", "جواز السفر", "صفحة البيانات", products=["medical_visitors"]),
-        _d("visa", "التأشيرة", "", products=["medical_visitors"]),
         _d(
             "claims_experience",
             "تقرير الخبرة التأمينية",
@@ -375,15 +360,11 @@ LINE_DOCUMENTS: dict[str, list[Doc]] = {
             products=["protection_group_life", "protection_credit_life"],
             spreadsheet=True,
         ),
-        _d("health_declaration", "إقرار صحي", "", required=False, products=["protection_individual"]),
     ],
     "travel": [
-        _d("passport", "جواز السفر", "لكل مسافر، صفحة البيانات"),
+        _d("travelers_list", "كشف المسافرين", "الاسم، رقم الجواز، تاريخ الميلاد", spreadsheet=True),
+        _d("passport", "جوازات السفر", "صفحة البيانات لكل مسافر"),
         _d("visa", "التأشيرة", "إن كانت الوجهة تتطلبها", required=False),
-    ],
-    "domestic_workers": [
-        _d("labor_contract", "عقد العمل", "من منصة مساند"),
-        _d("worker_passport", "جواز العامل", "صفحة البيانات"),
     ],
 }
 

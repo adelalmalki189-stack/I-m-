@@ -1,4 +1,5 @@
 """Every BUD dashboard page is served and shows its core sections."""
+
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
@@ -33,7 +34,7 @@ def test_dashboard_pages_load():
     assert "إصدار الوثيقة" in comparison_response.text
     assert clients_response.status_code == 200
     assert "ملفات العملاء" in clients_response.text
-    assert "بيانات التواصل" in clients_response.text
+    assert "بيانات المنشأة والتواصل" in clients_response.text
     assert policies_response.status_code == 200
     assert "الوثائق والتجديدات" in policies_response.text
     assert "بدء تجديد" in policies_response.text
@@ -53,7 +54,7 @@ def test_dashboard_pages_load():
     assert "الإعدادات والصلاحيات" in settings_response.text
     assert "سجل التدقيق" in settings_response.text
     assert portal_response.status_code == 200
-    assert "اطلب تأمينك من بُعد" in portal_response.text
+    assert "اطلب تأمين منشأتك من بُعد" in portal_response.text
     assert "إرسال الطلب" in portal_response.text
     assert underwriting_response.status_code == 200
     assert "قوالب الرسائل" in underwriting_response.text

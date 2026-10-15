@@ -31,6 +31,8 @@ def _issue(
         json={
             "full_name": "نورة القحطاني",
             "mobile": mobile,
+            "company_name": "شركة اختبار",
+            "cr_number": "10" + str(mobile)[-8:],
             "insurance_type": "motor",
             "product_type": "motor_comprehensive",
             "details": DETAILS,
@@ -123,7 +125,7 @@ async def test_payments_and_overdue(db_session):
         overdue = client.get("/insurance/portfolio/installments?status=overdue").json()
         assert len(overdue) == expected_overdue >= 3
         first = overdue[0]
-        assert first["customer_name"] == "نورة القحطاني" and first["is_overdue"]
+        assert first["customer_name"] == "شركة اختبار" and first["is_overdue"]
         paid = client.post(
             f"/insurance/installments/{first['installment_id']}/pay",
             json={"payment_method": "sadad", "payment_reference": "S-1"},
@@ -236,6 +238,8 @@ async def test_report_summary(db_session):
             json={  # an unconverted request
                 "full_name": "x" * 3,
                 "mobile": "0557777777",
+                "company_name": "شركة اختبار",
+                "cr_number": "1057777777",
                 "insurance_type": "travel",
                 "product_type": "travel_single",
                 "details": {

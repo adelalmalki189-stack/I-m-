@@ -6,7 +6,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.insurance.models import ClaimStatus, InstallmentStatus, InsurancePolicyStatus
-from app.insurance.schemas import normalize_saudi_mobile
+from app.insurance.schemas import CR_PATTERN, VAT_PATTERN, normalize_saudi_mobile
 
 Money = Decimal
 
@@ -132,6 +132,9 @@ class ClaimView(BaseModel):
 class CustomerUpdateRequest(BaseModel):
     full_name: str | None = Field(default=None, min_length=2, max_length=200)
     company_name: str | None = Field(default=None, max_length=200)
+    cr_number: str | None = Field(default=None, pattern=CR_PATTERN)
+    vat_number: str | None = Field(default=None, pattern=VAT_PATTERN)
+    contact_title: str | None = Field(default=None, max_length=120)
     email: EmailStr | None = None
     phone: str | None = None
     notes: str | None = Field(default=None, max_length=5000)
@@ -149,6 +152,9 @@ class CustomerSummary(BaseModel):
     display_name: str
     full_name: str
     company_name: str | None
+    cr_number: str | None = None
+    vat_number: str | None = None
+    contact_title: str | None = None
     email: str | None
     phone: str | None
     messaging_opt_out: bool = False

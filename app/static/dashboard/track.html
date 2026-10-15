@@ -129,9 +129,10 @@ function letterCard(letter) {
   const form = el('form', {},
     el('div', { class: 'sign-grid' },
       el('label', { class: 'field' }, el('span', { text: 'اسمك الكامل كما في الهوية' }), el('input', { name: 'signer_name', required: true, minlength: 3, maxlength: 200, autocomplete: 'name' })),
-      el('label', { class: 'field' }, el('span', { text: 'رقم الهوية أو الإقامة' }), el('input', { name: 'id_number', required: true, inputmode: 'numeric', pattern: '[12][0-9]{9}', maxlength: 10, dir: 'ltr' }))),
+      el('label', { class: 'field' }, el('span', { text: 'رقم الهوية أو الإقامة' }), el('input', { name: 'id_number', required: true, inputmode: 'numeric', pattern: '[12][0-9]{9}', maxlength: 10, dir: 'ltr' })),
+      el('label', { class: 'field' }, el('span', { text: 'صفتك في المنشأة' }), el('input', { name: 'signer_title', required: true, minlength: 2, maxlength: 120, placeholder: 'مثال: المدير العام' }))),
     el('label', { class: 'consent' }, el('input', { type: 'checkbox', name: 'accept', required: true }),
-      el('span', { text: 'قرأت نص الخطاب وأوافق عليه، وأقرّ بأن هذا توقيعي الإلكتروني بعد التحقق من رقم جوالي.' })),
+      el('span', { text: 'قرأت نص الخطاب وأوافق عليه نيابة عن المنشأة، وأقرّ بأني مخوّل بالتوقيع عنها وبأن هذا توقيعي الإلكتروني بعد التحقق من رقم جوالي.' })),
     el('button', { class: 'button primary', type: 'submit', text: 'توقيع الخطاب' }));
   form.addEventListener('submit', async e => {
     e.preventDefault();
@@ -139,11 +140,11 @@ function letterCard(letter) {
     form.querySelector('button').disabled = true;
     try {
       await call('/letter/sign', { method: 'POST', headers: { 'X-Track-Token': token }, body: JSON.stringify({
-        signer_name: form.signer_name.value.trim(), id_number: form.id_number.value.trim(), accept: form.accept.checked }) });
+        signer_name: form.signer_name.value.trim(), id_number: form.id_number.value.trim(), signer_title: form.signer_title.value.trim(), accept: form.accept.checked }) });
       await showStatus();
     } catch (error) { showError(error.message); form.querySelector('button').disabled = false; }
   });
-  card.append(el('p', { class: 'muted', text: 'يفوّض هذا الخطاب بُعد بطلب عروض الأسعار من شركات التأمين نيابة عنك. لا يُلزمك بأي وثيقة أو دفع.' }),
+  card.append(el('p', { class: 'muted', text: 'يفوّض هذا الخطاب بُعد بطلب عروض الأسعار من شركات التأمين نيابة عن منشأتك. لا يُلزمها بأي وثيقة أو دفع.' }),
     el('div', { class: 'letter', text: letter.body_text }), form);
   return card;
 }

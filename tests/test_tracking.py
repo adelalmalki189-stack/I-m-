@@ -28,6 +28,8 @@ def _request(client: TestClient) -> dict:
         json={
             "full_name": "نورة القحطاني",
             "mobile": "0551234567",
+            "company_name": "شركة اختبار",
+            "cr_number": "1051234567",
             "insurance_type": "motor",
             "product_type": "motor_comprehensive",
             "details": DETAILS,

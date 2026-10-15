@@ -20,9 +20,10 @@ MOTOR_DETAILS = {
 
 def _portal_request(client: TestClient, **overrides) -> dict:
     payload = {
-        "customer_type": "individual",
         "full_name": "نورة القحطاني",
         "mobile": "0551234567",
+        "company_name": "شركة اختبار",
+        "cr_number": "1051234567",
         "email": "noura@example.com",
         "insurance_type": "motor",
         "product_type": "motor_comprehensive",
@@ -57,7 +58,7 @@ async def test_portal_request_creates_customer_and_normalizes_mobile(db_session)
         again = _portal_request(client, mobile="+966 55 123 4567")  # same customer, different spelling
 
         request = client.get(f"/insurance/requests/{created['request_id']}").json()
-        assert request["customer_name"] == "نورة القحطاني"
+        assert request["customer_name"] == "شركة اختبار"
         assert request["insurance_type_label"] == "المركبات"
         assert request["product_type_label"] == "شامل"
         assert request["request_details"]["vehicle_make"] == "تويوتا"
@@ -75,6 +76,8 @@ async def test_portal_rejects_incomplete_details_bad_mobile_and_missing_consent(
         base = {
             "full_name": "x" * 3,
             "mobile": "0551234567",
+            "company_name": "شركة اختبار",
+            "cr_number": "1051234567",
             "insurance_type": "motor",
             "product_type": "motor_tpl",
             "details": MOTOR_DETAILS,
@@ -210,7 +213,7 @@ async def test_template_preview_with_real_request(db_session):
             },
         ).json()
         assert preview["subject"] == "المركبات / شامل"
-        assert preview["body"] == "نورة القحطاني {unknown_thing}"
+        assert preview["body"] == "شركة اختبار {unknown_thing}"
         assert preview["unknown_placeholders"] == ["unknown_thing"]
 
 

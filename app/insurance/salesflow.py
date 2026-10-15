@@ -95,6 +95,7 @@ def letter_view(letter: AuthorizationLetter | None, full: bool = True) -> dict[s
     if full and signed:
         view |= {
             "signer_id_last4": letter.signer_id_last4,
+            "signer_title": letter.signer_title,
             "signed_mobile": authorization.mask_mobile(letter.signed_mobile),
             "signed_ip": letter.signed_ip,
             "content_hash": letter.content_hash,

@@ -33,20 +33,34 @@ def keys(docs: list[dict]) -> list[str]:
     return [d["key"] for d in docs]
 
 
-def test_documents_depend_on_product_and_customer_type():
-    individual = keys(catalog.required_documents("motor", "motor_tpl", "individual"))
-    assert individual[:2] == ["national_id", "authorization_letter"]
-    assert "vehicle_registration" in individual and "vehicle_list" not in individual
-    business_fleet = keys(catalog.required_documents("motor", "motor_fleet", "business"))
-    assert "commercial_registration" in business_fleet and "national_id" not in business_fleet
-    assert "vehicle_list" in business_fleet and "vehicle_registration" not in business_fleet
+def test_documents_depend_on_product():
+    tpl = keys(catalog.required_documents("motor", "motor_tpl", "business"))
+    assert tpl[:5] == [
+        "commercial_registration",
+        "signatory_id",
+        "vat_certificate",
+        "national_address",
+        "authorization_letter",
+    ]
+    assert "vehicle_registration" in tpl and "vehicle_list" not in tpl
+    fleet = keys(catalog.required_documents("motor", "motor_fleet", "business"))
+    assert "vehicle_list" in fleet and "vehicle_registration" not in fleet
     assert "employee_census" in keys(catalog.required_documents("medical", "medical_group", "business"))
 
 
+def test_no_individual_products():
+    products = {p["key"] for line in catalog.LINES for p in line["products"]}
+    assert not products & {"medical_individual", "medical_visitors", "property_home", "protection_individual"}
+    assert "domestic_workers" not in catalog.LINES_BY_KEY
+
+
 def test_file_review_rules():
-    assert review.review_file(PDF, "application/pdf", "national_id", {"spreadsheet": False})[0] == review.PASSED
+    assert (
+        review.review_file(PDF, "application/pdf", "commercial_registration", {"spreadsheet": False})[0]
+        == review.PASSED
+    )
     assert "2 صفحة" in review.review_file(PDF, "application/pdf", "x", {})[1][0]
-    status, findings = review.review_file(png(400, 300), "image/png", "national_id", {})
+    status, findings = review.review_file(png(400, 300), "image/png", "commercial_registration", {})
     assert status == review.WARNING and any("منخفضة" in f for f in findings)
     assert review.review_file(b"\xff\xd8\xff\x00", "image/jpeg", "x", {})[0] == review.FAILED
     assert review.review_file(PDF, "application/pdf", "customer_upload", None)[0] == review.WARNING
@@ -68,6 +82,8 @@ def _portal_request(client: TestClient) -> dict:
         json={
             "full_name": "نورة القحطاني",
             "mobile": "0551234567",
+            "company_name": "شركة اختبار",
+            "cr_number": "1051234567",
             "insurance_type": "motor",
             "product_type": "motor_tpl",
             "details": DETAILS,
@@ -98,8 +114,8 @@ def _track_token(client: TestClient, created: dict) -> str:
 async def test_portal_documents_are_reviewed_and_staff_decide(db_session):
     with TestClient(app) as client:
         created = _portal_request(client)
-        uploaded = _upload(client, created, "national_id", "id.png", png(1600, 1000))
-        assert uploaded["review_status"] == "passed" and uploaded["document_type"] == "national_id"
+        uploaded = _upload(client, created, "commercial_registration", "id.png", png(1600, 1000))
+        assert uploaded["review_status"] == "passed" and uploaded["document_type"] == "commercial_registration"
         blurry = _upload(client, created, "vehicle_registration", "reg.png", png(500, 320, 20_000))
         assert blurry["review_status"] == "warning"
         # An Excel file is refused where the catalog doesn't ask for a list.
@@ -113,7 +129,7 @@ async def test_portal_documents_are_reviewed_and_staff_decide(db_session):
 
         result = client.get(f"/insurance/requests/{created['request_id']}/review").json()
         items = {i["key"]: i for i in result["items"]}
-        assert items["national_id"]["status"] == "passed"
+        assert items["commercial_registration"]["status"] == "passed"
         assert items["vehicle_registration"]["status"] == "warning"
         assert items["driving_license"]["status"] == "missing"
         assert items["authorization_letter"]["status"] == "pending_signature"  # issued with the request
@@ -146,10 +162,14 @@ async def test_customer_completes_documents_and_signs_the_letter(db_session):
         token = _track_token(client, created)
         headers = {"X-Track-Token": token}
         view = client.get("/insurance/portal/track", headers=headers).json()
-        assert view["letter"]["status"] == "pending_signature" and "أفوّض" in view["letter"]["body_text"]
-        assert {d["key"] for d in view["documents"]} >= {"national_id", "vehicle_registration", "driving_license"}
+        assert view["letter"]["status"] == "pending_signature" and "نفوّض" in view["letter"]["body_text"]
+        assert {d["key"] for d in view["documents"]} >= {
+            "commercial_registration",
+            "vehicle_registration",
+            "driving_license",
+        }
 
-        for key in ("national_id", "vehicle_registration", "driving_license"):
+        for key in ("commercial_registration", "signatory_id", "vehicle_registration", "driving_license"):
             upload = client.post(
                 "/insurance/portal/track/documents",
                 files={"file": (f"{key}.pdf", PDF + key.encode())},
@@ -158,7 +178,12 @@ async def test_customer_completes_documents_and_signs_the_letter(db_session):
             )
             assert upload.status_code == 201 and upload.json()["review_status"] == "passed"
 
-        sign = {"signer_name": "نورة القحطاني", "id_number": "1012345678", "accept": True}
+        sign = {
+            "signer_name": "نورة القحطاني",
+            "id_number": "1012345678",
+            "signer_title": "المدير العام",
+            "accept": True,
+        }
         assert (
             client.post(
                 "/insurance/portal/track/letter/sign", json={**sign, "accept": False}, headers=headers

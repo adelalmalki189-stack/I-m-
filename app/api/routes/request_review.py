@@ -199,6 +199,7 @@ async def verify_letter(
         else ("expired" if expired else "valid"),
         "intact": letter.content_hash == authorization.signature_hash(letter),
         "signer_name": letter.signer_name,
+        "signer_title": letter.signer_title,
         "signed_at": letter.signed_at,
         "valid_until": letter.valid_until,
         "body_text": letter.body_text,

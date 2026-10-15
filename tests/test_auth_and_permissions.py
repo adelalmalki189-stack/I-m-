@@ -19,6 +19,8 @@ PDF = b"%PDF-1.4 test document"
 PORTAL_REQUEST = {
     "full_name": "نورة القحطاني",
     "mobile": "0551234567",
+    "company_name": "شركة اختبار",
+    "cr_number": "1051234567",
     "insurance_type": "travel",
     "product_type": "travel_single",
     "details": {"destination": "لندن", "travelers": 2, "start_date": "2026-12-01", "end_date": "2026-12-10"},

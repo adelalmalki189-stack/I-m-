@@ -220,6 +220,9 @@ async def _request_response(session: AsyncSession, request: InsuranceRequest) ->
         customer_name=(customer.company_name or customer.full_name) if customer else None,
         sales_employee_name=sales.full_name if sales else None,
         underwriter_name=underwriter.full_name if underwriter else None,
+        contact_name=request.contact_name,
+        contact_mobile=request.contact_mobile,
+        contact_title=request.contact_title,
         insurance_type_label=catalog.line_label(request.insurance_type),
         product_type_label=catalog.product_label(request.insurance_type, request.product_type),
         request_details=_details(request),
@@ -572,6 +575,9 @@ async def create_customer(
         customer_type=body.customer_type,
         full_name=body.full_name,
         company_name=body.company_name,
+        cr_number=body.cr_number,
+        vat_number=body.vat_number,
+        contact_title=body.contact_title,
         email=str(body.email) if body.email else None,
         phone=body.phone,
         notes=body.notes,
@@ -629,16 +635,18 @@ async def create_portal_request(
     errors = catalog.validate_details(body.insurance_type, body.product_type, body.details)
     if errors:
         raise _error(422, "INVALID_REQUEST_DETAILS", "؛ ".join(errors))
-    if body.customer_type == "business" and not (body.company_name or "").strip():
-        raise _error(422, "INVALID_REQUEST_DETAILS", "اسم المنشأة مطلوب لطلبات المنشآت")
 
-    result = await session.execute(select(Customer).where(Customer.phone == body.mobile))
+    # The same business (by CR number) keeps one customer file, whoever files for it.
+    result = await session.execute(select(Customer).where(Customer.cr_number == body.cr_number))
     customer = result.scalars().first()
     if customer is None:
         customer = Customer(
-            customer_type=body.customer_type,
+            customer_type="business",
             full_name=body.full_name,
-            company_name=body.company_name,
+            company_name=body.company_name.strip(),
+            cr_number=body.cr_number,
+            vat_number=body.vat_number,
+            contact_title=body.contact_title,
             email=str(body.email) if body.email else None,
             phone=body.mobile,
         )
@@ -660,6 +668,9 @@ async def create_portal_request(
         request_details=json.dumps(body.details, ensure_ascii=False),
         preferred_insurers="[]",
         consent_at=datetime.now(UTC),
+        contact_name=body.full_name,
+        contact_mobile=body.mobile,
+        contact_title=body.contact_title,
     )
     upload_token, request.upload_token_hash = new_token()
     request.upload_token_expires_at = datetime.now(UTC) + PORTAL_UPLOAD_WINDOW

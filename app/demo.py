@@ -50,7 +50,7 @@ CUSTOMERS = [
     # (name, company, mobile, line, product, details, coverage, stage)
     (
         "نورة (تجريبي)",
-        None,
+        "مؤسسة تجريبية للنقل",
         "+966500000001",
         "motor",
         "motor_comprehensive",
@@ -91,11 +91,11 @@ CUSTOMERS = [
     ),
     (
         "ماجد (تجريبي)",
-        None,
+        "شركة تجريبية للعقار",
         "+966500000004",
         "property",
-        "property_home",
-        {"property_type": "سكني", "city": "جدة", "sum_insured": 1800000},
+        "property_fire",
+        {"property_type": "تجاري", "city": "جدة", "sum_insured": 1800000},
         "1800000",
         "policy",
     ),
@@ -147,9 +147,11 @@ async def seed_demo(session: AsyncSession, environment: str) -> dict[str, int]:
     counts = {"customers": 0, "policies": 0, "claims": 0}
     for i, (name, company, mobile, line, product, details, coverage, stage) in enumerate(CUSTOMERS):
         customer = Customer(
-            customer_type="business" if company else "individual",
+            customer_type="business",
             full_name=name,
             company_name=company,
+            cr_number=f"10100{i:05d}",
+            contact_title="مدير الموارد البشرية",
             phone=mobile,
         )
         session.add(customer)
@@ -172,6 +174,9 @@ async def seed_demo(session: AsyncSession, environment: str) -> dict[str, int]:
             preferred_insurers="[]",
             consent_at=now,
             last_status_change_at=now,
+            contact_name=name,
+            contact_mobile=mobile,
+            contact_title="مدير الموارد البشرية",
         )
         session.add(request)
         await session.flush()

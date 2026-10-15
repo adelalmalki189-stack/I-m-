@@ -9,11 +9,19 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, mo
 
 from app.insurance.models import InsurancePolicyStatus, InsuranceRequestStatus, InsuranceSubmissionStatus
 
+CR_PATTERN = r"^[1-7]\d{9}$"  # commercial registration / unified number: 10 digits
+VAT_PATTERN = r"^3\d{13}3$"  # Saudi VAT: 15 digits, starts and ends with 3
+
 
 class CustomerCreateRequest(BaseModel):
-    customer_type: str = Field(default="individual")
+    """BUD serves businesses only: company_name is the business, full_name its representative."""
+
+    customer_type: str = Field(default="business", pattern="^business$")
     full_name: str = Field(..., min_length=2, max_length=200)
-    company_name: str | None = Field(default=None, max_length=200)
+    company_name: str = Field(..., min_length=2, max_length=200)
+    cr_number: str | None = Field(default=None, pattern=CR_PATTERN)
+    vat_number: str | None = Field(default=None, pattern=VAT_PATTERN)
+    contact_title: str | None = Field(default=None, max_length=120)
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=32)
     notes: str | None = None
@@ -26,6 +34,9 @@ class CustomerResponse(BaseModel):
     customer_type: str
     full_name: str
     company_name: str | None = None
+    cr_number: str | None = None
+    vat_number: str | None = None
+    contact_title: str | None = None
     email: str | None = None
     phone: str | None = None
     notes: str | None = None
@@ -163,6 +174,9 @@ class InsuranceRequestResponse(BaseModel):
     underwriter_status: str | None = None
     sales_employee_name: str | None = None
     underwriter_name: str | None = None
+    contact_name: str | None = None
+    contact_mobile: str | None = None
+    contact_title: str | None = None
     preferred_insurer: str | None = None
     preferred_insurers: list[str] = Field(default_factory=list)
     preferred_premium_range: str | None = None
@@ -527,9 +541,12 @@ def normalize_saudi_mobile(raw: str) -> str:
 class PortalRequestCreate(BaseModel):
     """A customer's request from the public portal: contact details + risk details in one call."""
 
-    customer_type: str = Field(default="individual", pattern="^(individual|business)$")
-    full_name: str = Field(..., min_length=2, max_length=200)
-    company_name: str | None = Field(default=None, max_length=200)
+    customer_type: str = Field(default="business", pattern="^business$")  # businesses only
+    company_name: str = Field(..., min_length=2, max_length=200)
+    cr_number: str = Field(..., pattern=CR_PATTERN)
+    vat_number: str | None = Field(default=None, pattern=VAT_PATTERN)
+    full_name: str = Field(..., min_length=2, max_length=200)  # the person filing for the business
+    contact_title: str | None = Field(default=None, max_length=120)
     mobile: str
     email: EmailStr | None = None
     insurance_type: str = Field(..., max_length=80)

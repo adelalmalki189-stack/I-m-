@@ -17,10 +17,13 @@
 <div class="table-wrap"><table><thead><tr><th>العميل</th><th>الجوال</th><th>وثائق سارية</th><th>إجمالي الأقساط</th><th>أقرب انتهاء</th></tr></thead><tbody id="rows"></tbody></table><div id="empty" class="empty" hidden>لا يوجد عملاء.</div></div></section>
 <section id="profile" class="panel" hidden><div class="panel-head"><div><h2 id="p-title"></h2><div id="p-sub" class="muted"></div></div></div>
 <div class="panel-body">
-<div class="section-title">بيانات التواصل</div>
+<div class="section-title">بيانات المنشأة والتواصل</div>
 <form id="contact" class="form-grid">
-<label class="field"><span>الاسم</span><input name="full_name" required minlength="2"></label>
-<label class="field"><span>المنشأة</span><input name="company_name"></label>
+<label class="field"><span>المنشأة</span><input name="company_name" required minlength="2"></label>
+<label class="field"><span>رقم السجل التجاري</span><input name="cr_number" inputmode="numeric" pattern="[1-7][0-9]{9}" maxlength="10" dir="ltr"></label>
+<label class="field"><span>الرقم الضريبي</span><input name="vat_number" inputmode="numeric" pattern="3[0-9]{13}3" maxlength="15" dir="ltr"></label>
+<label class="field"><span>المسؤول</span><input name="full_name" required minlength="2"></label>
+<label class="field"><span>المسمى الوظيفي</span><input name="contact_title" maxlength="120"></label>
 <label class="field"><span>الجوال</span><input name="phone" type="tel" dir="ltr"></label>
 <label class="field"><span>البريد</span><input name="email" type="email" dir="ltr"></label>
 <label class="field full"><span>ملاحظات</span><textarea name="notes" rows="2"></textarea></label>
@@ -46,9 +49,9 @@ let customers = [], query = '', selectedId = new URLSearchParams(location.search
 const contact = document.getElementById('contact');
 
 function render() {
-  const visible = customers.filter(c => `${c.display_name} ${c.full_name} ${c.phone || ''} ${c.email || ''}`.toLowerCase().includes(query));
+  const visible = customers.filter(c => `${c.display_name} ${c.full_name} ${c.cr_number || ''} ${c.phone || ''} ${c.email || ''}`.toLowerCase().includes(query));
   document.getElementById('rows').replaceChildren(...visible.map(c => el('tr', { class: `clickable${c.customer_id === selectedId ? ' selected' : ''}`, onclick: () => select(c.customer_id) },
-    el('td', {}, el('div', { class: 'strong', text: c.display_name }), el('div', { class: 'sub', text: c.customer_type === 'business' ? `منشأة · ${c.full_name}` : 'فرد' })),
+    el('td', {}, el('div', { class: 'strong', text: c.display_name }), el('div', { class: 'sub', text: `${c.cr_number ? `س.ت ${c.cr_number} · ` : ''}${c.full_name}${c.customer_type === 'business' ? '' : ' · سجل قديم (فرد)'}` })),
     el('td', { dir: 'ltr', style: 'text-align:right', text: c.phone || '—' }),
     el('td', {}, String(c.active_policies), c.open_claims ? el('span', { class: 'pill red', style: 'margin-right:6px', text: `${c.open_claims} مطالبة` }) : null),
     el('td', { text: money(c.total_premium) }),
@@ -71,6 +74,7 @@ async function select(id) {
   document.getElementById('p-title').textContent = c.display_name;
   document.getElementById('p-sub').textContent = `${c.requests_count} طلب · ${c.active_policies} وثيقة سارية · عميل منذ ${date(c.created_at).split('،')[0]}`;
   contact.full_name.value = c.full_name; contact.company_name.value = c.company_name || '';
+  contact.cr_number.value = c.cr_number || ''; contact.vat_number.value = c.vat_number || ''; contact.contact_title.value = c.contact_title || '';
   contact.phone.value = c.phone || ''; contact.email.value = c.email || ''; contact.notes.value = p.notes || ''; contact.messaging_opt_out.checked = c.messaging_opt_out;
   loadMessages(id);
   document.getElementById('p-policies').replaceChildren(...(p.policies.length ? p.policies.map(x => line(`policies.html?policy=${x.policy_id}`, `${x.policy_number} · ${x.insurance_type_label}`,
@@ -84,7 +88,8 @@ async function select(id) {
 contact.addEventListener('submit', e => {
   e.preventDefault();
   const f = Object.fromEntries(new FormData(contact));
-  const body = { full_name: f.full_name.trim(), company_name: f.company_name.trim() || null, phone: f.phone.trim() || null, email: f.email.trim() || null, notes: f.notes.trim() || null, messaging_opt_out: contact.messaging_opt_out.checked };
+  const body = { full_name: f.full_name.trim(), company_name: f.company_name.trim() || null, cr_number: f.cr_number.trim() || null,
+    vat_number: f.vat_number.trim() || null, contact_title: f.contact_title.trim() || null, phone: f.phone.trim() || null, email: f.email.trim() || null, notes: f.notes.trim() || null, messaging_opt_out: contact.messaging_opt_out.checked };
   run(e.submitter, () => api(`/customers/${selectedId}`, { method: 'PATCH', body }), 'حُفظت بيانات العميل').then(async () => { await load(); await select(selectedId); });
 });
 const MSG_STATUS = { queued: ['بالانتظار', ''], sent: ['أُرسلت', 'blue'], simulated: ['تجريبية', ''], failed: ['فشلت', 'red'], skipped: ['لم تُرسل', 'red'] };

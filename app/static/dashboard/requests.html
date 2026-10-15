@@ -76,7 +76,7 @@ function select(id) {
   document.getElementById('d-title').textContent = r.customer_name || 'عميل';
   document.getElementById('d-sub').textContent = `${r.request_number} · ${r.insurance_type_label} · ${r.product_type_label}`;
   document.getElementById('d-status').replaceChildren(pill(REQUEST_STATUS, r.status));
-  const rows = [['مبلغ التغطية', money(r.coverage_amount)], ...Object.entries(r.request_details).map(([k, v]) => [cat.fieldLabel(r.insurance_type, k), v]),
+  const rows = [['مقدم الطلب', r.contact_name ? `${r.contact_name}${r.contact_title ? ` (${r.contact_title})` : ''} · ${r.contact_mobile || ''}` : null], ['مبلغ التغطية', money(r.coverage_amount)], ...Object.entries(r.request_details).map(([k, v]) => [cat.fieldLabel(r.insurance_type, k), v]),
     ['موظف المبيعات', r.sales_employee_name || 'غير مسند'], ['المكتتب', r.underwriter_name],
     ['الأولوية', r.customer_priority], ['ملاحظات', r.notes || r.summary], ['آخر تغيير للحالة', date(r.last_status_change_at)]].filter(([, v]) => v != null && v !== '');
   document.getElementById('d-details').replaceChildren(...rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
@@ -146,7 +146,7 @@ function renderLetter(id, letter) {
     el('div', { class: 'doc-row' }, el('span', {}, el('b', { text: letter.letter_number }), ' ', badge(letter.status, signed ? 'موقّع إلكترونيًا' : 'بانتظار توقيع العميل')),
       el('span', { class: 'actions' }, signed ? el('a', { class: 'button mini', href: `/insurance/documents/${letter.document_id}/download`, target: '_blank', rel: 'noopener', text: 'النسخة الموقّعة' }) : null,
         signed ? el('a', { class: 'button mini', href: `verify.html?code=${letter.verification_code}`, target: '_blank', rel: 'noopener', text: 'التحقق' }) : null, issue)),
-    signed ? el('dl', { class: 'kv' }, ...[['الموقّع', letter.signer_name], ['آخر 4 من الهوية', letter.signer_id_last4], ['الجوال', letter.signed_mobile],
+    signed ? el('dl', { class: 'kv' }, ...[['الموقّع', letter.signer_name], ['صفته', letter.signer_title], ['آخر 4 من الهوية', letter.signer_id_last4], ['الجوال', letter.signed_mobile],
       ['وقت التوقيع', date(letter.signed_at)], ['ساري حتى', letter.valid_until], ['رمز التحقق', letter.verification_code]].flatMap(([k, val]) => [el('dt', { text: k }), el('dd', { text: val || '—' })])) : null,
     el('details', {}, el('summary', { class: 'muted', text: 'نص الخطاب' }), el('div', { class: 'letter-text', text: letter.body_text })));
 }

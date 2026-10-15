@@ -29,6 +29,8 @@ def _setup(client: TestClient) -> tuple[dict, list[dict]]:
         json={
             "full_name": "نورة القحطاني",
             "mobile": "0551234567",
+            "company_name": "شركة اختبار",
+            "cr_number": "1051234567",
             "insurance_type": "motor",
             "product_type": "motor_comprehensive",
             "details": DETAILS,
@@ -207,16 +209,28 @@ async def test_claude_request_shape(monkeypatch):
     def handler(request: httpx2.Request) -> httpx2.Response:
         captured["headers"] = dict(request.headers)
         captured["body"] = jsonlib.loads(request.content)
-        return httpx2.Response(200, json={
-            "id": "msg_1", "type": "message", "role": "assistant", "model": "claude-opus-5-5",
-            "content": [{"type": "text", "text": QUOTE.model_dump_json()}],
-            "stop_reason": "end_turn", "stop_sequence": None,
-            "usage": {"input_tokens": 10, "output_tokens": 10},
-        })
+        return httpx2.Response(
+            200,
+            json={
+                "id": "msg_1",
+                "type": "message",
+                "role": "assistant",
+                "model": "claude-opus-5-5",
+                "content": [{"type": "text", "text": QUOTE.model_dump_json()}],
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {"input_tokens": 10, "output_tokens": 10},
+            },
+        )
 
     real = anthropic.AsyncAnthropic
-    monkeypatch.setattr(anthropic, "AsyncAnthropic", lambda: real(
-        api_key="test", http_client=anthropic.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler))))
+    monkeypatch.setattr(
+        anthropic,
+        "AsyncAnthropic",
+        lambda: real(
+            api_key="test", http_client=anthropic.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(handler))
+        ),
+    )
     result = await inbound.claude_extractor("prompt text", [("offer.pdf", "application/pdf", PDF)])
 
     assert result.premium == 3450.0 and result.commission_rate == 12.5

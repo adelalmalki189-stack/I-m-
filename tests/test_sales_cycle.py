@@ -13,8 +13,8 @@ from app.insurance.models import InsuranceRequest, SalesEmployee
 from app.main import app
 from tests.test_documents_review import PDF, _portal_request, _track_token, png
 
-MOTOR_TPL_DOCS = ("national_id", "vehicle_registration", "driving_license")
-SIGN = {"signer_name": "نورة القحطاني", "id_number": "1012345678", "accept": True}
+MOTOR_TPL_DOCS = ("commercial_registration", "signatory_id", "vehicle_registration", "driving_license")
+SIGN = {"signer_name": "نورة القحطاني", "id_number": "1012345678", "signer_title": "المدير العام", "accept": True}
 
 
 async def _staff(db_session, name: str, role: str) -> str:
@@ -80,7 +80,8 @@ async def test_a_remark_waits_for_staff_before_the_hand_off(db_session):
     with TestClient(app) as client:
         created = _portal_request(client)
         headers = {"X-Track-Token": _track_token(client, created)}
-        _upload_from_tracking(client, headers, "national_id", PDF + b"id")
+        _upload_from_tracking(client, headers, "commercial_registration", PDF + b"cr")
+        _upload_from_tracking(client, headers, "signatory_id", PDF + b"id")
         _upload_from_tracking(client, headers, "driving_license", PDF + b"lic")
         blurry = client.post(
             "/insurance/portal/track/documents",

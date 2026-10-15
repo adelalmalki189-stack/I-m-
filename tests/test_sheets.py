@@ -138,6 +138,7 @@ async def test_underwriter_analyzes_targets_and_formats(db_session):
                 "full_name": "ريم",
                 "company_name": "شركة تجريبية",
                 "mobile": "0551234567",
+                "cr_number": "1051234567",
                 "insurance_type": "medical",
                 "product_type": "medical_group",
                 "details": {

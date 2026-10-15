@@ -46,9 +46,11 @@ def _ar_date(value: date) -> str:
 def letter_text(
     letter_number: str, request: InsuranceRequest, customer: Customer, issued: date, valid_until: date
 ) -> str:
-    who = customer.full_name
-    if customer.company_name:
-        who = f"{customer.full_name}، بصفته ممثلًا عن {customer.company_name}"
+    company = customer.company_name or customer.full_name
+    cr = f"، سجل تجاري رقم {customer.cr_number}" if customer.cr_number else ""
+    representative = request.contact_name or customer.full_name
+    title = request.contact_title or customer.contact_title
+    role = f" ({title})" if title else ""
     return "\n".join(
         [
             f"خطاب تفويض رقم {letter_number}",
@@ -56,16 +58,18 @@ def letter_text(
             "",
             "إلى من يهمه الأمر من شركات التأمين المرخّصة،",
             "",
-            f"أنا {who}، صاحب الجوال {mask_mobile(customer.phone)}،",
-            f"أفوّض {settings.broker_legal_name} فيما يخص طلب التأمين رقم {request.request_number}"
+            f"نحن {company}{cr}، ويمثلنا في هذا التفويض {representative}{role}، "
+            f"صاحب الجوال {mask_mobile(request.contact_mobile or customer.phone)}،",
+            f"نفوّض {settings.broker_legal_name} فيما يخص طلب التأمين رقم {request.request_number}"
             f" ({catalog.line_label(request.insurance_type)} - "
             f"{catalog.product_label(request.insurance_type, request.product_type)}) بما يلي:",
-            "1. طلب عروض الأسعار من شركات التأمين نيابةً عني، وتزويدها ببيانات الطلب ومستنداته.",
-            "2. التفاوض على الأسعار والشروط، ومقارنة العروض وعرضها عليّ.",
+            "1. طلب عروض الأسعار من شركات التأمين نيابةً عنّا، وتزويدها ببيانات الطلب ومستنداته.",
+            "2. التفاوض على الأسعار والشروط، ومقارنة العروض وعرضها علينا.",
             "3. استلام المراسلات المتعلقة بالطلب من شركات التأمين.",
             "",
-            "ولا يشمل هذا التفويض قبول أي وثيقة أو دفع أي قسط إلا بموافقتي الصريحة.",
-            f"يسري هذا التفويض حتى {_ar_date(valid_until)}، ولي إلغاؤه في أي وقت بإشعار الوسيط.",
+            "ولا يشمل هذا التفويض قبول أي وثيقة أو دفع أي قسط إلا بموافقتنا الصريحة.",
+            f"يسري هذا التفويض حتى {_ar_date(valid_until)}، ولنا إلغاؤه في أي وقت بإشعار الوسيط.",
+            "ويقرّ الموقّع بأنه مخوّل بالتوقيع عن المنشأة.",
         ]
     )
 
@@ -133,6 +137,8 @@ def signature_hash(letter: AuthorizationLetter) -> str:
         "signer_name": letter.signer_name,
         "signer_id_last4": letter.signer_id_last4,
         "signed_mobile": letter.signed_mobile,
+        # Added later; only part of the record when set, so earlier signatures still verify.
+        **({"signer_title": letter.signer_title} if letter.signer_title else {}),
         "signed_at": _utc_seconds(letter.signed_at),
     }
     return hashlib.sha256(json.dumps(record, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
@@ -147,6 +153,7 @@ def _signed_html(letter: AuthorizationLetter) -> str:
     body = "".join(f"<p>{html.escape(line) or '&nbsp;'}</p>" for line in letter.body_text.split("\n"))
     rows = [
         ("الموقّع", letter.signer_name or ""),
+        ("صفته في المنشأة", letter.signer_title or "—"),
         ("آخر 4 أرقام من الهوية", f"••••••{letter.signer_id_last4}"),
         ("الجوال المتحقَّق منه برمز لمرة واحدة", mask_mobile(letter.signed_mobile)),
         ("وقت التوقيع", signed_at),
@@ -175,11 +182,13 @@ async def sign(
     signer_name: str,
     id_number: str,
     mobile: str,
+    signer_title: str | None,
     ip: str,
     user_agent: str,
 ) -> AuthorizationLetter:
     letter.signer_name = signer_name.strip()
     letter.signer_id_last4 = id_number[-4:]
+    letter.signer_title = (signer_title or "").strip() or None
     letter.signed_mobile = mobile
     letter.signed_at = datetime.now(UTC)
     letter.signed_ip = ip

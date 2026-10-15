@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.automation import channels
 from app.automation.models import AutomationSetting, CustomerNotification, NotificationStatus
 from app.automation.rules import RULES, get_rule, render
-from app.insurance.models import Customer
+from app.insurance.models import Customer, InsuranceRequest
 
 MODES = ("sandbox", "live")
 CHANNELS = ("whatsapp", "sms")
@@ -74,17 +74,18 @@ async def enqueue(
     if not body:
         raise ValueError("A message body is required")
 
+    phone = await recipient(session, customer, request_id)
     status, error = NotificationStatus.QUEUED, None
     if customer.messaging_opt_out and kind not in TRANSACTIONAL:
         status, error = NotificationStatus.SKIPPED, "العميل ألغى الاشتراك في الرسائل"
-    elif not customer.phone:
+    elif not phone:
         status, error = NotificationStatus.SKIPPED, "لا يوجد رقم جوال للعميل"
 
     notification = CustomerNotification(
         customer_id=customer.customer_id,
         kind=kind,
         channel=await get_setting(session, "customer_channel"),
-        to_phone=customer.phone,
+        to_phone=phone,
         body=body,
         template_params=json.dumps({"template": template, "params": params}, ensure_ascii=False)
         if template
@@ -112,15 +113,27 @@ async def _deliver(client: httpx.AsyncClient, n: CustomerNotification) -> channe
     return await channels.send_sms(client, n.to_phone, n.body)
 
 
+async def recipient(session: AsyncSession, customer: Customer, request_id: str | None) -> str | None:
+    """A request's messages go to whoever filed it for the business; others to the customer's
+    number. Read again at delivery, so a corrected number is used."""
+    request = await session.get(InsuranceRequest, request_id) if request_id else None
+    return (request.contact_mobile if request else None) or customer.phone
+
+
 async def _send_one(
-    client: httpx.AsyncClient, n: CustomerNotification, customer: Customer | None, mode: str, now: datetime
+    client: httpx.AsyncClient,
+    n: CustomerNotification,
+    customer: Customer | None,
+    phone: str | None,
+    mode: str,
+    now: datetime,
 ) -> str:
     """Try to deliver one message; returns the outcome key (sent/simulated/retry/failed/skipped)."""
     opted_out = customer is not None and customer.messaging_opt_out and n.kind not in TRANSACTIONAL
-    if customer is None or opted_out or not customer.phone:
+    if customer is None or opted_out or not phone:
         n.status, n.last_error = NotificationStatus.SKIPPED, "العميل ألغى الاشتراك أو لا يوجد رقم"
         return "skipped"
-    n.to_phone = customer.phone  # use the latest number
+    n.to_phone = phone
     n.attempts += 1
     if mode != "live":
         n.status, n.sent_at = NotificationStatus.SIMULATED, now
@@ -144,11 +157,12 @@ async def deliver_now(
 ) -> str:
     """Send one message immediately (verification codes can't wait for the worker cycle)."""
     customer = await session.get(Customer, n.customer_id)
+    phone = await recipient(session, customer, n.request_id) if customer else None
     mode = await get_setting(session, "messaging_mode")
     if client is not None:
-        return await _send_one(client, n, customer, mode, datetime.now(UTC))
+        return await _send_one(client, n, customer, phone, mode, datetime.now(UTC))
     async with httpx.AsyncClient() as own:
-        return await _send_one(own, n, customer, mode, datetime.now(UTC))
+        return await _send_one(own, n, customer, phone, mode, datetime.now(UTC))
 
 
 async def dispatch_outbox(
@@ -179,7 +193,9 @@ async def dispatch_outbox(
     client = client or httpx.AsyncClient()
     try:
         for n in batch:
-            counts[await _send_one(client, n, customers.get(n.customer_id), mode, now)] += 1
+            customer = customers.get(n.customer_id)
+            phone = await recipient(session, customer, n.request_id) if customer else None
+            counts[await _send_one(client, n, customer, phone, mode, now)] += 1
     finally:
         if own_client:
             await client.aclose()

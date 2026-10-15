@@ -134,7 +134,7 @@ PEOPLE = Profile(
     category_label="الفئة",
     value_field="sum_insured",
     default_categories=("VIP", "A", "B", "C"),
-    documents=("employee_census", "members_list", "insured_list"),
+    documents=("employee_census", "members_list", "insured_list", "travelers_list"),
 )
 VEHICLES = Profile(
     "vehicles",

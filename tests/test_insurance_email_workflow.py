@@ -10,7 +10,8 @@ async def test_create_insurer_template_and_submission_requires_approval(db_sessi
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Noura Ahmed",
                 "email": "noura@example.com",
             },
@@ -101,7 +102,8 @@ async def test_sales_employee_request_routes_to_underwriting(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Mohammed Tariq",
                 "email": "mohammed@example.com",
                 "phone": "+966500022222",
@@ -159,7 +161,8 @@ async def test_quote_capture_and_best_quote_selection(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Aisha Rahman",
                 "email": "aisha@example.com",
             },
@@ -243,7 +246,8 @@ async def test_select_quote_for_request_and_store_selection(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Layla Hassan",
                 "email": "layla@example.com",
             },
@@ -301,7 +305,8 @@ async def test_issue_policy_after_selected_quote(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Zayd Ali",
                 "email": "zayd@example.com",
             },
@@ -411,7 +416,8 @@ async def test_send_submission_uses_email_and_pdf_attachment(db_session, monkeyp
         customer = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Samira Noor",
                 "email": "samira@example.com",
             },

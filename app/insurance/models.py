@@ -93,12 +93,18 @@ class Customer(Base, TimestampMixin):
     __tablename__ = "insurance_customers"
 
     customer_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    customer_type: Mapped[str] = mapped_column(String(20), nullable=False, default=CustomerType.INDIVIDUAL.value)
+    # BUD serves businesses only; "individual" remains for records created before that.
+    customer_type: Mapped[str] = mapped_column(String(20), nullable=False, default=CustomerType.BUSINESS.value)
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     company_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The business: commercial registration (or unified) number and VAT number. full_name is
+    # the person representing it, contact_title their position.
+    cr_number: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    vat_number: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    contact_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # The customer asked not to receive WhatsApp/SMS messages from BUD.
     messaging_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -223,6 +229,11 @@ class InsuranceRequest(Base, TimestampMixin):
     sales_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     selected_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     request_details: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: catalog field key -> value
+    # Who filed this request for the business: messages about it go to this mobile, and the
+    # tracking code and the letter signature are verified against it.
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    contact_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     renewal_of_policy_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     # Short-lived token returned to the portal so the customer can attach documents to
@@ -601,6 +612,7 @@ class AuthorizationLetter(Base, TimestampMixin):
     issued_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     signer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     signer_id_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)  # never the full ID
+    signer_title: Mapped[str | None] = mapped_column(String(120), nullable=True)  # position in the business
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
     signed_user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)

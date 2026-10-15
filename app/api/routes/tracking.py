@@ -102,7 +102,7 @@ async def _find_request(session: AsyncSession, number: str, mobile: str) -> Insu
             .where(InsuranceRequest.request_number == number)
         )
     ).first()
-    if row is None or row[1].phone != mobile:
+    if row is None or (row[0].contact_mobile or row[1].phone) != mobile:
         return None
     return row[0]
 
@@ -345,6 +345,7 @@ async def upload_document(
 
 class SignLetter(BaseModel):
     signer_name: str = Field(..., min_length=3, max_length=200)
+    signer_title: str = Field(..., min_length=2, max_length=120)  # position in the business
     id_number: str = Field(..., pattern=r"^[12]\d{9}$")  # Saudi national ID (1…) or iqama (2…)
     accept: bool
 
@@ -371,7 +372,8 @@ async def sign_letter(
         letter,
         body.signer_name,
         body.id_number,
-        customer.phone or "",
+        request.contact_mobile or customer.phone or "",
+        body.signer_title,
         client_ip(http),
         http.headers.get("user-agent") or "",
     )
