@@ -107,7 +107,7 @@ class Parsed:
 
 
 def parse(content: bytes, default_class: str | None = None) -> Parsed:
-    sheet = sheets.read_workbook(content)
+    sheet = sheets.read_workbook(content, profile=PROVIDERS)
     mapping = sheets.auto_mapping(PROVIDERS, sheet.headers)
     # One column per class (headers "VIP", "A", "B"...) when there is no single class column.
     class_columns = {

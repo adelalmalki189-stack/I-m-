@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | نماذج الملفات</title>
+<link rel="stylesheet" href="bud.css">
+<style>
+body{font-size:14px}
+.topbar{height:62px;padding:0 clamp(15px,4vw,48px);display:flex;align-items:center;justify-content:space-between;background:var(--black);color:var(--white)}
+.topbar .brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid var(--gray);border-radius:8px;font-size:10px;font-weight:700}
+.brand-name{font-size:16px;font-weight:700}.brand-name small{display:block;color:var(--pale);font-size:8px;font-weight:400}
+.top-link{color:var(--pale);font-size:10px;text-decoration:none;margin-right:14px}
+main{width:min(1000px,calc(100% - 32px));margin:28px auto 45px;padding:0}
+h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 18px;color:var(--muted);font-size:11px}
+h2{margin:22px 0 10px;font-size:15px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.card{padding:15px;border:1px solid var(--line);border-radius:8px;background:var(--white)}
+.card b{display:block;font-size:12px;margin-bottom:4px}.card p{margin:0 0 10px;color:var(--muted);font-size:10px;line-height:1.7}
+pre{margin:0;padding:12px;border:1px solid var(--line);border-radius:6px;background:#FAFBFD;font-size:11px;line-height:1.9;white-space:pre-wrap;font-family:inherit}
+.labels td,.labels th{font-size:10px}
+.doc-line{margin-bottom:12px}
+.tag{display:inline-block;margin:2px;padding:2px 7px;border-radius:4px;background:var(--pale);font-size:9px}
+.tag.req{background:#E3EAFF;color:var(--blue)}
+</style>
+</head>
+<body class="ui">
+<header class="topbar"><a class="brand" href="portal.html"><span class="brand-mark">BUD</span><span class="brand-name">بُعد<small>وساطة تأمينية رقمية</small></span></a>
+<span><a class="top-link" href="portal.html">طلب تأمين</a><a class="top-link" href="login.html">دخول فريق العمل</a></span></header>
+<main>
+<h1>نماذج الملفات</h1>
+<p class="lead">حمّل النموذج، اكتب بياناتك تحت العناوين نفسها، ثم ارفعه مع الطلب. النظام يقرأ هذه الكشوف ويراجعها تلقائيًا ويجهزها لشركات التأمين.</p>
+
+<h2>١. كشوف Excel</h2>
+<div class="cards">
+<div class="card"><b>كشف الموظفين والتابعين</b><p>التأمين الطبي الجماعي. صف لكل موظف وصف لكل تابع تحته.</p><a class="button primary" href="templates/كشف-الموظفين-والتابعين.xlsx" download>تحميل النموذج</a></div>
+<div class="card"><b>كشف المؤمَّن لهم</b><p>الحماية والادخار، والحوادث الشخصية، وخيانة الأمانة. مع مبلغ التغطية لكل فرد.</p><a class="button primary" href="templates/كشف-المؤمن-لهم.xlsx" download>تحميل النموذج</a></div>
+<div class="card"><b>كشف المسافرين</b><p>تأمين السفر. الهوية أو الإقامة ورقم الجواز لكل مسافر.</p><a class="button primary" href="templates/كشف-المسافرين.xlsx" download>تحميل النموذج</a></div>
+<div class="card"><b>كشف المركبات</b><p>أسطول المركبات. الرقم التسلسلي والطراز والسنة والقيمة لكل مركبة.</p><a class="button primary" href="templates/كشف-المركبات.xlsx" download>تحميل النموذج</a></div>
+<div class="card"><b>جدول الأصول والمعدات</b><p>الممتلكات (المباني والمحتويات والمخزون)، والهندسي (المعدات، جدول الكميات)، والبحري (تقدير الشحنات).</p><a class="button primary" href="templates/جدول-الأصول-والمعدات.xlsx" download>تحميل النموذج</a></div>
+<div class="card"><b>شبكة مقدمي الخدمة الطبية</b><p>لفريق العمل: الشبكة الطبية لكل شركة تأمين، تُرفع من صفحة شركات التأمين.</p><a class="button" href="templates/شبكة-مقدمي-الخدمة.xlsx" download>تحميل النموذج</a></div>
+</div>
+<p class="muted">في كل ملف ورقة «تعليمات» تشرح كل عمود والقيم المقبولة. العناوين الزرقاء إلزامية. لا يلزم أن يكون ترتيب الأعمدة نفسه، والعناوين تُقبل بالعربي أو الإنجليزي.</p>
+
+<h2>٢. عرض السعر من شركة التأمين (PDF)</h2>
+<div class="card">
+<p>يقرأ النظام ملف PDF العرض إذا كان نصًا (وليس صورة ممسوحة)، ويبحث عن هذه العناوين. كل عنوان يتبعه القيمة في السطر نفسه.</p>
+<div class="table-wrap"><table class="labels"><thead><tr><th>البند</th><th>عناوين يتعرف عليها</th></tr></thead><tbody>
+<tr><td>القسط الإجمالي</td><td>إجمالي القسط، القسط الإجمالي، القسط شامل الضريبة، Total Premium، Gross Premium</td></tr>
+<tr><td>القسط قبل الضريبة</td><td>القسط السنوي، صافي القسط، Annual Premium، Net Premium</td></tr>
+<tr><td>الضريبة</td><td>ضريبة القيمة المضافة، VAT</td></tr>
+<tr><td>حد التغطية</td><td>حد التغطية، مبلغ التأمين، الحد الأقصى، حد التعويض، Sum Insured، Limit</td></tr>
+<tr><td>التحمل</td><td>التحمل، نسبة التحمل، Deductible، Excess، Co-pay</td></tr>
+<tr><td>صلاحية العرض</td><td>العرض صالح حتى، صالح حتى، ساري حتى، Valid Until، Validity</td></tr>
+<tr><td>رقم العرض</td><td>رقم العرض، رقم عرض السعر، المرجع، Quotation No، Ref No</td></tr>
+<tr><td>العمولة</td><td>عمولة الوسيط، العمولة، Commission، Brokerage</td></tr>
+<tr><td>الشبكة الطبية</td><td>الشبكة، Network</td></tr>
+<tr><td>الاستثناءات / الشروط</td><td>الاستثناءات، الشروط، Exclusions، Conditions</td></tr>
+<tr><td>اعتذار عن التسعير</td><td>نعتذر، نأسف، Regret، Unable to quote</td></tr>
+</tbody></table></div>
+<p style="margin-top:12px">مثال لنص عرض يقرأه النظام كاملًا (جربناه):</p>
+<pre>رقم العرض: Q-2026-1187
+القسط السنوي: 42,500 ريال
+ضريبة القيمة المضافة: 6,375 ريال
+إجمالي القسط: 48,875 ريال
+حد التغطية: 1,000,000 ريال
+التحمل: 20%
+عمولة الوسيط: 12.5%
+العرض صالح حتى: 30/11/2026
+الشبكة: A
+الاستثناءات: الأمراض المزمنة غير المعلنة
+الشروط: استلام كشف الموظفين النهائي قبل الإصدار</pre>
+<p style="margin-top:10px">كل عرض يُقرأ آليًا يبقى «بانتظار التحقق» حتى يراجعه المكتتب ويعتمده.</p>
+</div>
+
+<h2>٣. المستندات المطلوبة لكل منتج</h2>
+<div id="docs" class="card"><div class="muted">جارٍ التحميل…</div></div>
+<p class="muted">خطاب التفويض لا يحتاج نموذجًا: يجهزه النظام ويوقّعه المفوّض إلكترونيًا برمز على الجوال.</p>
+</main>
+<script src="bud-api.js"></script>
+<script>
+const { el } = BUD;
+const TEMPLATE_FOR = { employee_census: 'كشف-الموظفين-والتابعين.xlsx', members_list: 'كشف-المؤمن-لهم.xlsx', insured_list: 'كشف-المؤمن-لهم.xlsx',
+  travelers_list: 'كشف-المسافرين.xlsx', vehicle_list: 'كشف-المركبات.xlsx', asset_schedule: 'جدول-الأصول-والمعدات.xlsx',
+  bill_of_quantities: 'جدول-الأصول-والمعدات.xlsx', equipment_list: 'جدول-الأصول-والمعدات.xlsx', shipment_forecast: 'جدول-الأصول-والمعدات.xlsx' };
+fetch('/insurance/catalog').then(r => r.json()).then(({ lines }) => {
+  document.getElementById('docs').replaceChildren(...lines.map(line => el('div', { class: 'doc-line' },
+    el('b', { text: line.label }),
+    el('div', {}, ...line.documents.map(d => {
+      const products = d.products ? ` (${d.products.map(k => line.products.find(p => p.key === k)?.label || k).join('، ')})` : '';
+      const tag = el('span', { class: `tag${d.required ? ' req' : ''}`, title: d.hint || '', text: `${d.label}${products}${d.required ? '' : ' — اختياري'}` });
+      return TEMPLATE_FOR[d.key] ? el('a', { href: `templates/${TEMPLATE_FOR[d.key]}`, download: true, style: 'text-decoration:none' }, tag, el('span', { class: 'tag', text: '⬇ نموذج' })) : tag;
+    })))));
+}).catch(() => { document.getElementById('docs').textContent = 'تعذر تحميل القائمة.'; });
+</script>
+</body></html>

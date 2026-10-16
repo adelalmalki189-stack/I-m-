@@ -50,6 +50,18 @@ async def _test_manager(session: AsyncSession = Depends(get_db_session)) -> Sale
 
 
 @pytest.fixture(autouse=True)
+def isolated_uploads(tmp_path, monkeypatch):
+    """Tests write uploaded files under a temporary root, never into the real uploads folder."""
+    from app.automation import inbound
+    from app.insurance import documents
+
+    for module in (documents, inbound):
+        monkeypatch.setattr(module, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(documents, "UPLOAD_ROOT", tmp_path / "app" / "static" / "uploads")
+    monkeypatch.setattr(inbound, "INBOUND_ROOT", tmp_path / "app" / "static" / "uploads" / "inbound")
+
+
+@pytest.fixture(autouse=True)
 def staff_auth(request):
     """API tests act as a logged-in manager unless marked `real_auth`."""
     auth_routes.login_limiter.clear()

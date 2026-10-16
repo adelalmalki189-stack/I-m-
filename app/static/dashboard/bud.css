@@ -21,6 +21,8 @@
 .side .user{margin-top:auto;border-top:1px solid var(--gray);padding:14px 7px 0;display:flex;align-items:center;gap:9px;font-size:11px}
 .side .avatar{display:grid;place-items:center;width:33px;height:33px;border-radius:50%;background:var(--pale);color:var(--black);font-weight:700}
 .side .user small{display:block;margin-top:3px;color:var(--pale);font-size:9px}
+.side .logout{margin-right:auto;padding:6px 9px;border:1px solid var(--gray);border-radius:5px;background:none;color:var(--white);font-size:10px;white-space:nowrap}
+.side .logout:hover{border-color:var(--white)}
 
 /* رأس الصفحة */
 main{min-width:0;padding:22px clamp(16px,2.7vw,35px) 35px}
@@ -97,7 +99,8 @@ main{min-width:0;padding:22px clamp(16px,2.7vw,35px) 35px}
   .app{display:block}
   .side{position:relative;height:auto;padding:11px 13px}
   .side .brand{padding:0 3px 10px}.side .brand-icon{width:32px;height:32px}
-  .side .nav-label,.side .user{display:none}
+  .side .nav-label{display:none}
+  .side .user{margin-top:8px;padding:8px 3px 0}.side .avatar{width:26px;height:26px;font-size:10px}
   .side .nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin}
   .side .nav a{flex:0 0 auto;min-height:34px;padding:0 9px;font-size:10px}
   .side .nav-icon{display:none}

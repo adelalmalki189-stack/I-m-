@@ -87,6 +87,12 @@ PEOPLE = Profile(
             True,
         ),
         FieldDef(
+            "passport",
+            "رقم الجواز",
+            "Passport No",
+            ("passport", "passport no", "passport number", "رقم الجواز", "الجواز", "جواز السفر", "رقم جواز السفر"),
+        ),
+        FieldDef(
             "birth_date",
             "تاريخ الميلاد",
             "Date of Birth",
@@ -280,7 +286,7 @@ class SheetError(Exception):
     pass
 
 
-def read_workbook(content: bytes, sheet_name: str | None = None) -> Sheet:
+def read_workbook(content: bytes, sheet_name: str | None = None, profile: Profile | None = None) -> Sheet:
     try:
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     except Exception as exc:  # openpyxl raises many types for a bad file
@@ -297,18 +303,23 @@ def read_workbook(content: bytes, sheet_name: str | None = None) -> Sheet:
                 break
         grids[name] = grid
     wb.close()
-    # Without a choice, take the sheet with the most filled rows.
+    # Headings are recognised against the expected list (when known) or every list we read.
+    all_fields = list(profile.fields) if profile else [f for p in PROFILES.values() for f in p.fields]
+
+    def score(row: list[Any]) -> int:
+        return sum(1 for c in row if isinstance(c, str) and any(_match(c, f) for f in all_fields))
+
+    def filled(name: str) -> int:
+        return sum(1 for r in grids[name] if any(c not in (None, "") for c in r))
+
+    # Without a choice, take the sheet whose header row looks most like a list we know (so a
+    # notes/instructions sheet next to a short list isn't picked), then the one with more rows.
     chosen = sheet_name or max(
-        grids, key=lambda n: sum(1 for r in grids[n] if any(c not in (None, "") for c in r))
+        grids, key=lambda n: (max((score(r) for r in grids[n][:HEADER_SCAN]), default=0), filled(n))
     )
     grid = grids[chosen]
     if not any(any(c not in (None, "") for c in r) for r in grid):
         raise SheetError("الورقة فارغة.")
-
-    all_fields = [f for p in PROFILES.values() for f in p.fields]
-
-    def score(row: list[Any]) -> int:
-        return sum(1 for c in row if isinstance(c, str) and any(_match(c, f) for f in all_fields))
 
     candidates = [
         (score(r), -i, i) for i, r in enumerate(grid[:HEADER_SCAN]) if any(c not in (None, "") for c in r)
@@ -467,6 +478,10 @@ def analyze(profile: Profile, sheet: Sheet, options: Options, today: date | None
             out["id_number"] = digits
             if digits and not re.fullmatch(r"[12]\d{9}", digits):
                 issue(excel_row, "id_number", f"رقم الهوية {digits} غير صالح (10 أرقام تبدأ بـ 1 أو 2)")
+            passport = re.sub(r"\s+", "", _text(raw.get("passport"))).upper()
+            out["passport"] = passport
+            if passport and not re.fullmatch(r"[A-Z0-9]{6,12}", passport):
+                issue(excel_row, "passport", f"رقم الجواز {passport} غير مألوف", "warning")
             born, hijri = _date(raw["birth_date"])
             hijri_rows += hijri
             age_value = _number(raw["age"])

@@ -17,6 +17,7 @@
       ['reports.html', '▥', 'التقارير'],
       ['settings.html', '⚙', 'الإعدادات'],
       ['portal.html', '◎', 'بوابة العميل'],
+      ['templates.html', '⬇', 'نماذج الملفات'],
     ]],
   ];
 
@@ -34,7 +35,7 @@
     '<a class="brand" href="index.html"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></a>' +
     `<nav class="nav" aria-label="القائمة الرئيسية">${nav}</nav>` +
     '<div class="user"><div class="avatar" id="user-avatar">…</div><div><span id="user-name"></span><small id="user-role"></small></div>' +
-    '<button id="logout" type="button" title="تسجيل الخروج" aria-label="تسجيل الخروج" style="margin-right:auto;border:0;background:none;color:inherit;font-size:15px">⎋</button></div>';
+    '<button id="logout" class="logout" type="button">تسجيل الخروج</button></div>';
 
   // Staff pages need a session: no session → login page, then back here.
   const toLogin = () => location.replace(`login.html?next=${encodeURIComponent(current + location.search)}`);

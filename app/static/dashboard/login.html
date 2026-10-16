@@ -21,6 +21,10 @@ h1{margin:0 0 4px;font-size:17px}.hint{margin:0 0 18px;color:var(--muted);font-s
 <body class="ui">
 <main class="card">
 <div class="brand"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></div>
+<section id="session" class="notice" hidden style="margin-bottom:16px">
+<div>أنت مسجّل الدخول باسم <b id="session-name"></b> (<span id="session-role"></span>).</div>
+<div class="actions" style="margin-top:10px"><a id="session-continue" class="button primary" href="index.html" style="width:auto">متابعة</a><button id="session-logout" class="button" type="button" style="width:auto">تسجيل الخروج وتبديل المستخدم</button></div>
+</section>
 <section id="dev" class="dev" hidden>
 <h2>وضع الاختبار</h2><p class="hint">اختر القسم والموظف وادخل مباشرة بدون كلمة مرور.</p>
 <label class="field"><span>القسم</span><select id="dev-role"></select></label>
@@ -63,7 +67,18 @@ form.addEventListener('submit', async event => {
   button.disabled = false;
   form.password.select();
 });
-fetch('/auth/me').then(r => { if (r.ok) location.replace(target); });
+// Already signed in: say who, and offer to continue or switch — never jump in silently.
+fetch('/auth/me').then(r => (r.ok ? r.json() : null)).then(me => {
+  if (!me) return;
+  document.getElementById('session-name').textContent = me.full_name;
+  document.getElementById('session-role').textContent = me.role_label;
+  document.getElementById('session-continue').href = target;
+  document.getElementById('session').hidden = false;
+});
+document.getElementById('session-logout').addEventListener('click', async () => {
+  await fetch('/auth/logout', { method: 'POST' });
+  document.getElementById('session').hidden = true;
+});
 
 // Test mode: the server only answers when DEV_LOGIN_ENABLED is on outside production.
 fetch('/auth/dev-login').then(r => r.ok ? r.json() : null).then(staff => {
@@ -77,6 +92,7 @@ fetch('/auth/dev-login').then(r => r.ok ? r.json() : null).then(staff => {
   fill();
   document.getElementById('dev-enter').addEventListener('click', async () => {
     const box = document.getElementById('error');
+    await fetch('/auth/logout', { method: 'POST' }).catch(() => null);  // end the previous user's session
     const response = await fetch('/auth/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ employee_id: userSel.value }) }).catch(() => null);
     if (response?.ok) { location.replace(target); return; }

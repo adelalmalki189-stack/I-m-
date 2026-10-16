@@ -57,4 +57,4 @@ app.mount("/dashboard", StaticFiles(directory=DASHBOARD_DIR, html=True), name="d
 
 @app.get("/", include_in_schema=False)
 async def root() -> RedirectResponse:
-    return RedirectResponse(url="/dashboard/")
+    return RedirectResponse(url="/dashboard/login.html")

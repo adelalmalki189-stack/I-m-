@@ -60,10 +60,17 @@ def main(argv: list[str] | None = None) -> int:
     cm.add_argument("--email", required=True)
     cm.add_argument("--name", required=True)
     sub.add_parser("seed-demo", help="add fictional demo data (never in production)")
+    sub.add_parser("export-templates", help="write the Excel list templates to app/static/dashboard/templates/")
     args = parser.parse_args(argv)
 
     if args.command == "seed-demo":
         return asyncio.run(_seed_demo())
+    if args.command == "export-templates":
+        from app.insurance.file_templates import export
+
+        for path in export():
+            print(path)
+        return 0
 
     password = os.environ.get("BUD_ADMIN_PASSWORD") or getpass.getpass("Password: ")
     if problem := password_problem(password):

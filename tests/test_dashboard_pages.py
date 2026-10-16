@@ -23,6 +23,8 @@ def test_dashboard_pages_load():
         underwriting_response = client.get("/dashboard/underwriting.html")
         login_response = client.get("/dashboard/login.html")
         track_response = client.get("/dashboard/track.html")
+        templates_response = client.get("/dashboard/templates.html")
+        template_file = client.get("/dashboard/templates/كشف-المركبات.xlsx")
     assert response.status_code == 200
     assert "BUD | بُعد للوساطة التأمينية" in response.text
     assert "رحلة طلبات التأمين" in response.text
@@ -62,3 +64,5 @@ def test_dashboard_pages_load():
     assert "دخول فريق العمل" in login_response.text
     assert track_response.status_code == 200
     assert "تابع طلبك" in track_response.text
+    assert templates_response.status_code == 200 and "نماذج الملفات" in templates_response.text
+    assert template_file.status_code == 200 and template_file.content[:2] == b"PK"
