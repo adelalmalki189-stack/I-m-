@@ -111,6 +111,45 @@ RULES: dict[str, RuleDef] = {
             ("customer_name", "request_number", "insurer", "premium"),
         ),
         RuleDef(
+            "auto_payment_request",
+            "مطالبة السداد بعد القبول",
+            "عند قبول العميل عرضًا: تصدر له مطالبة سداد دفعة واحدة تلقائيًا (يمكن للموظف إعادة إصدارها بالتقسيط).",
+            None,
+        ),
+        RuleDef(
+            "payment_request",
+            "مطالبة السداد",
+            "عند إصدار مطالبة السداد للعميل.",
+            "مرحبًا {customer_name}، المطلوب لإصدار وثيقة طلبكم رقم {request_number}: {amount} قبل {due_date}. "
+            "بيانات التحويل ورفع الإيصال من هنا: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "amount", "due_date", "track_link"),
+        ),
+        RuleDef(
+            "payment_reminder",
+            "تذكير السداد",
+            "قبل موعد السداد وبعده إن لم يُسدَّد.",
+            "تذكير: المطلوب لطلبكم رقم {request_number} هو {amount}، وآخر موعد للسداد {due_date}. "
+            "ارفعوا إيصال التحويل من هنا: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "amount", "due_date", "track_link"),
+            {"days_before": 2, "days_after": [1, 3]},
+        ),
+        RuleDef(
+            "payment_proof_rejected",
+            "رفض إيصال التحويل",
+            "عندما يرفض الموظف إيصال التحويل المرفوع.",
+            "مرحبًا {customer_name}، لم نتمكن من اعتماد إيصال التحويل لطلبكم رقم {request_number}: {reason}. "
+            "ارفعوا الإيصال الصحيح من هنا: {track_link}" + SIGNATURE,
+            ("customer_name", "request_number", "reason", "track_link"),
+        ),
+        RuleDef(
+            "payment_received",
+            "تأكيد استلام الدفعة",
+            "عند تأكيد الموظف استلام المبلغ.",
+            "شكرًا {customer_name}، استلمنا {amount} لطلبكم رقم {request_number}، "
+            "ونستكمل إصدار الوثيقة." + SIGNATURE,
+            ("customer_name", "request_number", "amount"),
+        ),
+        RuleDef(
             "policy_issued",
             "إصدار الوثيقة",
             "عند إصدار الوثيقة.",

@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     # Name printed on the customer's authorization letter: put the licensed legal name here.
     broker_legal_name: str = "بُعد للوساطة التأمينية"
     authorization_valid_days: int = 90
+    # Where customers transfer the premium (printed on payment requests). Empty IBAN = the
+    # request asks the customer to contact BUD for payment details.
+    payment_bank_name: str = ""
+    payment_account_name: str = ""
+    payment_iban: str = ""
+    payment_due_days: int = 7
+    # Optional online payment page; {reference} and {amount} are filled in.
+    payment_link_template: str = ""
 
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/bud"
 

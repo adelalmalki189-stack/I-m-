@@ -37,7 +37,15 @@ OPEN = (
     InsuranceRequestStatus.READY_FOR_QUOTE,
     InsuranceRequestStatus.QUOTE_SELECTED,
 )
-GENERATED_FILES = (catalog.AUTHORIZATION_LETTER, "formatted_list", "offer_acceptance", "insurer_quote")
+GENERATED_FILES = (
+    catalog.AUTHORIZATION_LETTER,
+    "formatted_list",
+    "offer_acceptance",
+    "insurer_quote",
+    "payment_notice",
+    "payment_proof",
+    "payment_receipt",
+)
 # Requests still with sales: collecting documents and the signature.
 WITH_SALES = (InsuranceRequestStatus.NEW, InsuranceRequestStatus.NEEDS_INFO)
 

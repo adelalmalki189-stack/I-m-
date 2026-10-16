@@ -16,7 +16,7 @@ from app.api.auth import audit
 from app.automation.rules import get_rule
 from app.automation.service import enqueue
 from app.core.config import settings
-from app.insurance import aftersales, authorization, mailer, salesflow
+from app.insurance import aftersales, authorization, mailer, payments, salesflow
 from app.insurance.models import (
     Customer,
     EmailAuditLog,
@@ -28,6 +28,8 @@ from app.insurance.models import (
     InsuranceSubmission,
     InsuranceSubmissionStatus,
     Insurer,
+    PaymentRequest,
+    PaymentRequestStatus,
     PremiumInstallment,
 )
 
@@ -296,6 +298,46 @@ async def sales_cycle(session: AsyncSession, now: datetime) -> dict[str, int]:
     return counts
 
 
+async def payment_reminders(session: AsyncSession, today: date) -> int:
+    """Remind customers of an unpaid payment request before its due date and after it."""
+    rule = await get_rule(session, "payment_reminder")
+    if not rule.enabled:
+        return 0
+    before = int(rule.params.get("days_before", 2))
+    after = sorted(int(d) for d in rule.params.get("days_after", []))
+    rows = await session.execute(
+        select(PaymentRequest, InsuranceRequest)
+        .join(InsuranceRequest, InsuranceRequest.request_id == PaymentRequest.request_id)
+        .where(
+            PaymentRequest.status == PaymentRequestStatus.ISSUED
+        )  # a proof already uploaded needs staff, not a nudge
+    )
+    count = 0
+    for p, request in rows.all():
+        delta = (p.due_date - today).days
+        if 0 <= delta <= before:
+            key = f"pay_due:{p.payment_id}"
+        else:
+            step = max((d for d in after if -delta >= d), default=None) if delta < 0 else None
+            if step is None:
+                continue
+            key = f"pay_overdue:{p.payment_id}:{step}"
+        customer = await session.get(Customer, request.customer_id)
+        assert customer is not None
+        context = {
+            "customer_name": customer_name(customer),
+            "request_number": request.request_number,
+            "amount": payments.money(p.amount_due),
+            "due_date": p.due_date.isoformat(),
+            "track_link": salesflow.track_link(request),
+        }
+        if await enqueue(
+            session, "payment_reminder", customer, context, dedupe_key=key, request_id=request.request_id
+        ):
+            count += 1
+    return count
+
+
 async def run_daily_jobs(session: AsyncSession, now: datetime | None = None) -> dict[str, Any]:
     """All scheduled jobs in one transaction; safe to run as often as you like."""
     now = now or datetime.now(UTC)
@@ -307,6 +349,7 @@ async def run_daily_jobs(session: AsyncSession, now: datetime | None = None) -> 
         "installments": await installment_reminders(session, today),
         "insurer_followups": await insurer_followups(session, now),
         "sales_cycle": await sales_cycle(session, now),
+        "payment_reminders": await payment_reminders(session, today),
     }
     await session.commit()
     return summary

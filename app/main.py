@@ -15,6 +15,7 @@ from app.api.routes import (
     insurance,
     insurer_files,
     offers,
+    payments,
     request_review,
     sheets,
     tracking,
@@ -48,6 +49,7 @@ app.include_router(request_review.router)
 app.include_router(sheets.router)
 app.include_router(offers.router)
 app.include_router(insurer_files.router)
+app.include_router(payments.router)
 
 DASHBOARD_DIR = Path(__file__).parent / "static" / "dashboard"
 app.mount("/dashboard", StaticFiles(directory=DASHBOARD_DIR, html=True), name="dashboard")

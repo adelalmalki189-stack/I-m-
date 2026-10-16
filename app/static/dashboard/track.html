@@ -53,6 +53,7 @@ h1{margin:0 0 4px;font-size:22px}.lead{margin:0 0 16px;color:var(--muted);font-s
 <script>
 const { el, money } = BUD;
 const ERRORS = { INVALID_CODE: 'الرمز غير صحيح أو انتهت صلاحيته.', TOO_MANY_REQUESTS: 'محاولات كثيرة. حاول بعد عشر دقائق.', TRACKING_EXPIRED: 'انتهت الجلسة. اطلب رمزًا جديدًا.',
+  PAYMENT_NOT_OPEN: 'لا توجد مطالبة سداد مفتوحة.',
   NO_OFFERS_TO_ACCEPT: 'لا توجد عروض بانتظار اختيارك.', QUOTE_EXPIRED: 'انتهت صلاحية هذا العرض. تواصل مع بُعد لتجديده.', QUOTE_NOT_OFFERED: 'هذا العرض غير متاح.',
   NO_LETTER_TO_SIGN: 'لا يوجد خطاب بانتظار توقيعك.', LETTER_EXPIRED: 'انتهت صلاحية الخطاب. تواصل مع بُعد لإصدار خطاب جديد.', CONSENT_REQUIRED: 'أكّد موافقتك على نص الخطاب.',
   UNSUPPORTED_FILE_TYPE: 'نقبل PDF أو صور JPG/PNG (وجداول Excel للكشوف).', FILE_TOO_LARGE: 'حجم الملف أكبر من المسموح.', TOO_MANY_DOCUMENTS: 'وصلت للحد الأقصى من المستندات.' };
@@ -115,6 +116,7 @@ async function showStatus() {
     cards.push(el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'مطالباتك' }),
       ...v.claims.map(c => el('div', { class: 'row' }, el('span', { text: `${c.claim_number} · ${d(c.incident_date)}` }), el('b', { text: c.status })))));
   }
+  if (v.payment) cards.push(paymentCard(v.payment));
   if (v.offers) cards.push(offersCard(v.offers));
   if (v.letter) cards.push(letterCard(v.letter));
   if (v.documents) cards.push(documentsCard(v.documents, v.documents_complete));
@@ -122,6 +124,43 @@ async function showStatus() {
   const box = document.getElementById('status');
   box.replaceChildren(...cards); box.hidden = false;
 }
+async function openDoc(kind) {
+  const response = await fetch(`/insurance/portal/track/payment/document?kind=${kind}`, { headers: { 'X-Track-Token': token } });
+  if (!response.ok) { showError('المستند غير متاح.'); return; }
+  window.open(URL.createObjectURL(new Blob([await response.text()], { type: 'text/html' })), '_blank');
+}
+
+function paymentCard(p) {
+  const card = el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 8px;font-size:14px', text: 'السداد' }));
+  if (p.status === 'paid') {
+    card.append(el('p', { class: 'message', text: `✓ استلمنا ${money(p.amount_due)} في ${d(p.paid_at)}. نستكمل إصدار الوثيقة.` }),
+      el('button', { class: 'button', type: 'button', text: 'إيصال الاستلام', onclick: () => openDoc('receipt') }));
+    return card;
+  }
+  const rows = [['المطلوب الآن', `${money(p.amount_due)}${p.installments > 1 ? ` (القسط الأول من ${p.installments} أقساط)` : ''}`],
+    ['آخر موعد للسداد', `${p.due_date}${p.overdue ? ' · متأخر' : ''}`], ['رقم المطالبة (اكتبه في وصف التحويل)', p.payment_number],
+    ...(p.bank ? [['البنك', p.bank.bank_name], ['المستفيد', p.bank.account_name], ['الآيبان', p.bank.iban]] : [['بيانات التحويل', 'تواصل مع فريق بُعد']])];
+  card.append(...rows.filter(([, v]) => v).map(([k, v]) => el('div', { class: 'row' }, el('span', { class: 'muted', text: k }), el('b', { dir: k === 'الآيبان' ? 'ltr' : null, text: v }))));
+  if (p.proof_rejected_reason) card.append(el('div', { class: 'notice error', style: 'margin-top:8px', text: `لم يُعتمد الإيصال السابق: ${p.proof_rejected_reason}` }));
+  const actions = el('div', { class: 'actions', style: 'margin-top:10px' },
+    p.payment_link ? el('a', { class: 'button primary', href: p.payment_link, target: '_blank', rel: 'noopener', text: 'ادفع إلكترونيًا' }) : null,
+    el('button', { class: 'button', type: 'button', text: 'تفاصيل المطالبة', onclick: () => openDoc('notice') }));
+  if (p.status === 'proof_submitted') card.append(el('p', { class: 'message', style: 'margin-top:10px', text: `استلمنا إيصال التحويل في ${d(p.proof_submitted_at)}، ونراجعه الآن.` }));
+  else {
+    const uploadProof = async e => {
+      const data = new FormData(); data.append('file', e.currentTarget.files[0]);
+      showError('');
+      const response = await fetch('/insurance/portal/track/payment/proof', { method: 'POST', headers: { 'X-Track-Token': token }, body: data });
+      const body = await response.json().catch(() => null);
+      if (!response.ok) { showError(ERRORS[body?.detail?.error_code] || 'تعذر رفع الإيصال.'); return; }
+      await showStatus();
+    };
+    actions.append(el('label', { class: 'button' }, 'ارفع إيصال التحويل', el('input', { type: 'file', hidden: true, accept: '.pdf,.jpg,.jpeg,.png', onchange: uploadProof })));
+  }
+  card.append(actions);
+  return card;
+}
+
 function networkSearch(q) {
   const results = el('div', { class: 'muted', style: 'font-size:10px' });
   let timer;

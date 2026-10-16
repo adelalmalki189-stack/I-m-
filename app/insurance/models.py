@@ -717,3 +717,49 @@ class NetworkProvider(Base, TimestampMixin):
     provider_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
     region: Mapped[str | None] = mapped_column(String(120), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class PaymentRequestStatus(StrEnum):
+    ISSUED = "issued"  # waiting for the customer to pay
+    PROOF_SUBMITTED = "proof_submitted"  # the customer uploaded a transfer receipt
+    PAID = "paid"  # staff confirmed the money arrived
+    CANCELLED = "cancelled"  # replaced by a new request or withdrawn
+
+
+class PaymentRequest(Base, TimestampMixin):
+    """What the customer is asked to pay before the policy is issued (the first installment
+    of the chosen plan), how to pay it, their transfer proof and the staff confirmation."""
+
+    __tablename__ = "insurance_payment_requests"
+
+    payment_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    # Also the reference the customer writes on the bank transfer.
+    payment_number: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    quote_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    status: Mapped[PaymentRequestStatus] = mapped_column(
+        Enum(PaymentRequestStatus, native_enum=False, values_callable=_values, name="payment_request_status"),
+        nullable=False,
+        default=PaymentRequestStatus.ISSUED,
+    )
+    total_premium: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    vat_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)  # included in the premium
+    installments: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    amount_due: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)  # this payment
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="SAR")
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    bank_name: Mapped[str | None] = mapped_column(String(120), nullable=True)  # snapshot when issued
+    account_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    issued_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # the payment notice
+    proof_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    proof_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    proof_rejected_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    bank_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    confirmed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    receipt_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

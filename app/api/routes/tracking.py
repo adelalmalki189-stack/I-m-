@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,11 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import audit, client_ip
 from app.api.deps import get_db_session
 from app.api.routes.insurance import PORTAL_MAX_DOCUMENTS, store_customer_document
+from app.api.routes.payments import send_payment_request
 from app.automation import service
 from app.automation.models import PortalAccess
+from app.automation.rules import get_rule
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_token, new_token
-from app.insurance import aftersales, authorization, catalog, documents, networks, offers, salesflow
+from app.insurance import aftersales, authorization, catalog, documents, networks, offers, payments, salesflow
 from app.insurance.models import (
     AuthorizationLetterStatus,
     ClaimStatus,
@@ -257,6 +260,7 @@ async def status(
         "policy": None,
         "claims": [],
         "offers": await offers.view(session, await offers.current(session, request.request_id)),
+        "payment": payments.view(await payments.latest(session, request.request_id)),
     }
     if request.status not in (InsuranceRequestStatus.POLICY_ISSUED, InsuranceRequestStatus.CLOSED):
         result = await salesflow.load_review(session, request)
@@ -444,6 +448,14 @@ async def accept_offer(
         dedupe_key=f"offer_accepted:{p.presentation_id}",
         request_id=request.request_id,
     )
+    # Straight to the payment request (one payment; staff can re-issue it in installments).
+    if (await get_rule(session, "auto_payment_request")).enabled:
+        try:
+            payment = await payments.issue(session, request, customer, 1, None)
+        except payments.PaymentError:
+            payment = None
+        if payment is not None:
+            await send_payment_request(session, request, payment, None)
     audit(
         session,
         None,
@@ -500,3 +512,49 @@ async def offer_network(
             session, submission.insurer_id, quote.network_class, (q or "")[:100], (city or "")[:100] or None, 50
         ),
     }
+
+
+@router.post("/payment/proof", status_code=201)
+async def upload_payment_proof(
+    file: UploadFile = File(...),
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any] | None:
+    """The customer uploads the bank transfer receipt for the payment request."""
+    request = await _tracked_request(session, x_track_token)
+    p = await payments.latest(session, request.request_id)
+    if p is None:
+        raise _error(409, "PAYMENT_NOT_OPEN", "There is no payment request to pay")
+    limit = settings.portal_max_upload_mb * 1024 * 1024
+    content = await file.read(limit + 1)
+    if len(content) > limit:
+        raise _error(413, "FILE_TOO_LARGE", "The file is too large")
+    mime = next((m for magic, m in documents.PDF_AND_IMAGES.items() if content.startswith(magic)), None)
+    if mime is None:
+        raise _error(415, "UNSUPPORTED_FILE_TYPE", "Upload the receipt as PDF, JPG or PNG")
+    try:
+        await payments.submit_proof(
+            session, p, content, (file.filename or "receipt").rsplit("/", 1)[-1][:200], mime
+        )
+    except payments.PaymentError as exc:
+        raise _error(exc.status, exc.code, str(exc)) from exc
+    audit(session, None, "payment_proof_uploaded", "request", request.request_id, payment=p.payment_number)
+    await session.commit()
+    return payments.view(p)
+
+
+@router.get("/payment/document")
+async def payment_document(
+    kind: str,
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> FileResponse:
+    """The payment request notice or, once paid, the receipt."""
+    request = await _tracked_request(session, x_track_token)
+    p = await payments.latest(session, request.request_id)
+    document_id = {"notice": p.document_id, "receipt": p.receipt_document_id}.get(kind) if p else None
+    doc = await session.get(RequestDocument, document_id) if document_id else None
+    path = documents.resolve_path(doc.storage_key) if doc else None
+    if doc is None or path is None:
+        raise _error(404, "DOCUMENT_NOT_FOUND", "Not available")
+    return FileResponse(path, media_type="text/html; charset=utf-8")

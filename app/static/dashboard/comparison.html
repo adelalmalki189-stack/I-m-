@@ -30,12 +30,15 @@ td.best{background:#F3F6FF}
 <section class="stack no-print">
 <section id="offers-panel" class="panel" hidden><div class="panel-head"><div><h2>إرسال العروض للعميل</h2><div class="muted">يختار العميل ويوقّع القبول من صفحة المتابعة. لا تظهر له العمولة.</div></div><span id="offers-state"></span></div>
 <div id="offers-body" class="panel-body"></div></section>
+<section id="payment-panel" class="panel" hidden><div class="panel-head"><div><h2>السداد</h2><div class="muted">مطالبة السداد قبل إصدار الوثيقة</div></div><span id="payment-state"></span></div>
+<div id="payment-body" class="panel-body"></div></section>
 <section id="issue-panel" class="panel" hidden><div class="panel-head"><div><h2>إصدار الوثيقة</h2><div class="muted">بعد موافقة العميل وتأكيد الشركة</div></div></div>
 <form id="issue-form" class="panel-body"><div class="form-grid">
 <label class="field"><span>بداية التغطية</span><input name="effective_from" type="date" required></label>
 <label class="field"><span>نهاية التغطية</span><input name="effective_to" type="date" required></label>
 <label class="field"><span>طريقة السداد</span><select name="installments"><option value="1">دفعة واحدة</option><option value="2">قسطان (نصف سنوي)</option><option value="4">4 أقساط (ربع سنوي)</option><option value="12">12 قسطًا (شهري)</option></select></label>
 <label class="field"><span>ملاحظات</span><input name="notes"></label></div>
+<label id="credit-box" class="field" style="display:flex;align-items:center;gap:8px" hidden><input type="checkbox" name="allow_unpaid" style="width:auto;min-height:0"> <span>إصدار قبل السداد (عميل آجل)</span></label>
 <button class="button primary" type="submit">إصدار الوثيقة</button></form></section>
 <section id="policy-panel" class="panel" hidden><div class="panel-head"><div><h2>الوثيقة الصادرة</h2></div></div><div class="panel-body"><dl id="policy" class="kv"></dl><div class="actions" style="margin-top:10px"><a class="button" href="policies.html">الوثائق والتجديدات ←</a></div></div></section>
 <section class="panel"><div class="panel-body muted">الأفضل أن يختار العميل بنفسه ويوقّع القبول عبر «إرسال العروض للعميل». ويبقى الاختيار اليدوي متاحًا، ويغيّر حالة الطلب إلى «عرض مختار». بعد إصدار الوثيقة يُقفل الطلب.</div></section>
@@ -100,6 +103,7 @@ async function loadRequest(requestId) {
 
   await renderOffers(request, quotes, insurerOf, best);
   document.getElementById('issue-panel').hidden = request.status !== 'quote_selected';
+  await renderPayment(request);
   const policyPanel = document.getElementById('policy-panel');
   policyPanel.hidden = request.status !== 'policy_issued';
   if (request.status === 'policy_issued') {
@@ -157,6 +161,56 @@ async function renderOffers(request, quotes, insurerOf, best) {
   body.replaceChildren(...parts);
 }
 
+const PAY_STATE = { issued: ['بانتظار السداد', ''], proof_submitted: ['إيصال بانتظار التأكيد', 'blue'], paid: ['مدفوع', 'dark'] };
+const PAY_METHODS = { bank_transfer: 'تحويل بنكي', online: 'دفع إلكتروني', cheque: 'شيك', cash: 'نقدًا' };
+let currentPayment = null;
+async function renderPayment(request) {
+  const panel = document.getElementById('payment-panel');
+  panel.hidden = !['quote_selected', 'policy_issued'].includes(request.status);
+  currentPayment = panel.hidden ? null : await api(`/requests/${request.request_id}/payment-request`);
+  const p = currentPayment;
+  const paid = p?.status === 'paid';
+  issueForm.installments.disabled = paid;
+  if (paid) issueForm.installments.value = String(p.installments);
+  document.getElementById('credit-box').hidden = !p || paid;
+  if (panel.hidden) return;
+  document.getElementById('payment-state').replaceChildren(p ? pill(PAY_STATE, p.status) : el('span', { class: 'muted', text: 'لم تصدر مطالبة' }));
+  const reload = () => loadRequest(request.request_id);
+  const parts = [];
+  if (p) {
+    parts.push(el('dl', { class: 'kv' }, ...[['رقم المطالبة', p.payment_number], ['المطلوب', `${money(p.amount_due)}${p.installments > 1 ? ` (القسط الأول من ${p.installments})` : ''}`],
+      ['إجمالي القسط', money(p.total_premium)], ['آخر موعد', `${p.due_date}${p.overdue ? ' · متأخر' : ''}`],
+      ['السداد', paid ? `${p.payment_method} · ${date(p.paid_at)}${p.bank_reference ? ` · ${p.bank_reference}` : ''}` : null],
+      ['سبب رفض الإيصال', p.proof_rejected_reason]].filter(([, v]) => v).flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
+      el('div', { class: 'actions' },
+        el('a', { class: 'button', href: `/insurance/documents/${p.document_id}/download`, target: '_blank', rel: 'noopener', text: 'المطالبة' }),
+        p.proof_document_id ? el('a', { class: 'button', href: `/insurance/documents/${p.proof_document_id}/download`, target: '_blank', rel: 'noopener', text: 'إيصال العميل' }) : null,
+        p.receipt_document_id ? el('a', { class: 'button', href: `/insurance/documents/${p.receipt_document_id}/download`, target: '_blank', rel: 'noopener', text: 'إيصال الاستلام' }) : null));
+    if (!paid) {
+      const method = el('select', {}, ...Object.entries(PAY_METHODS).map(([k, v]) => el('option', { value: k, text: v })));
+      const ref = el('input', { placeholder: 'مرجع البنك (اختياري)', maxlength: 100 });
+      const on = el('input', { type: 'date', value: new Date().toISOString().slice(0, 10) });
+      parts.push(el('div', { class: 'section-title', text: 'تأكيد الاستلام' }), el('div', { class: 'actions' }, method, ref, on,
+        el('button', { class: 'button primary', type: 'button', text: 'تأكيد استلام المبلغ', onclick: e => run(e.currentTarget,
+          () => api(`/payment-requests/${p.payment_id}/confirm`, { method: 'POST', body: { method: method.value, bank_reference: ref.value.trim() || null, paid_on: on.value || null } }), 'سُجل السداد').then(reload) }),
+        p.status === 'proof_submitted' ? el('button', { class: 'button', type: 'button', text: 'رفض الإيصال', onclick: e => {
+          const reason = prompt('سبب رفض الإيصال (يصل للعميل):');
+          if (reason) run(e.currentTarget, () => api(`/payment-requests/${p.payment_id}/reject-proof`, { method: 'POST', body: { reason } }), 'أُبلغ العميل').then(reload);
+        } }) : null));
+    }
+  }
+  if (!paid && request.status === 'quote_selected') {
+    const plan = el('select', {}, ...[[1, 'دفعة واحدة'], [2, 'قسطان'], [4, '4 أقساط'], [12, '12 قسطًا']].map(([v, t]) => el('option', { value: v, text: t, selected: p?.installments === v })));
+    const vat = el('input', { type: 'number', min: 0, step: '0.01', placeholder: 'الضريبة ضمن القسط (اختياري)' });
+    const days = el('input', { type: 'number', min: 0, max: 90, value: 7, style: 'width:70px', title: 'مهلة السداد بالأيام' });
+    parts.push(el('div', { class: 'section-title', text: p ? 'إعادة إصدار المطالبة' : 'إصدار مطالبة السداد' }), el('div', { class: 'actions' }, plan, vat, el('span', { class: 'muted', text: 'المهلة (أيام)' }), days,
+      el('button', { class: 'button', type: 'button', text: p ? 'إعادة الإصدار' : 'إصدار وإرسال للعميل', onclick: e => run(e.currentTarget,
+        () => api(`/requests/${request.request_id}/payment-request`, { method: 'POST', body: { installments: Number(plan.value), vat_amount: vat.value || null, due_days: Number(days.value) } }),
+        'أُرسلت مطالبة السداد للعميل').then(reload) })));
+  }
+  document.getElementById('payment-body').replaceChildren(...parts);
+}
+
 const issueForm = document.getElementById('issue-form');
 const today = new Date().toISOString().slice(0, 10);
 issueForm.effective_from.value = today;
@@ -166,7 +220,9 @@ issueForm.addEventListener('submit', e => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(issueForm));
   if (data.effective_to < data.effective_from) { BUD.notify('تاريخ النهاية قبل البداية'); return; }
-  const body = { effective_from: `${data.effective_from}T00:00:00Z`, effective_to: `${data.effective_to}T23:59:59Z`, notes: data.notes || null, installments: Number(data.installments) };
+  const body = { effective_from: `${data.effective_from}T00:00:00Z`, effective_to: `${data.effective_to}T23:59:59Z`, notes: data.notes || null,
+    installments: Number(issueForm.installments.value), allow_unpaid: issueForm.allow_unpaid.checked };
+  if (currentPayment && currentPayment.status !== 'paid' && !body.allow_unpaid) { BUD.notify('لم يُسدَّد المبلغ بعد. أكّد السداد أو اختر «إصدار قبل السداد».'); return; }
   run(e.submitter, () => api(`/requests/${picker.value}/issue-policy`, { method: 'POST', body }), 'صدرت الوثيقة').then(() => loadRequest(picker.value));
 });
 document.getElementById('print').addEventListener('click', () => window.print());

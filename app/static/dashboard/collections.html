@@ -17,6 +17,8 @@
 <article class="metric"><div class="metric-label">محصّل هذا الشهر</div><div id="m-month" class="metric-value">—</div></article>
 <article class="metric"><div class="metric-label">عمولات لم تُستلم</div><div id="m-comm" class="metric-value">—</div></article>
 </section>
+<section class="panel" style="margin-bottom:12px"><div class="panel-head"><div><h2>مطالبات السداد قبل الإصدار</h2><div class="muted">إيصالات التحويل بانتظار التأكيد أولًا. التأكيد والرفض من صفحة مقارنة العروض للطلب.</div></div><span id="pr-count" class="muted"></span></div>
+<div class="table-wrap"><table><thead><tr><th>العميل / الطلب</th><th>المطلوب</th><th>آخر موعد</th><th>الحالة</th><th></th></tr></thead><tbody id="pr"></tbody></table><div id="pr-empty" class="empty" hidden>لا توجد مطالبات سداد مفتوحة.</div></div></section>
 <nav class="tabs" role="tablist"><button class="tab active" data-tab="inst" role="tab">أقساط العملاء</button><button class="tab" data-tab="comm" role="tab" data-uw hidden>تسويات عمولات الشركات</button></nav>
 
 <section id="tab-inst" class="panel"><div id="filters" class="filters"></div>
@@ -88,8 +90,21 @@ document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () =>
   document.getElementById('tab-comm').hidden = t.dataset.tab !== 'comm';
 }));
 document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderInstallments(); renderCommissions(); });
+const PR = { issued: ['بانتظار السداد', ''], proof_submitted: ['إيصال بانتظار التأكيد', 'blue'] };
+async function loadPaymentRequests() {
+  const rows = (await api('/payment-requests')).sort((a, b) => (b.status === 'proof_submitted') - (a.status === 'proof_submitted'));
+  document.getElementById('pr').replaceChildren(...rows.map(p => el('tr', {},
+    el('td', {}, el('div', { class: 'strong', text: p.customer_name }), el('div', { class: 'sub', text: `${p.request_number} · ${p.payment_number}` })),
+    el('td', { text: money(p.amount_due) }), el('td', { class: p.overdue ? 'strong' : 'muted', text: `${p.due_date}${p.overdue ? ' · متأخر' : ''}` }),
+    el('td', {}, BUD.pill(PR, p.status)),
+    el('td', {}, el('a', { class: 'button', href: `comparison.html?request=${p.request_id}`, text: p.status === 'proof_submitted' ? 'مراجعة الإيصال' : 'فتح' })))));
+  document.getElementById('pr-empty').hidden = rows.length > 0;
+  document.getElementById('pr-count').textContent = `${rows.length} مطالبة`;
+}
+
 (async () => {
   try {
+    loadPaymentRequests();
     canUW = ['underwriter', 'manager'].includes((await BUD_ME)?.role);
     document.querySelectorAll('[data-uw]').forEach(x => { x.hidden = !canUW; });
     if (focusId) filter = 'all';

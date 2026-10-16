@@ -467,6 +467,7 @@ class InsurancePolicyCreateRequest(BaseModel):
     effective_to: datetime | None = None
     notes: str | None = None
     installments: int = 1  # number of equal premium payments: 1, 2, 3, 4, 6 or 12
+    allow_unpaid: bool = False  # issue although the payment request isn't paid (customer on credit)
 
 
 class InsurancePolicyStatusUpdateRequest(BaseModel):

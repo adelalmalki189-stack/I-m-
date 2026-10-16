@@ -20,11 +20,12 @@ from app.api.routes.sheets import superseded_lists
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
-from app.insurance import aftersales, catalog, documents, mailer, quote_pdf, salesflow, workflow
+from app.insurance import aftersales, catalog, documents, mailer, payments, quote_pdf, salesflow, workflow
 from app.insurance.models import (
     AuditEvent,
     Customer,
     EmailAuditLog,
+    InstallmentStatus,
     InsurancePolicy,
     InsurancePolicyStatus,
     InsuranceQuote,
@@ -35,6 +36,7 @@ from app.insurance.models import (
     InsuranceSubmissionStatus,
     Insurer,
     InsurerTemplate,
+    PaymentRequestStatus,
     RequestDocument,
     SalesEmployee,
     StaffSession,
@@ -1316,7 +1318,9 @@ async def send_submission(
             RequestDocument.request_id == submission.request_id,
             RequestDocument.review_status.not_in(["failed", "rejected"]),
             # Never forward another insurer's quotation or the customer's acceptance.
-            RequestDocument.document_type.not_in(["insurer_quote", "offer_acceptance"]),
+            RequestDocument.document_type.not_in(
+                ["insurer_quote", "offer_acceptance", "payment_notice", "payment_proof", "payment_receipt"]
+            ),
         )
     )
     attachments = [d for d in documents.scalars().all() if d.document_id not in replaced]
@@ -1578,6 +1582,13 @@ async def issue_policy(
         raise _error(422, "INVALID_PREMIUM", "The selected quote has no valid premium")
     if body.installments not in aftersales.ALLOWED_INSTALLMENTS:
         raise _error(422, "INVALID_INSTALLMENTS", f"installments must be one of {aftersales.ALLOWED_INSTALLMENTS}")
+    payment = await payments.latest(session, request_id)
+    if payment is not None and payment.status != PaymentRequestStatus.PAID and not body.allow_unpaid:
+        raise _error(
+            409, "PAYMENT_PENDING", "The customer hasn't paid yet; confirm the payment or issue on credit"
+        )
+    paid = payment is not None and payment.status == PaymentRequestStatus.PAID
+    installments = payment.installments if paid and payment else body.installments
 
     _transition(request, InsuranceRequestStatus.POLICY_ISSUED)
     effective_from = body.effective_from or datetime.now(UTC)
@@ -1600,7 +1611,11 @@ async def issue_policy(
     policy.commission_amount = aftersales.commission_amount(premium, rate)
     session.add(policy)
     await session.flush()
-    session.add_all(aftersales.build_installments(policy, premium, body.installments, effective_from.date()))
+    schedule = aftersales.build_installments(policy, premium, installments, effective_from.date())
+    if paid and payment:  # the payment request was the first installment
+        schedule[0].status, schedule[0].paid_at = InstallmentStatus.PAID, payment.paid_at
+        schedule[0].payment_method, schedule[0].payment_reference = payment.payment_method, payment.payment_number
+    session.add_all(schedule)
     audit(
         session,
         staff,
@@ -1608,7 +1623,8 @@ async def issue_policy(
         "request",
         request_id,
         policy_number=policy.policy_number,
-        installments=body.installments,
+        installments=installments,
+        on_credit=payment is not None and not paid,
     )
     customer = await _get_customer_or_404(session, request.customer_id)
     insurer = await _get_insurer_or_404(session, submission.insurer_id)
