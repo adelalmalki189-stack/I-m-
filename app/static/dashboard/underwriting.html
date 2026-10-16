@@ -194,19 +194,30 @@ function quoteBlock(s, quotes) {
     el('label', { class: 'field' }, el('span', { text: 'حد التغطية (ر.س)' }), el('input', { name: 'coverage_limit', type: 'number', min: 0, step: '0.01' })),
     el('label', { class: 'field' }, el('span', { text: 'نسبة العمولة في العرض (%)' }), el('input', { name: 'commission_rate', type: 'number', min: 0, max: 100, step: '0.01' })),
     el('label', { class: 'field' }, el('span', { text: 'صلاحية العرض حتى' }), el('input', { name: 'validity_date', type: 'date' })),
-    el('label', { class: 'field' }, el('span', { text: 'الشروط والتحمل' }), el('input', { name: 'conditions' })),
+    el('label', { class: 'field' }, el('span', { text: 'التحمل' }), el('input', { name: 'deductible', maxlength: 300 })),
+    current.insurance_type === 'medical' ? el('label', { class: 'field' }, el('span', { text: 'فئة الشبكة الطبية' }), el('input', { name: 'network_class', maxlength: 40, placeholder: 'A / B / VIP' })) : null,
+    el('label', { class: 'field' }, el('span', { text: 'الشروط' }), el('input', { name: 'conditions' })),
     el('label', { class: 'field full' }, el('span', { text: 'الاستثناءات' }), el('input', { name: 'exclusions' })),
-    el('div', { class: 'full' }, el('button', { class: 'button primary', type: 'submit', text: 'تسجيل العرض المستلم' })));
+    el('div', { class: 'full' }, el('button', { class: 'button primary', type: 'submit', text: 'تسجيل العرض يدويًا' })));
   form.addEventListener('submit', e => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(form));
     const body = { premium: data.premium, coverage_limit: data.coverage_limit || null, commission_rate: data.commission_rate || null, conditions: data.conditions || null, exclusions: data.exclusions || null,
-      validity_date: data.validity_date ? `${data.validity_date}T23:59:59Z` : null };
+      deductible: data.deductible || null, network_class: data.network_class || null, validity_date: data.validity_date ? `${data.validity_date}T23:59:59Z` : null };
     run(form.querySelector('button'), () => api(`/submissions/${s.submission_id}/quotes`, { method: 'POST', body }), 'سُجل العرض').then(renderEmails);
   });
+  const pdf = el('input', { type: 'file', accept: '.pdf,application/pdf', onchange: e => {
+    const data = new FormData(); data.append('file', e.currentTarget.files[0]);
+    run(null, () => api(`/submissions/${s.submission_id}/quote-pdf`, { method: 'POST', form: data })).then(r => {
+      notify(r.quote ? 'قُرئ العرض من الملف. راجعه واعتمده.' : r.extraction.outcome === 'declined' ? 'الملف اعتذار من الشركة، وسُجلت الرسالة مرفوضة.' : `لم يُستخرج القسط: ${r.extraction.notes || ''} أدخله يدويًا.`);
+      renderEmails();
+    });
+  } });
   return el('div', {},
     el('div', { class: 'section-title', text: `العروض المستلمة (${quotes.length})` }),
-    quotes.map(q => q.needs_review ? reviewQuote(q) : el('div', { class: 'quote-row' }, el('span', { class: 'strong', text: money(q.premium) }), el('span', { text: `تغطية ${money(q.coverage_limit)}` }), el('span', { class: 'muted', text: q.commission_rate != null ? `عمولة ${Number(q.commission_rate)}%` : 'بدون نسبة عمولة' }), el('span', { class: 'muted', text: q.validity_date ? `صالح حتى ${date(q.validity_date)}` : '' }))),
+    el('div', { class: 'actions', style: 'margin-bottom:6px' }, el('b', { text: 'رفع عرض الشركة (PDF):' }), pdf, el('span', { class: 'muted', text: 'يقرأ النظام القسط والتغطية والتحمل والصلاحية والشبكة، وتراجعها قبل الاعتماد.' })),
+    quotes.map(q => q.needs_review ? reviewQuote(q) : el('div', { class: 'quote-row' }, el('span', { class: 'strong', text: money(q.premium) }), el('span', { text: `تغطية ${money(q.coverage_limit)}` }),
+      q.network_class ? el('span', { class: 'pill', text: `شبكة ${q.network_class}` }) : null, q.source_document_id ? el('a', { href: `/insurance/documents/${q.source_document_id}/download`, target: '_blank', rel: 'noopener', text: 'PDF' }) : null, el('span', { class: 'muted', text: q.commission_rate != null ? `عمولة ${Number(q.commission_rate)}%` : 'بدون نسبة عمولة' }), el('span', { class: 'muted', text: q.validity_date ? `صالح حتى ${date(q.validity_date)}` : '' }))),
     form);
 }
 
@@ -216,9 +227,12 @@ function reviewQuote(q) {
   const form = el('form', { class: 'form-grid' },
     field('القسط (ر.س)', 'premium', q.premium), field('حد التغطية (ر.س)', 'coverage_limit', q.coverage_limit),
     field('نسبة العمولة (%)', 'commission_rate', q.commission_rate), field('صلاحية العرض حتى', 'validity_date', q.validity_date ? q.validity_date.slice(0, 10) : '', 'date'),
-    el('label', { class: 'field' }, el('span', { text: 'الشروط والتحمل' }), el('input', { name: 'conditions', value: q.conditions || '' })),
+    el('label', { class: 'field' }, el('span', { text: 'التحمل' }), el('input', { name: 'deductible', value: q.deductible || '' })),
+    el('label', { class: 'field' }, el('span', { text: 'فئة الشبكة الطبية' }), el('input', { name: 'network_class', value: q.network_class || '' })),
+    el('label', { class: 'field' }, el('span', { text: 'الشروط' }), el('input', { name: 'conditions', value: q.conditions || '' })),
     el('label', { class: 'field' }, el('span', { text: 'الاستثناءات' }), el('input', { name: 'exclusions', value: q.exclusions || '' })),
     el('div', { class: 'full actions' },
+      q.source_document_id && el('a', { class: 'button', href: `/insurance/documents/${q.source_document_id}/download`, target: '_blank', rel: 'noopener', text: 'فتح ملف الشركة' }),
       el('button', { class: 'button primary', type: 'submit', text: 'اعتماد العرض' }),
       el('button', { class: 'button', type: 'button', text: 'رفض (قراءة خاطئة)', onclick: e => {
         if (!confirm('حذف هذا العرض المستخرج؟ رسالة الشركة تبقى في «ردود الشركات».')) return;
@@ -229,11 +243,12 @@ function reviewQuote(q) {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(form));
     const body = { premium: d.premium || null, coverage_limit: d.coverage_limit || null, commission_rate: d.commission_rate || null,
-      conditions: d.conditions || null, exclusions: d.exclusions || null, validity_date: d.validity_date ? `${d.validity_date}T23:59:59Z` : null };
+      conditions: d.conditions || null, exclusions: d.exclusions || null, deductible: d.deductible || null, network_class: d.network_class || null,
+      validity_date: d.validity_date ? `${d.validity_date}T23:59:59Z` : null };
     run(e.submitter, () => api(`/quotes/${q.quote_id}/confirm`, { method: 'POST', body }), 'اعتُمد العرض').then(renderEmails);
   });
   return el('div', { class: 'notice', style: 'margin:8px 0' },
-    el('div', { class: 'actions', style: 'margin-bottom:8px' }, el('span', { class: 'pill blue', text: 'مستخرج آليًا من بريد الشركة — بانتظار التحقق' })),
+    el('div', { class: 'actions', style: 'margin-bottom:8px' }, el('span', { class: 'pill blue', text: q.source_document_id ? 'مقروء آليًا من ملف الشركة — بانتظار التحقق' : 'مستخرج آليًا من بريد الشركة — بانتظار التحقق' })),
     q.extraction_notes && el('div', { class: 'muted', style: 'white-space:pre-wrap;margin-bottom:8px', text: q.extraction_notes }),
     form);
 }

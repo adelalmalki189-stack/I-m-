@@ -61,6 +61,7 @@ const BUD = (() => {
     TOO_MANY_ATTEMPTS: 'محاولات كثيرة. حاول بعد ربع ساعة.',
     TOO_MANY_DOCUMENTS: 'وصلت للحد الأقصى من المستندات.',
     UNDERWRITER_ID_REQUIRED: 'اختر المكتتب.',
+    PDF_UNREADABLE: 'تعذّرت قراءة ملف PDF (قد يكون محميًا أو تالفًا).',
     OFFERS_NOT_OPEN: 'يمكن إرسال العروض والطلب بانتظار الاختيار فقط.',
     QUOTE_EXPIRED: 'انتهت صلاحية أحد العروض. اطلب من الشركة تجديده.',
     OFFER_ALREADY_ACCEPTED: 'العميل قبل عرضًا بالفعل.',

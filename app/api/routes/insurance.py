@@ -20,7 +20,7 @@ from app.api.routes.sheets import superseded_lists
 from app.automation import service as notifications
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_password, hash_token, new_token, password_problem
-from app.insurance import aftersales, catalog, documents, mailer, salesflow, workflow
+from app.insurance import aftersales, catalog, documents, mailer, quote_pdf, salesflow, workflow
 from app.insurance.models import (
     AuditEvent,
     Customer,
@@ -1315,6 +1315,8 @@ async def send_submission(
         select(RequestDocument).where(
             RequestDocument.request_id == submission.request_id,
             RequestDocument.review_status.not_in(["failed", "rejected"]),
+            # Never forward another insurer's quotation or the customer's acceptance.
+            RequestDocument.document_type.not_in(["insurer_quote", "offer_acceptance"]),
         )
     )
     attachments = [d for d in documents.scalars().all() if d.document_id not in replaced]
@@ -1378,6 +1380,8 @@ async def create_quote(
         validity_date=body.validity_date,
         currency=body.currency,
         commission_rate=body.commission_rate,
+        deductible=body.deductible,
+        network_class=quote_pdf.normalize_class(body.network_class) or None,
         source_channel=body.source_channel or "email",
     )
     session.add(quote)
@@ -1400,6 +1404,8 @@ async def confirm_quote(
     if not quote.needs_review:
         raise _error(409, "QUOTE_ALREADY_CONFIRMED", "This quote is already confirmed")
     changes = body.model_dump(exclude_unset=True)
+    if "network_class" in changes:
+        changes["network_class"] = quote_pdf.normalize_class(changes["network_class"]) or None
     for key, value in changes.items():
         setattr(quote, key, str(value) if key in ("premium", "coverage_limit") and value is not None else value)
     quote.needs_review = False

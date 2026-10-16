@@ -22,6 +22,12 @@
 <label class="field" style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="is_active" checked style="width:auto;min-height:0"> <span>مفعّلة (تظهر عند تجهيز رسائل التسعير)</span></label>
 <div class="actions"><button class="button primary" type="submit">حفظ</button><a id="tpl-link" class="button" href="underwriting.html?tab=templates" hidden>قوالب هذه الشركة ←</a></div>
 </form></section>
+<section id="network" class="panel" hidden><div class="panel-head"><div><h2>الشبكة الطبية</h2><div class="muted">كشف Excel بالمستشفيات ومقدمي الخدمة لكل فئة. الرفع الجديد يستبدل الشبكة الحالية.</div></div></div>
+<div class="panel-body"><div id="net-summary" class="muted">لا توجد شبكة مرفوعة.</div>
+<div class="form-grid" style="margin-top:8px"><label class="field"><span>فئة الكشف (فقط إن لم يكن فيه عمود للفئة)</span><input id="net-class" maxlength="40" placeholder="مثال: A"></label>
+<label class="field"><span>ملف Excel</span><input id="net-file" type="file" accept=".xlsx"></label></div>
+<div id="net-result"></div>
+<div class="actions" style="margin-top:8px"><input id="net-q" class="search" style="flex:1;width:auto" placeholder="ابحث عن مستشفى أو مدينة"></div><div id="net-list"></div></div></section>
 </div>
 </main></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
@@ -52,9 +58,49 @@ function edit(insurer) {
   form.notes.value = insurer?.notes || '';
   form.is_active.checked = insurer ? insurer.is_active : true;
   document.getElementById('tpl-link').hidden = !insurer;
+  document.getElementById('network').hidden = !insurer;
+  if (insurer) loadNetwork();
   render();
   form.name.focus();
 }
+
+function networkLines(s) {
+  if (!s.total) return [el('span', { text: 'لا توجد شبكة مرفوعة.' })];
+  return [el('div', {}, el('b', { text: `${s.total} مقدم خدمة` }), ` · آخر رفع ${BUD.date(s.updated_at)}`),
+    el('div', { text: `الفئات: ${Object.entries(s.by_class || {}).map(([k, v]) => `${k} (${v})`).join('، ')}` }),
+    el('div', { text: `الأنواع: ${Object.entries(s.by_type).map(([k, v]) => `${k} ${v}`).join('، ')}` }),
+    el('div', { text: `أكثر المدن: ${s.top_cities.map(([c, n]) => `${c} ${n}`).join('، ')}` })];
+}
+async function loadNetwork() {
+  const s = await api(`/insurers/${selected.insurer_id}/network`);
+  document.getElementById('net-summary').replaceChildren(...networkLines(s));
+  document.getElementById('net-list').replaceChildren(); document.getElementById('net-result').replaceChildren();
+}
+document.getElementById('net-file').addEventListener('change', e => {
+  const data = new FormData(); data.append('file', e.currentTarget.files[0]);
+  const cls = document.getElementById('net-class').value.trim(); if (cls) data.append('default_class', cls);
+  const input = e.currentTarget;
+  run(null, () => api(`/insurers/${selected.insurer_id}/network`, { method: 'POST', form: data }), 'رُفعت الشبكة').then(r => {
+    input.value = '';
+    document.getElementById('net-summary').replaceChildren(...networkLines(r.summary));
+    const cols = Object.entries(r.columns).filter(([, v]) => v).map(([k, v]) => `${k} ← «${v}»`).join('، ');
+    document.getElementById('net-result').replaceChildren(el('div', { class: 'notice', style: 'margin-top:8px' },
+      el('div', { text: `قُرئ ${r.providers} مقدم خدمة. الأعمدة: ${cols}${r.class_columns.length ? `، وأعمدة الفئات: ${r.class_columns.join('، ')}` : ''}` }),
+      r.issues.length ? el('ul', { style: 'margin:4px 0 0' }, ...r.issues.slice(0, 20).map(t => el('li', { text: t }))) : null));
+  });
+});
+let netTimer;
+document.getElementById('net-q').addEventListener('input', e => {
+  clearTimeout(netTimer);
+  const q = e.target.value.trim();
+  netTimer = setTimeout(async () => {
+    if (!q) { document.getElementById('net-list').replaceChildren(); return; }
+    const rows = await api(`/insurers/${selected.insurer_id}/network/providers?q=${encodeURIComponent(q)}`);
+    document.getElementById('net-list').replaceChildren(...(rows.length ? rows.map(p => el('div', { class: 'line' },
+      el('span', { class: 'grow' }, el('div', { class: 'strong', text: p.name }), el('div', { class: 'sub', text: `${p.city || ''} · ${p.type || ''}` })), el('span', { class: 'pill', text: p.class })))
+      : [el('div', { class: 'muted', text: 'لا نتائج' })]));
+  }, 250);
+});
 
 async function load() {
   try { [insurers, templates] = await Promise.all([api('/insurers'), api('/templates')]); render(); }

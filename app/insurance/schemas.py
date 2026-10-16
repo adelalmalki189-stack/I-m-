@@ -458,6 +458,8 @@ class InsuranceQuoteCreateRequest(BaseModel):
     currency: str = Field(default="SAR", max_length=10)
     source_channel: str = Field(default="email", max_length=30)
     commission_rate: Decimal | None = Field(default=None, ge=0, le=100)  # percent offered in this quote
+    deductible: str | None = Field(default=None, max_length=300)
+    network_class: str | None = Field(default=None, max_length=40)  # medical: the insurer's network class
 
 
 class InsurancePolicyCreateRequest(BaseModel):
@@ -508,6 +510,9 @@ class InsuranceQuoteResponse(BaseModel):
     needs_review: bool = False
     inbound_email_id: str | None = None
     extraction_notes: str | None = None
+    deductible: str | None = None
+    network_class: str | None = None
+    source_document_id: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -521,6 +526,8 @@ class QuoteReviewRequest(BaseModel):
     conditions: str | None = None
     validity_date: datetime | None = None
     commission_rate: Decimal | None = Field(default=None, ge=0, le=100)
+    deductible: str | None = Field(default=None, max_length=300)
+    network_class: str | None = Field(default=None, max_length=40)
 
 
 _NON_DIGITS = re.compile(r"\D")

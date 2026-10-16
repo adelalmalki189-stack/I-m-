@@ -16,6 +16,7 @@ dependencies = [
     "anthropic>=1.14",
     "sentry-sdk>=2.0",
     "openpyxl>=3.1",
+    "pypdf>=5.0",
 ]
 
 [project.optional-dependencies]

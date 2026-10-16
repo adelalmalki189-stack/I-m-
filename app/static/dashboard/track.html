@@ -122,6 +122,20 @@ async function showStatus() {
   const box = document.getElementById('status');
   box.replaceChildren(...cards); box.hidden = false;
 }
+function networkSearch(q) {
+  const results = el('div', { class: 'muted', style: 'font-size:10px' });
+  let timer;
+  const input = el('input', { placeholder: 'هل مستشفاك ضمن الشبكة؟ اكتب اسمه أو المدينة', style: 'width:100%;margin-top:6px', onclick: e => e.preventDefault(),
+    oninput: e => { clearTimeout(timer); const text = e.target.value.trim(); timer = setTimeout(async () => {
+      if (text.length < 2) { results.replaceChildren(); return; }
+      try {
+        const r = await call(`/network?quote_id=${q.quote_id}&q=${encodeURIComponent(text)}`, { headers: { 'X-Track-Token': token } });
+        results.replaceChildren(...(r.providers.length ? r.providers.slice(0, 8).map(p => el('div', { text: `✓ ${p.name} · ${p.city || ''}` })) : [el('div', { text: 'غير موجود في شبكة هذا العرض' })]));
+      } catch (error) { results.textContent = error.message; }
+    }, 300); } });
+  return el('div', {}, input, results);
+}
+
 function offersCard(o) {
   const card = el('div', { class: 'card' }, el('h2', { style: 'margin:0 0 6px;font-size:14px', text: 'عروض التأمين' }));
   if (o.status === 'accepted') {
@@ -135,8 +149,11 @@ function offersCard(o) {
   form.append(...o.quotes.map(q => el('label', { class: `offer${q.expired ? ' expired' : ''}` },
     el('div', { class: 'offer-head' }, el('span', {}, el('input', { type: 'radio', name: 'quote_id', value: q.quote_id, required: true, disabled: q.expired }), ' ', el('b', { text: q.insurer })),
       q.quote_id === o.recommended_quote_id ? el('span', { class: 'rec', text: 'نوصي به' }) : null, el('span', { class: 'price', text: money(q.premium) })),
-    el('dl', {}, ...[['حد التغطية', q.coverage_limit != null ? money(q.coverage_limit) : null], ['الشروط والتحمل', q.conditions], ['الاستثناءات', q.exclusions],
+    el('dl', {}, ...[['حد التغطية', q.coverage_limit != null ? money(q.coverage_limit) : null], ['التحمل', q.deductible],
+      ['الشبكة الطبية', q.network ? `فئة ${q.network_class}: ${q.network.total} مقدم خدمة · ${q.network.top_cities.slice(0, 3).map(([c, n]) => `${c} ${n}`).join('، ')}` : q.network_class ? `فئة ${q.network_class}` : null],
+      ['الشروط', q.conditions], ['الاستثناءات', q.exclusions],
       ['صالح حتى', q.validity_date ? d(q.validity_date) : null]].filter(([, v]) => v).flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
+    q.network ? networkSearch(q) : null,
     q.expired ? el('div', { class: 'muted', text: 'انتهت صلاحية هذا العرض' }) : null)),
     el('div', { class: 'sign-grid' },
       el('label', { class: 'field' }, el('span', { text: 'اسمك الكامل' }), el('input', { name: 'signer_name', required: true, minlength: 3, maxlength: 200 })),

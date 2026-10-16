@@ -477,6 +477,10 @@ class InsuranceQuote(Base, TimestampMixin):
     needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     inbound_email_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     extraction_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deductible: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Medical: the insurer's network class this quote prices (matches NetworkProvider.network_class).
+    network_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    source_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # the insurer's PDF
     source_channel: Mapped[str] = mapped_column(
         String(30), nullable=False, default=InsurerCommunicationChannel.EMAIL.value
     )
@@ -694,3 +698,22 @@ class OfferPresentation(Base, TimestampMixin):
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     verification_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
     document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # signed copy in the request files
+
+
+class NetworkProvider(Base, TimestampMixin):
+    """A hospital, clinic, pharmacy or lab in an insurer's medical network, for one class.
+
+    Loaded from the insurer's Excel list; a new upload replaces the insurer's providers."""
+
+    __tablename__ = "insurance_network_providers"
+
+    provider_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    insurer_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False, index=True
+    )
+    network_class: Mapped[str] = mapped_column(String(40), nullable=False, index=True)  # normalized: A, VIP...
+    name: Mapped[str] = mapped_column(String(300), nullable=False)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    provider_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)

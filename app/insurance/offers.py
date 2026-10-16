@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.insurance import aftersales, authorization, catalog, documents, workflow
+from app.insurance import aftersales, authorization, catalog, documents, networks, workflow
 from app.insurance.models import (
     Customer,
     InsuranceQuote,
@@ -58,9 +58,14 @@ async def request_quotes(session: AsyncSession, request_id: str) -> list[tuple[I
     return [(q, i) for q, i in rows.all()]
 
 
-def quote_view(quote: InsuranceQuote, insurer: Insurer | None) -> dict[str, Any]:
+def quote_view(
+    quote: InsuranceQuote, insurer: Insurer | None, network: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """What the customer may see of a quote: no commission, no internal notes."""
     return {
+        "deductible": quote.deductible,
+        "network_class": quote.network_class,
+        "network": network,
         "quote_id": quote.quote_id,
         "insurer": insurer.name if insurer else "شركة تأمين",
         "premium": aftersales.to_money(quote.premium),
@@ -101,7 +106,20 @@ async def view(session: AsyncSession, p: OfferPresentation | None, staff: bool =
     if p is None:
         return None
     by_id = {q.quote_id: (q, i) for q, i in await request_quotes(session, p.request_id)}
-    shown = [quote_view(*by_id[qid]) for qid in json.loads(p.quote_ids) if qid in by_id]
+    shown = []
+    for qid in json.loads(p.quote_ids):
+        if qid not in by_id:
+            continue
+        quote, insurer = by_id[qid]
+        network = None
+        if quote.network_class and insurer is not None:
+            s = await networks.summary(session, insurer.insurer_id, quote.network_class)
+            network = (
+                {"total": s["total"], "by_type": s["by_type"], "top_cities": s["top_cities"]}
+                if s["total"]
+                else None
+            )
+        shown.append(quote_view(quote, insurer, network))
     accepted = p.status == OfferPresentationStatus.ACCEPTED
     out: dict[str, Any] = {
         "presentation_id": p.presentation_id,

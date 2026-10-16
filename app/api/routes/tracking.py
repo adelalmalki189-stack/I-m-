@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+import json
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -19,7 +20,7 @@ from app.automation import service
 from app.automation.models import PortalAccess
 from app.core.config import settings
 from app.core.security import RateLimiter, hash_token, new_token
-from app.insurance import aftersales, authorization, catalog, documents, offers, salesflow
+from app.insurance import aftersales, authorization, catalog, documents, networks, offers, salesflow
 from app.insurance.models import (
     AuthorizationLetterStatus,
     ClaimStatus,
@@ -474,3 +475,28 @@ async def comment_on_offers(
     offers.add_comment(p, body.text)
     audit(session, None, "offer_comment", "request", request.request_id)
     await session.commit()
+
+
+@router.get("/network")
+async def offer_network(
+    quote_id: str,
+    q: str | None = None,
+    city: str | None = None,
+    x_track_token: str = Header(...),
+    session: AsyncSession = Depends(get_db_session),
+) -> dict[str, Any]:
+    """Search the medical network of an offer sent to the customer (e.g. "is my hospital in it?")."""
+    request = await _tracked_request(session, x_track_token)
+    p = await offers.current(session, request.request_id)
+    if p is None or quote_id not in json.loads(p.quote_ids):
+        raise _error(404, "QUOTE_NOT_OFFERED", "This offer is not one of those sent to you")
+    quote = await session.get(InsuranceQuote, quote_id)
+    submission = await session.get(InsuranceSubmission, quote.submission_id) if quote else None
+    if quote is None or submission is None or not quote.network_class:
+        raise _error(404, "NO_NETWORK", "No network list for this offer")
+    return {
+        "network_class": quote.network_class,
+        "providers": await networks.search(
+            session, submission.insurer_id, quote.network_class, (q or "")[:100], (city or "")[:100] or None, 50
+        ),
+    }

@@ -65,10 +65,17 @@ async function loadRequest(requestId) {
   const best = quotes.length ? await api(`/requests/${requestId}/best-quote`) : null;
   document.getElementById('s-best').textContent = best ? `${insurerOf[best.submission_id]} · ${money(best.premium)}` : '—';
   const selectable = !['policy_issued', 'closed'].includes(request.status);
+  const insurerIdOf = Object.fromEntries(submissions.map(s => [s.submission_id, s.insurer_id]));
+  const networkSize = {};
+  if (request.insurance_type === 'medical') await Promise.all(quotes.filter(q => q.network_class).map(async q => {
+    networkSize[q.quote_id] = (await api(`/insurers/${insurerIdOf[q.submission_id]}/network?network_class=${encodeURIComponent(q.network_class)}`)).total;
+  }));
   const rows = [
     ['القسط', q => money(q.premium)],
     ['حد التغطية', q => money(q.coverage_limit)],
-    ['الشروط والتحمل', q => q.conditions || '—'],
+    ['التحمل', q => q.deductible || '—'],
+    ...(request.insurance_type === 'medical' ? [['الشبكة الطبية', q => (q.network_class ? `فئة ${q.network_class}${networkSize[q.quote_id] ? ` · ${networkSize[q.quote_id]} مقدم خدمة` : ''}` : '—')]] : []),
+    ['الشروط', q => q.conditions || '—'],
     ['الاستثناءات', q => q.exclusions || '—'],
     ['صلاحية العرض', q => (q.validity_date ? date(q.validity_date) : '—')],
     ['تاريخ الاستلام', q => date(q.created_at)],
