@@ -1,10 +1,5 @@
-"""FastAPI entrypoint — Modular Monolith (Methodology Part 2 §18).
+"""FastAPI entrypoint for BUD (بُعد) — digital insurance brokerage."""
 
-Routers are added module-by-module per phase (scanner, risk, trades,
-events, strategy-parameters, ws) per docs/API_SPEC_V0.1.md without
-splitting this into separate services — that's an explicit V0.1 decision,
-not an oversight.
-"""
 from __future__ import annotations
 
 from pathlib import Path
@@ -13,24 +8,48 @@ from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import ws
-from app.api.routes import events, insurance, market, risk, scanner, signals, strategy_parameters, system, trades
-
-app = FastAPI(
-    title="Options Trading Decision Support System",
-    version="0.1.0",
+from app.api.routes import (
+    aftersales,
+    auth,
+    automation,
+    insurance,
+    insurer_files,
+    offers,
+    payments,
+    request_review,
+    sheets,
+    tracking,
 )
+from app.core.config import settings
+from app.core.observability import configure_logging, health, init_error_tracking, install_middleware
 
-app.include_router(system.router)
-app.include_router(signals.router)
-app.include_router(market.router)
-app.include_router(scanner.router)
-app.include_router(trades.router)
-app.include_router(risk.router)
-app.include_router(events.router)
-app.include_router(strategy_parameters.router)
+configure_logging()
+init_error_tracking()
+
+# The interactive API docs list every endpoint; keep them off in production.
+_docs = settings.environment != "production"
+app = FastAPI(
+    title="BUD — Digital Insurance Brokerage",
+    version="0.1.0",
+    docs_url="/docs" if _docs else None,
+    redoc_url="/redoc" if _docs else None,
+    openapi_url="/openapi.json" if _docs else None,
+)
+install_middleware(app)
+
+app.include_router(health)
+app.include_router(auth.router)
+app.include_router(insurance.public_router)
+app.include_router(tracking.router)
+app.include_router(request_review.public_router)
 app.include_router(insurance.router)
-app.include_router(ws.router)
+app.include_router(aftersales.router)
+app.include_router(automation.router)
+app.include_router(request_review.router)
+app.include_router(sheets.router)
+app.include_router(offers.router)
+app.include_router(insurer_files.router)
+app.include_router(payments.router)
 
 DASHBOARD_DIR = Path(__file__).parent / "static" / "dashboard"
 app.mount("/dashboard", StaticFiles(directory=DASHBOARD_DIR, html=True), name="dashboard")

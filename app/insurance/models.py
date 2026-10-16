@@ -1,27 +1,37 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum as PyEnum
+from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, new_uuid
 
 
-class CustomerType(str, PyEnum):
+def _values(enum_cls: type[PyEnum]) -> list[str]:
+    """Persist enum *values* ("new"), matching the migrations, not member names ("NEW")."""
+    return [member.value for member in enum_cls]
+
+
+class CustomerType(StrEnum):
     INDIVIDUAL = "individual"
     BUSINESS = "business"
 
 
-class InsuranceRequestStatus(str, PyEnum):
+class InsuranceRequestStatus(StrEnum):
     NEW = "new"
     NEEDS_INFO = "needs_info"
     UNDER_REVIEW = "under_review"
     READY_FOR_QUOTE = "ready_for_quote"
+    QUOTE_SELECTED = "quote_selected"
+    POLICY_ISSUED = "policy_issued"
     CLOSED = "closed"
 
 
-class InsurancePolicyStatus(str, PyEnum):
+class InsurancePolicyStatus(StrEnum):
     DRAFT = "draft"
     ISSUED = "issued"
     ACTIVE = "active"
@@ -29,13 +39,31 @@ class InsurancePolicyStatus(str, PyEnum):
     CANCELLED = "cancelled"
 
 
-class InsuranceEmployeeRole(str, PyEnum):
+class ClaimStatus(StrEnum):
+    REPORTED = "reported"
+    SUBMITTED = "submitted"
+    UNDER_ASSESSMENT = "under_assessment"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    PAID = "paid"
+    CLOSED = "closed"
+
+
+class InstallmentStatus(StrEnum):
+    DUE = "due"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+
+
+class InsuranceEmployeeRole(StrEnum):
     SALES_AGENT = "sales_agent"
     UNDERWRITER = "underwriter"
+    CLAIMS_OFFICER = "claims_officer"
+    CUSTOMER_SERVICE = "customer_service"
     MANAGER = "manager"
 
 
-class UnderwritingStatus(str, PyEnum):
+class UnderwritingStatus(StrEnum):
     PENDING = "pending"
     UNDER_REVIEW = "under_review"
     NEEDS_INFO = "needs_info"
@@ -44,17 +72,18 @@ class UnderwritingStatus(str, PyEnum):
     CLOSED = "closed"
 
 
-class InsurerCommunicationChannel(str, PyEnum):
+class InsurerCommunicationChannel(StrEnum):
     EMAIL = "email"
     MANUAL = "manual"
     MIXED = "mixed"
 
 
-class InsuranceSubmissionStatus(str, PyEnum):
+class InsuranceSubmissionStatus(StrEnum):
     DRAFT = "draft"
     PENDING_APPROVAL = "pending_approval"
     APPROVED = "approved"
     SENT = "sent"
+    FAILED = "failed"
     FOLLOW_UP_REQUIRED = "follow_up_required"
     REJECTED = "rejected"
     CLOSED = "closed"
@@ -64,15 +93,23 @@ class Customer(Base, TimestampMixin):
     __tablename__ = "insurance_customers"
 
     customer_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    customer_type: Mapped[str] = mapped_column(String(20), nullable=False, default=CustomerType.INDIVIDUAL.value)
+    # BUD serves businesses only; "individual" remains for records created before that.
+    customer_type: Mapped[str] = mapped_column(String(20), nullable=False, default=CustomerType.BUSINESS.value)
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
     company_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The business: commercial registration (or unified) number and VAT number. full_name is
+    # the person representing it, contact_title their position.
+    cr_number: Mapped[str | None] = mapped_column(String(10), nullable=True, index=True)
+    vat_number: Mapped[str | None] = mapped_column(String(15), nullable=True)
+    contact_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # The customer asked not to receive WhatsApp/SMS messages from BUD.
+    messaging_opt_out: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    requests: Mapped[list["InsuranceRequest"]] = relationship(back_populates="customer")
+    requests: Mapped[list[InsuranceRequest]] = relationship(back_populates="customer")
 
 
 class SalesEmployee(Base, TimestampMixin):
@@ -86,32 +123,34 @@ class SalesEmployee(Base, TimestampMixin):
     branch: Mapped[str | None] = mapped_column(String(120), nullable=True)
     manager_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)  # NULL = cannot log in
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    requests_handled: Mapped[list["InsuranceRequest"]] = relationship(
+    requests_handled: Mapped[list[InsuranceRequest]] = relationship(
         foreign_keys="InsuranceRequest.sales_employee_id",
         back_populates="sales_employee",
     )
-    assignments_received: Mapped[list["InsuranceRequest"]] = relationship(
+    assignments_received: Mapped[list[InsuranceRequest]] = relationship(
         foreign_keys="InsuranceRequest.underwriter_id",
         back_populates="underwriter",
     )
-    created_assignments: Mapped[list["UnderwritingAssignment"]] = relationship(
+    created_assignments: Mapped[list[UnderwritingAssignment]] = relationship(
         foreign_keys="UnderwritingAssignment.assigned_by_employee_id",
         back_populates="assigned_by_employee",
     )
-    assigned_to_requests: Mapped[list["UnderwritingAssignment"]] = relationship(
+    assigned_to_requests: Mapped[list[UnderwritingAssignment]] = relationship(
         foreign_keys="UnderwritingAssignment.assigned_to_employee_id",
         back_populates="assigned_to_employee",
     )
-    request_preferences: Mapped[list["InsuranceRequestPreference"]] = relationship(
+    request_preferences: Mapped[list[InsuranceRequestPreference]] = relationship(
         foreign_keys="InsuranceRequestPreference.sales_employee_id",
         back_populates="sales_employee",
     )
-    underwriting_assignments: Mapped[list["InsuranceUnderwritingCase"]] = relationship(
+    underwriting_assignments: Mapped[list[InsuranceUnderwritingCase]] = relationship(
         foreign_keys="InsuranceUnderwritingCase.sales_employee_id",
         back_populates="sales_employee",
     )
-    underwriting_cases: Mapped[list["InsuranceUnderwritingCase"]] = relationship(
+    underwriting_cases: Mapped[list[InsuranceUnderwritingCase]] = relationship(
         foreign_keys="InsuranceUnderwritingCase.assigned_underwriter_id",
         back_populates="assigned_underwriter",
     )
@@ -121,7 +160,11 @@ class RequestDocument(Base, TimestampMixin):
     __tablename__ = "insurance_request_documents"
 
     document_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    request_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_requests.request_id"), nullable=False)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False
+    )
+    # Set when the file belongs to a claim (accident photos, reports); still filed under the policy's request.
+    claim_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     document_type: Mapped[str] = mapped_column(String(80), nullable=False)
     file_name: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(120), nullable=False, default="application/octet-stream")
@@ -133,6 +176,14 @@ class RequestDocument(Base, TimestampMixin):
         ForeignKey("insurance_sales_employees.employee_id"),
         nullable=True,
     )
+    # Automatic review on upload (app/insurance/review.py), then a staff decision.
+    # review_status: passed | warning | failed (automatic), accepted | rejected (staff).
+    review_status: Mapped[str] = mapped_column(String(20), nullable=False, default="passed")
+    review_findings: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of Arabic sentences
+    content_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    reviewed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="documents")
     uploaded_by_employee: Mapped[SalesEmployee | None] = relationship(foreign_keys=[uploaded_by_employee_id])
@@ -142,13 +193,15 @@ class InsuranceRequest(Base, TimestampMixin):
     __tablename__ = "insurance_requests"
 
     request_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    customer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_customers.customer_id"), nullable=False)
+    customer_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_customers.customer_id"), nullable=False
+    )
     request_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     insurance_type: Mapped[str] = mapped_column(String(80), nullable=False)
     product_type: Mapped[str] = mapped_column(String(80), nullable=False)
     request_source: Mapped[str] = mapped_column(String(50), nullable=False, default="portal")
     status: Mapped[InsuranceRequestStatus] = mapped_column(
-        Enum(InsuranceRequestStatus, native_enum=False),
+        Enum(InsuranceRequestStatus, native_enum=False, values_callable=_values, name="insurance_request_status"),
         nullable=False,
         default=InsuranceRequestStatus.NEW,
     )
@@ -175,13 +228,25 @@ class InsuranceRequest(Base, TimestampMixin):
     customer_preferences: Mapped[str | None] = mapped_column(Text, nullable=True)
     sales_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     selected_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    last_status_change_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    request_details: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: catalog field key -> value
+    # Who filed this request for the business: messages about it go to this mobile, and the
+    # tracking code and the letter signature are verified against it.
+    contact_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    contact_mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    contact_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    consent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    renewal_of_policy_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    # Short-lived token returned to the portal so the customer can attach documents to
+    # their own request without a staff session (sha256 of the token).
+    upload_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    upload_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     customer: Mapped[Customer] = relationship(back_populates="requests")
-    documents: Mapped[list["RequestDocument"]] = relationship(back_populates="request")
-    submissions: Mapped[list["InsuranceSubmission"]] = relationship(back_populates="request")
-    preferences: Mapped[list["InsuranceRequestPreference"]] = relationship(back_populates="request")
-    underwriting_case: Mapped["InsuranceUnderwritingCase"] = relationship(back_populates="request", uselist=False)
+    documents: Mapped[list[RequestDocument]] = relationship(back_populates="request")
+    submissions: Mapped[list[InsuranceSubmission]] = relationship(back_populates="request")
+    preferences: Mapped[list[InsuranceRequestPreference]] = relationship(back_populates="request")
+    underwriting_case: Mapped[InsuranceUnderwritingCase] = relationship(back_populates="request", uselist=False)
     sales_employee: Mapped[SalesEmployee | None] = relationship(
         foreign_keys=[sales_employee_id],
         back_populates="requests_handled",
@@ -190,30 +255,39 @@ class InsuranceRequest(Base, TimestampMixin):
         foreign_keys=[underwriter_id],
         back_populates="assignments_received",
     )
-    underwriting_assignments: Mapped[list["UnderwritingAssignment"]] = relationship(back_populates="request")
-    policies: Mapped[list["InsurancePolicy"]] = relationship(back_populates="request")
+    underwriting_assignments: Mapped[list[UnderwritingAssignment]] = relationship(back_populates="request")
+    policies: Mapped[list[InsurancePolicy]] = relationship(back_populates="request")
 
 
 class InsurancePolicy(Base, TimestampMixin):
     __tablename__ = "insurance_policies"
 
     policy_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    request_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_requests.request_id"), nullable=False, unique=True)
-    insurer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, unique=True
+    )
+    insurer_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False
+    )
     selected_quote_id: Mapped[str] = mapped_column(String(36), nullable=False)
     policy_number: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     status: Mapped[InsurancePolicyStatus] = mapped_column(
-        Enum(InsurancePolicyStatus, native_enum=False),
+        Enum(InsurancePolicyStatus, native_enum=False, values_callable=_values, name="insurance_policy_status"),
         nullable=False,
         default=InsurancePolicyStatus.ISSUED,
     )
     coverage_amount: Mapped[str | None] = mapped_column(String(50), nullable=True)
     premium_amount: Mapped[str | None] = mapped_column(String(50), nullable=True)
     currency: Mapped[str] = mapped_column(String(10), nullable=False, default="SAR")
-    effective_from: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    effective_to: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    issued_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Broker commission owed by the insurer for this policy.
+    commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)  # percent
+    commission_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    commission_received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    commission_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="policies")
     insurer: Mapped[Insurer] = relationship(back_populates="policies")
@@ -223,7 +297,9 @@ class UnderwritingAssignment(Base, TimestampMixin):
     __tablename__ = "insurance_underwriting_assignments"
 
     assignment_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    request_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_requests.request_id"), nullable=False)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False
+    )
     assigned_by_employee_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("insurance_sales_employees.employee_id"),
@@ -252,7 +328,9 @@ class InsuranceRequestPreference(Base, TimestampMixin):
     __tablename__ = "insurance_request_preferences"
 
     preference_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    request_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_requests.request_id"), nullable=False)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False
+    )
     sales_employee_id: Mapped[str] = mapped_column(
         String(36),
         ForeignKey("insurance_sales_employees.employee_id"),
@@ -272,7 +350,9 @@ class InsuranceUnderwritingCase(Base, TimestampMixin):
     __tablename__ = "insurance_underwriting_cases"
 
     case_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    request_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_requests.request_id"), nullable=False, unique=True)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, unique=True
+    )
     sales_employee_id: Mapped[str | None] = mapped_column(
         String(36),
         ForeignKey("insurance_sales_employees.employee_id"),
@@ -314,16 +394,20 @@ class Insurer(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    templates: Mapped[list["InsurerTemplate"]] = relationship(back_populates="insurer")
-    submissions: Mapped[list["InsuranceSubmission"]] = relationship(back_populates="insurer")
-    policies: Mapped[list["InsurancePolicy"]] = relationship(back_populates="insurer")
+    templates: Mapped[list[InsurerTemplate]] = relationship(back_populates="insurer")
+    submissions: Mapped[list[InsuranceSubmission]] = relationship(back_populates="insurer")
+    policies: Mapped[list[InsurancePolicy]] = relationship(back_populates="insurer")
 
 
 class InsurerTemplate(Base, TimestampMixin):
     __tablename__ = "insurance_insurer_templates"
 
     template_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    insurer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False)
+    # NULL insurer_id = the default template for this category (insurance line), used for
+    # any insurer that has no template of its own.
+    insurer_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     category: Mapped[str] = mapped_column(String(80), nullable=False)
     subject_template: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -331,15 +415,19 @@ class InsurerTemplate(Base, TimestampMixin):
     required_attachments: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    insurer: Mapped[Insurer] = relationship(back_populates="templates")
+    insurer: Mapped[Insurer | None] = relationship(back_populates="templates")
 
 
 class InsuranceSubmission(Base, TimestampMixin):
     __tablename__ = "insurance_submissions"
 
     submission_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    request_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_requests.request_id"), nullable=False)
-    insurer_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False
+    )
+    insurer_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False
+    )
     category: Mapped[str] = mapped_column(String(80), nullable=False)
     subject: Mapped[str] = mapped_column(String(255), nullable=False)
     email_body: Mapped[str] = mapped_column(Text, nullable=False)
@@ -349,33 +437,53 @@ class InsuranceSubmission(Base, TimestampMixin):
         default=InsurerCommunicationChannel.EMAIL.value,
     )
     status: Mapped[InsuranceSubmissionStatus] = mapped_column(
-        Enum(InsuranceSubmissionStatus, native_enum=False),
+        Enum(
+            InsuranceSubmissionStatus,
+            native_enum=False,
+            values_callable=_values,
+            name="insurance_submission_status",
+        ),
         nullable=False,
         default=InsuranceSubmissionStatus.PENDING_APPROVAL,
     )
     approved_for_send: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    sent_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_follow_up_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_follow_up_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivery_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     request: Mapped[InsuranceRequest] = relationship(back_populates="submissions")
     insurer: Mapped[Insurer] = relationship(back_populates="submissions")
-    quotes: Mapped[list["InsuranceQuote"]] = relationship(back_populates="submission")
-    audit_logs: Mapped[list["EmailAuditLog"]] = relationship(back_populates="submission")
+    quotes: Mapped[list[InsuranceQuote]] = relationship(back_populates="submission")
+    audit_logs: Mapped[list[EmailAuditLog]] = relationship(back_populates="submission")
 
 
 class InsuranceQuote(Base, TimestampMixin):
     __tablename__ = "insurance_quotes"
 
     quote_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
-    submission_id: Mapped[str] = mapped_column(String(36), ForeignKey("insurance_submissions.submission_id"), nullable=False)
+    submission_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_submissions.submission_id"), nullable=False
+    )
     premium: Mapped[str | None] = mapped_column(String(50), nullable=True)
     coverage_limit: Mapped[str | None] = mapped_column(String(50), nullable=True)
     exclusions: Mapped[str | None] = mapped_column(Text, nullable=True)
     conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
-    validity_date: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    validity_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(10), nullable=True)
-    source_channel: Mapped[str] = mapped_column(String(30), nullable=False, default=InsurerCommunicationChannel.EMAIL.value)
+    # Broker commission percent offered by the insurer in this quote.
+    commission_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    # Quotes read from an insurer's email by AI wait for an underwriter to confirm them.
+    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    inbound_email_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    extraction_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    deductible: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # Medical: the insurer's network class this quote prices (matches NetworkProvider.network_class).
+    network_class: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    source_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # the insurer's PDF
+    source_channel: Mapped[str] = mapped_column(
+        String(30), nullable=False, default=InsurerCommunicationChannel.EMAIL.value
+    )
 
     submission: Mapped[InsuranceSubmission] = relationship(back_populates="quotes")
 
@@ -394,3 +502,264 @@ class EmailAuditLog(Base, TimestampMixin):
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     submission: Mapped[InsuranceSubmission | None] = relationship(back_populates="audit_logs")
+
+
+class StaffSession(Base, TimestampMixin):
+    """A logged-in staff browser session. Only the sha256 of the cookie token is stored."""
+
+    __tablename__ = "insurance_staff_sessions"
+
+    session_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    employee_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_sales_employees.employee_id"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class AuditEvent(Base, TimestampMixin):
+    """Who did what to which record — one row per sensitive action."""
+
+    __tablename__ = "insurance_audit_events"
+
+    event_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    actor_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("insurance_sales_employees.employee_id"), nullable=True
+    )
+    actor_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    action: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class PremiumInstallment(Base, TimestampMixin):
+    """One premium payment the customer owes on a policy."""
+
+    __tablename__ = "insurance_premium_installments"
+
+    installment_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    policy_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_policies.policy_id"), nullable=False, index=True
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[InstallmentStatus] = mapped_column(
+        Enum(InstallmentStatus, native_enum=False, values_callable=_values, name="installment_status"),
+        nullable=False,
+        default=InstallmentStatus.DUE,
+    )
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    payment_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class InsuranceClaim(Base, TimestampMixin):
+    __tablename__ = "insurance_claims"
+
+    claim_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    claim_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    policy_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_policies.policy_id"), nullable=False, index=True
+    )
+    status: Mapped[ClaimStatus] = mapped_column(
+        Enum(ClaimStatus, native_enum=False, values_callable=_values, name="claim_status"),
+        nullable=False,
+        default=ClaimStatus.REPORTED,
+    )
+    incident_date: Mapped[date] = mapped_column(Date, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    claimed_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    approved_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    paid_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    insurer_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_status_change_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AuthorizationLetterStatus(StrEnum):
+    PENDING_SIGNATURE = "pending_signature"
+    SIGNED = "signed"
+    REVOKED = "revoked"
+
+
+class AuthorizationLetter(Base, TimestampMixin):
+    """The customer authorizes BUD to request quotes from insurers on their behalf.
+
+    BUD issues the text; the customer signs it after proving their mobile with a one-time
+    code. The signed text is frozen (body_text + content_hash) and anyone holding the
+    verification code can check it on the public verification page."""
+
+    __tablename__ = "insurance_authorization_letters"
+
+    letter_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    letter_number: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    status: Mapped[AuthorizationLetterStatus] = mapped_column(
+        Enum(
+            AuthorizationLetterStatus,
+            native_enum=False,
+            values_callable=_values,
+            name="authorization_letter_status",
+        ),
+        nullable=False,
+        default=AuthorizationLetterStatus.PENDING_SIGNATURE,
+    )
+    body_text: Mapped[str] = mapped_column(Text, nullable=False)
+    valid_until: Mapped[date] = mapped_column(Date, nullable=False)
+    issued_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    signer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    signer_id_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)  # never the full ID
+    signer_title: Mapped[str | None] = mapped_column(String(120), nullable=True)  # position in the business
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    signed_mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)  # verified by the one-time code
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)  # sha256 of the signed record
+    verification_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # signed copy in the request files
+
+
+class ListAnalysis(Base, TimestampMixin):
+    """An underwriter's review of an Excel list (census, fleet, assets) attached to a request.
+
+    Holds the decisions (which column is which, how raw classes map to target classes,
+    which classes and insurers are targeted) and the latest result; finalizing writes the
+    formatted, insurer-ready workbook into the request's files."""
+
+    __tablename__ = "insurance_list_analyses"
+
+    analysis_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    document_id: Mapped[str] = mapped_column(String(36), nullable=False, unique=True)  # the uploaded list
+    profile: Mapped[str] = mapped_column(String(20), nullable=False)
+    sheet_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    options: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON: mapping, classes, insurers
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON
+    issue_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft")  # draft | finalized
+    output_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    analyzed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class OfferPresentationStatus(StrEnum):
+    PUBLISHED = "published"  # the customer can see and accept it
+    ACCEPTED = "accepted"
+    WITHDRAWN = "withdrawn"  # replaced by a newer presentation or taken back
+
+
+class OfferPresentation(Base, TimestampMixin):
+    """The offers BUD puts in front of the customer, and the customer's signed acceptance.
+
+    Staff choose which confirmed quotes to show (and may recommend one); the customer sees
+    them on the tracking page without the broker commission and accepts one after the
+    mobile one-time code. The acceptance is frozen like the authorization letter: exact
+    text, signer, time, a sha256 over the record and a verification code."""
+
+    __tablename__ = "insurance_offer_presentations"
+
+    presentation_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    status: Mapped[OfferPresentationStatus] = mapped_column(
+        Enum(
+            OfferPresentationStatus,
+            native_enum=False,
+            values_callable=_values,
+            name="offer_presentation_status",
+        ),
+        nullable=False,
+        default=OfferPresentationStatus.PUBLISHED,
+    )
+    quote_ids: Mapped[str] = mapped_column(Text, nullable=False)  # JSON list, display order
+    recommended_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    note_to_customer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    customer_comments: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON list of {at, text}
+    accepted_quote_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    acceptance_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    signer_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    signer_id_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    signer_title: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    signed_mobile: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    signed_ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    verification_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # signed copy in the request files
+
+
+class NetworkProvider(Base, TimestampMixin):
+    """A hospital, clinic, pharmacy or lab in an insurer's medical network, for one class.
+
+    Loaded from the insurer's Excel list; a new upload replaces the insurer's providers."""
+
+    __tablename__ = "insurance_network_providers"
+
+    provider_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    insurer_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_insurers.insurer_id"), nullable=False, index=True
+    )
+    network_class: Mapped[str] = mapped_column(String(40), nullable=False, index=True)  # normalized: A, VIP...
+    name: Mapped[str] = mapped_column(String(300), nullable=False)
+    city: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    provider_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    region: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+
+
+class PaymentRequestStatus(StrEnum):
+    ISSUED = "issued"  # waiting for the customer to pay
+    PROOF_SUBMITTED = "proof_submitted"  # the customer uploaded a transfer receipt
+    PAID = "paid"  # staff confirmed the money arrived
+    CANCELLED = "cancelled"  # replaced by a new request or withdrawn
+
+
+class PaymentRequest(Base, TimestampMixin):
+    """What the customer is asked to pay before the policy is issued (the first installment
+    of the chosen plan), how to pay it, their transfer proof and the staff confirmation."""
+
+    __tablename__ = "insurance_payment_requests"
+
+    payment_id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_uuid)
+    # Also the reference the customer writes on the bank transfer.
+    payment_number: Mapped[str] = mapped_column(String(30), nullable=False, unique=True)
+    request_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("insurance_requests.request_id"), nullable=False, index=True
+    )
+    quote_id: Mapped[str] = mapped_column(String(36), nullable=False)
+    status: Mapped[PaymentRequestStatus] = mapped_column(
+        Enum(PaymentRequestStatus, native_enum=False, values_callable=_values, name="payment_request_status"),
+        nullable=False,
+        default=PaymentRequestStatus.ISSUED,
+    )
+    total_premium: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    vat_amount: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)  # included in the premium
+    installments: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    amount_due: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)  # this payment
+    currency: Mapped[str] = mapped_column(String(10), nullable=False, default="SAR")
+    due_date: Mapped[date] = mapped_column(Date, nullable=False)
+    bank_name: Mapped[str | None] = mapped_column(String(120), nullable=True)  # snapshot when issued
+    account_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    issued_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)  # the payment notice
+    proof_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    proof_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    proof_rejected_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    bank_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    confirmed_by_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    receipt_document_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

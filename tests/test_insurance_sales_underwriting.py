@@ -10,6 +10,7 @@ async def test_sales_employee_can_assign_underwriting_and_record_preferences(db_
         customer_response = client.post(
             "/insurance/customers",
             json={
+                "company_name": "شركة اختبار",
                 "customer_type": "business",
                 "full_name": "Al Nakhla Logistics",
                 "email": "sales@alnakhla.example",

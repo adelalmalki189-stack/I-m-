@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | الاكتتاب</title>
+<link rel="stylesheet" href="bud.css">
+<style>
+.queue td{cursor:pointer}
+.section-title{margin:16px 0 8px;font-size:11px;font-weight:700}
+.section-title:first-child{margin-top:0}
+.docs{display:flex;flex-wrap:wrap;gap:6px}
+.quote-row{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:10px}
+.tpl-list button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:0;border-bottom:1px solid var(--line);background:none;text-align:right;font-size:10px}
+.tpl-list button.active{background:#F3F6FF;color:var(--blue);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:11px}
+.list-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px;padding:7px 0;border-bottom:1px solid var(--line);font-size:10px}
+.analysis{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.analysis h3{margin:12px 0 6px;font-size:11px}.analysis h3:first-child{margin-top:0}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:6px}
+.stat{padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--white)}.stat b{display:block;font-size:15px}.stat span{color:var(--muted);font-size:9px}
+.stat.bad b{color:#B42318}.stat.warn b{color:#8A5A00}
+.grid-table{width:100%;border-collapse:collapse;font-size:10px;background:var(--white)}.grid-table th,.grid-table td{padding:5px 6px;border:1px solid var(--line);text-align:right}
+.grid-table th{background:#F3F6FF;font-weight:600}.grid-table select,.grid-table input[type=text]{width:100%;min-height:26px;font-size:10px}
+.issues{max-height:220px;overflow:auto;margin:0;padding-inline-start:16px;font-size:10px}.issues .error{color:#B42318}.issues .warning{color:#8A5A00}
+.opt{display:flex;align-items:center;gap:6px;font-size:10px;margin:4px 0}
+.scroll-x{overflow-x:auto}
+</style>
+</head>
+<body class="ui"><div class="app">
+<aside class="side"></aside><script src="bud-shell.js"></script>
+<main><header class="top"><div class="crumb"><a href="index.html">مركز العمليات</a> / <b>الاكتتاب</b></div><div class="top-actions"><input id="search" class="search" type="search" placeholder="ابحث برقم الطلب أو العميل" aria-label="ابحث برقم الطلب أو العميل"></div></header>
+<section class="page-head"><div><h1>الاكتتاب والمراسلات</h1><p class="subtitle">جهّز رسائل طلب التسعير لشركات التأمين، راجعها واعتمدها، وسجّل العروض المستلمة.</p></div></section>
+<div id="error" class="notice error" hidden></div>
+<nav class="tabs" role="tablist"><button class="tab active" data-tab="cases" role="tab">ملفات الاكتتاب</button><button class="tab" data-tab="inbox" role="tab">ردود الشركات <span id="inbox-count"></span></button><button class="tab" data-tab="templates" role="tab">قوالب الرسائل</button></nav>
+
+<section id="tab-cases">
+<div class="layout">
+<section class="panel"><div class="panel-head"><div><h2>الطلبات المفتوحة</h2><div class="muted">اختر طلبًا لتجهيز مراسلات الشركات</div></div><span id="queue-count" class="muted"></span></div>
+<div class="table-wrap"><table class="queue"><thead><tr><th>العميل / الطلب</th><th>الفرع</th><th>الحالة</th><th>آخر تحديث</th></tr></thead><tbody id="queue"></tbody></table><div id="queue-empty" class="empty" hidden>لا توجد طلبات مفتوحة.</div></div></section>
+<section id="case" class="panel" hidden><div class="panel-head"><div><h2 id="case-title"></h2><div id="case-sub" class="muted"></div></div><span id="case-status"></span></div>
+<div class="panel-body">
+<div class="section-title">بيانات الطلب</div><dl id="case-details" class="kv"></dl>
+<div class="section-title">المستندات</div><div id="case-docs" class="docs"></div>
+<div class="section-title">كشوف Excel: المراجعة والتحليل</div><div id="case-lists"></div><div id="analysis"></div>
+<div class="section-title">تغيير الحالة</div><div id="case-actions" class="actions"></div>
+<div id="send-block"><div class="section-title">الإرسال لشركات التأمين</div><p class="muted">تُجهز رسالة لكل شركة من قالب الفرع (أو قالب الشركة الخاص إن وُجد)، ثم تراجعها وتعتمدها قبل الإرسال.</p>
+<div id="insurer-choices" class="check-list"></div><div class="actions" style="margin-top:9px"><button id="draft" class="button primary" type="button">تجهيز الرسائل</button></div></div>
+<div class="section-title">الرسائل والعروض</div><div id="emails"><div class="empty">لا توجد رسائل لهذا الطلب بعد.</div></div>
+<div class="actions"><a id="compare-link" class="button" href="comparison.html">مقارنة العروض واختيار العرض ←</a></div>
+</div></section>
+<section id="case-empty" class="panel"><div class="empty">اختر طلبًا من القائمة.</div></section>
+</div>
+</section>
+
+<section id="tab-inbox" hidden>
+<div id="inbox-notice" class="notice" hidden></div>
+<div class="layout">
+<section class="panel"><div class="panel-head"><div><h2>ردود الشركات</h2><div class="muted">رسائل صندوق العروض وما استُخرج منها</div></div><select id="inbox-filter" class="search" aria-label="تصفية"><option value="">الكل</option><option value="unmatched">تحتاج ربط</option><option value="quote_created">عرض بانتظار التحقق</option><option value="failed">فشل الاستخراج</option><option value="declined">اعتذار</option><option value="no_quote">بدون سعر</option></select></div>
+<div class="table-wrap"><table><thead><tr><th>المرسل / الموضوع</th><th>الطلب والشركة</th><th>الحالة</th><th>الوصول</th></tr></thead><tbody id="inbox"></tbody></table><div id="inbox-empty" class="empty" hidden>لا توجد رسائل.</div></div></section>
+<section id="mail" class="panel" hidden><div class="panel-head"><div><h2 id="mail-subject"></h2><div id="mail-from" class="muted"></div></div><span id="mail-status"></span></div>
+<div class="panel-body"><div id="mail-error" class="notice error" hidden></div><div id="mail-extraction"></div>
+<div class="section-title">نص الرسالة</div><div id="mail-body" class="preview" style="max-height:260px;overflow:auto"></div>
+<div class="section-title">المرفقات</div><div id="mail-attachments" class="actions"></div>
+<div id="mail-link"><div class="section-title">ربط بطلب وشركة</div><div class="actions"><select id="link-submission" class="search" style="flex:1;width:auto"></select><button id="link-btn" class="button primary" type="button">ربط واستخراج</button></div></div>
+<div class="actions" style="margin-top:10px"><button id="retry-btn" class="button" type="button">إعادة الاستخراج</button><a id="mail-case" class="button" href="#">فتح ملف الطلب</a></div></div></section>
+<section id="mail-empty" class="panel"><div class="empty">اختر رسالة.</div></section>
+</div></section>
+
+<section id="tab-templates" hidden>
+<div class="layout">
+<section class="stack">
+<section class="panel"><div class="panel-head"><div><h2 id="tpl-title">القالب</h2><div id="tpl-sub" class="muted"></div></div><span id="tpl-state"></span></div>
+<div class="panel-body"><form id="tpl-form">
+<label class="field"><span>اسم القالب</span><input name="name" required minlength="2" maxlength="200"></label>
+<div class="field"><span>المتغيرات المتاحة <span class="hint">— اضغط على المتغير لإدراجه في موضع المؤشر</span></span><div id="chips" class="chips"></div></div>
+<label class="field"><span>عنوان الرسالة</span><input name="subject_template" required minlength="3" maxlength="255"></label>
+<label class="field"><span>نص الرسالة</span><textarea name="body_template" required minlength="3" rows="14"></textarea></label>
+<label class="field" style="display:flex;align-items:center;gap:8px"><input type="checkbox" name="active" style="width:auto;min-height:0"> <span>القالب مفعّل</span></label>
+<div class="actions"><button class="button primary" type="submit">حفظ القالب</button><button id="tpl-reset" class="button" type="button">استعادة النص الافتراضي</button><button id="tpl-delete" class="button" type="button" hidden>حذف القالب الخاص</button></div>
+</form></div></section>
+<section class="panel"><div class="panel-head"><div><h2>معاينة</h2><div class="muted">كما ستصل للشركة</div></div><select id="preview-request" class="search" aria-label="طلب للمعاينة"><option value="">بيانات توضيحية</option></select></div>
+<div class="panel-body"><div id="preview-unknown" class="notice error" hidden></div><div class="field"><span>العنوان</span><div id="preview-subject" class="preview"></div></div><div class="field"><span>النص</span><div id="preview-body" class="preview"></div></div></div></section>
+</section>
+<section class="stack">
+<section class="panel"><div class="panel-head"><div><h2>فرع التأمين</h2><div class="muted">لكل فرع قالب افتراضي، ويمكن تخصيص قالب لأي شركة</div></div></div>
+<div class="panel-body"><label class="field"><span>الفرع</span><select id="tpl-line"></select></label></div>
+<div id="tpl-list" class="tpl-list"></div>
+<div class="panel-body"><label class="field"><span>إضافة قالب خاص بشركة</span><select id="tpl-new-insurer"><option value="">اختر الشركة</option></select></label></div></section>
+</section>
+</div>
+</section>
+</main></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="bud-api.js"></script>
+<script>
+const { api, el, pill, notify, run, date, money, REQUEST_STATUS, SUBMISSION_STATUS } = BUD;
+const OPEN = ['new', 'needs_info', 'under_review', 'ready_for_quote', 'quote_selected'];
+const ACTION_LABELS = { needs_info: 'طلب استكمال بيانات', under_review: 'بدء الاكتتاب', ready_for_quote: 'جاهز للتسعير', closed: 'إغلاق بدون بيع' };
+const DOC_TYPES = { customer_upload: 'من العميل', driver_license: 'رخصة القيادة', vehicle_registration: 'استمارة المركبة', other: 'مستند' };
+let cat, insurers = [], requests = [], current = null, query = '';
+
+function showError(message) { const box = document.getElementById('error'); box.textContent = message || ''; box.hidden = !message; }
+const insurerName = id => insurers.find(i => i.insurer_id === id)?.name || 'شركة';
+
+// ---------- ملفات الاكتتاب ----------
+function renderQueue() {
+  const rows = requests.filter(r => OPEN.includes(r.status))
+    .filter(r => `${r.request_number} ${r.customer_name} ${r.insurance_type_label}`.toLowerCase().includes(query))
+    .map(r => el('tr', { class: `clickable${current?.request_id === r.request_id ? ' selected' : ''}`, onclick: () => openCase(r.request_id) },
+      el('td', {}, el('div', { class: 'strong', text: r.customer_name || 'عميل' }), el('div', { class: 'sub', text: r.request_number })),
+      el('td', { text: `${r.insurance_type_label} · ${r.product_type_label}` }),
+      el('td', {}, pill(REQUEST_STATUS, r.status)),
+      el('td', { class: 'muted', text: date(r.last_status_change_at || r.updated_at) })));
+  document.getElementById('queue').replaceChildren(...rows);
+  document.getElementById('queue-empty').hidden = rows.length > 0;
+  document.getElementById('queue-count').textContent = `${rows.length} طلب`;
+}
+
+async function loadRequests() { requests = await api('/requests'); renderQueue(); }
+
+async function openCase(requestId) {
+  current = await api(`/requests/${requestId}`);
+  history.replaceState(null, '', `?request=${requestId}`);
+  renderQueue();
+  document.getElementById('case').hidden = false;
+  document.getElementById('case-empty').hidden = true;
+  document.getElementById('case-title').textContent = current.customer_name || 'عميل';
+  document.getElementById('case-sub').textContent = `${current.request_number} · ${current.insurance_type_label} · ${current.product_type_label}`;
+  document.getElementById('case-status').replaceChildren(pill(REQUEST_STATUS, current.status));
+  document.getElementById('compare-link').href = `comparison.html?request=${requestId}`;
+
+  const details = [['مبلغ التغطية', money(current.coverage_amount)],
+    ...Object.entries(current.request_details).map(([k, v]) => [cat.fieldLabel(current.insurance_type, k), v]),
+    ['الأولوية', current.customer_priority], ['ملاحظات', current.notes || current.summary], ['المصدر', current.request_source === 'portal' ? 'بوابة العميل' : current.request_source], ['تاريخ الطلب', date(current.created_at)]]
+    .filter(([, v]) => v != null && v !== '');
+  document.getElementById('case-details').replaceChildren(...details.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: String(v) })]));
+  document.getElementById('case-docs').replaceChildren(...(current.documents.length
+    ? current.documents.map(d => el('a', { class: 'pill blue', href: `/insurance/documents/${d.document_id}/download`, target: '_blank', rel: 'noopener', text: `${DOC_TYPES[d.document_type] || d.document_type}: ${d.file_name}` }))
+    : [el('span', { class: 'muted', text: 'لا توجد مستندات مرفوعة' })]));
+
+  const actions = current.allowed_transitions.filter(s => ACTION_LABELS[s]).map(status =>
+    el('button', { class: 'button', type: 'button', text: current.status === 'closed' ? 'إعادة فتح الطلب' : ACTION_LABELS[status],
+      onclick: e => run(e.currentTarget, () => api(`/requests/${requestId}/status`, { method: 'PATCH', body: { status } }), 'تم تحديث الحالة').then(refreshCase) }));
+  document.getElementById('case-actions').replaceChildren(...(actions.length ? actions : [el('span', { class: 'muted', text: 'لا توجد انتقالات متاحة' })]));
+  document.getElementById('send-block').hidden = !OPEN.includes(current.status) || current.status === 'quote_selected';
+  await renderEmails();
+  await renderLists();
+}
+
+async function refreshCase() { await loadRequests(); await openCase(current.request_id); }
+
+async function renderEmails() {
+  const submissions = await api(`/submissions?request_id=${current.request_id}`);
+  const quotes = await api(`/requests/${current.request_id}/quotes`);
+  const used = new Set(submissions.map(s => s.insurer_id));
+  const choices = insurers.filter(i => i.is_active && !used.has(i.insurer_id));
+  document.getElementById('insurer-choices').replaceChildren(...(choices.length
+    ? choices.map(i => el('label', {}, el('input', { type: 'checkbox', value: i.insurer_id }), el('span', { class: 'strong', text: i.name }), el('span', { class: 'muted', text: i.email })))
+    : [el('span', { class: 'muted', text: insurers.length ? 'جُهزت رسائل لكل الشركات المفعّلة.' : 'لا توجد شركات مسجلة. أضفها من صفحة شركات التأمين.' })]));
+  document.getElementById('draft').disabled = !choices.length;
+
+  submissions.sort((a, b) => insurerName(a.insurer_id).localeCompare(insurerName(b.insurer_id), 'ar') || a.submission_id.localeCompare(b.submission_id));
+  const cards = submissions.map(s => emailCard(s, quotes.filter(q => q.submission_id === s.submission_id)));
+  document.getElementById('emails').replaceChildren(...(cards.length ? cards : [el('div', { class: 'empty', text: 'لا توجد رسائل لهذا الطلب بعد.' })]));
+}
+
+function emailCard(s, quotes) {
+  const locked = s.status === 'sent';
+  const subject = el('input', { value: s.subject, disabled: locked, 'aria-label': 'عنوان الرسالة' });
+  const body = el('textarea', { rows: 10, disabled: locked, 'aria-label': 'نص الرسالة' });
+  body.value = s.email_body;
+  const act = (label, fn, msg, primary) => el('button', { class: `button${primary ? ' primary' : ''}`, type: 'button', text: label,
+    onclick: e => run(e.currentTarget, fn, msg).then(renderEmails).then(loadRequests) });
+  const id = s.submission_id;
+  const buttons = locked ? [] : [
+    act('حفظ التعديل', () => api(`/submissions/${id}`, { method: 'PATCH', body: { subject: subject.value, email_body: body.value } }), 'حُفظت الرسالة وتحتاج اعتمادًا'),
+    !s.approved_for_send && act('اعتماد', () => api(`/submissions/${id}/approve`, { method: 'POST' }), 'اعتُمدت الرسالة', true),
+    s.approved_for_send && act('إرسال بالبريد', () => api(`/submissions/${id}/send`, { method: 'POST' }), null, true),
+    s.approved_for_send && act('تسجيل كمُرسل يدويًا', () => api(`/submissions/${id}/mark-sent`, { method: 'POST', body: { note: 'أُرسل خارج النظام' } }), 'سُجلت الرسالة كمرسلة'),
+  ];
+  return el('article', { class: 'email' },
+    el('div', { class: 'email-head' }, el('div', {}, el('span', { class: 'strong', text: insurerName(s.insurer_id) }), el('div', { class: 'sub', text: s.sent_at ? `أُرسلت ${date(s.sent_at)}` : `جُهزت ${date(s.created_at)}` })), pill(SUBMISSION_STATUS, s.status)),
+    el('div', { class: 'email-body' },
+      s.delivery_error && el('div', { class: 'notice error', text: `سبب الفشل: ${s.delivery_error}` }),
+      el('label', { class: 'field' }, el('span', { text: 'العنوان' }), subject),
+      el('label', { class: 'field' }, el('span', { text: 'النص' }), body),
+      el('div', { class: 'actions' }, buttons),
+      (s.sent_at || quotes.length) && quoteBlock(s, quotes)));
+}
+
+function quoteBlock(s, quotes) {
+  const form = el('form', { class: 'form-grid', style: 'margin-top:10px' },
+    el('label', { class: 'field' }, el('span', { text: 'القسط (ر.س)' }), el('input', { name: 'premium', type: 'number', min: 0, step: '0.01', required: true })),
+    el('label', { class: 'field' }, el('span', { text: 'حد التغطية (ر.س)' }), el('input', { name: 'coverage_limit', type: 'number', min: 0, step: '0.01' })),
+    el('label', { class: 'field' }, el('span', { text: 'نسبة العمولة في العرض (%)' }), el('input', { name: 'commission_rate', type: 'number', min: 0, max: 100, step: '0.01' })),
+    el('label', { class: 'field' }, el('span', { text: 'صلاحية العرض حتى' }), el('input', { name: 'validity_date', type: 'date' })),
+    el('label', { class: 'field' }, el('span', { text: 'التحمل' }), el('input', { name: 'deductible', maxlength: 300 })),
+    current.insurance_type === 'medical' ? el('label', { class: 'field' }, el('span', { text: 'فئة الشبكة الطبية' }), el('input', { name: 'network_class', maxlength: 40, placeholder: 'A / B / VIP' })) : null,
+    el('label', { class: 'field' }, el('span', { text: 'الشروط' }), el('input', { name: 'conditions' })),
+    el('label', { class: 'field full' }, el('span', { text: 'الاستثناءات' }), el('input', { name: 'exclusions' })),
+    el('div', { class: 'full' }, el('button', { class: 'button primary', type: 'submit', text: 'تسجيل العرض يدويًا' })));
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const data = Object.fromEntries(new FormData(form));
+    const body = { premium: data.premium, coverage_limit: data.coverage_limit || null, commission_rate: data.commission_rate || null, conditions: data.conditions || null, exclusions: data.exclusions || null,
+      deductible: data.deductible || null, network_class: data.network_class || null, validity_date: data.validity_date ? `${data.validity_date}T23:59:59Z` : null };
+    run(form.querySelector('button'), () => api(`/submissions/${s.submission_id}/quotes`, { method: 'POST', body }), 'سُجل العرض').then(renderEmails);
+  });
+  const pdf = el('input', { type: 'file', accept: '.pdf,application/pdf', onchange: e => {
+    const data = new FormData(); data.append('file', e.currentTarget.files[0]);
+    run(null, () => api(`/submissions/${s.submission_id}/quote-pdf`, { method: 'POST', form: data })).then(r => {
+      notify(r.quote ? 'قُرئ العرض من الملف. راجعه واعتمده.' : r.extraction.outcome === 'declined' ? 'الملف اعتذار من الشركة، وسُجلت الرسالة مرفوضة.' : `لم يُستخرج القسط: ${r.extraction.notes || ''} أدخله يدويًا.`);
+      renderEmails();
+    });
+  } });
+  return el('div', {},
+    el('div', { class: 'section-title', text: `العروض المستلمة (${quotes.length})` }),
+    el('div', { class: 'actions', style: 'margin-bottom:6px' }, el('b', { text: 'رفع عرض الشركة (PDF):' }), pdf, el('span', { class: 'muted', text: 'يقرأ النظام القسط والتغطية والتحمل والصلاحية والشبكة، وتراجعها قبل الاعتماد.' })),
+    quotes.map(q => q.needs_review ? reviewQuote(q) : el('div', { class: 'quote-row' }, el('span', { class: 'strong', text: money(q.premium) }), el('span', { text: `تغطية ${money(q.coverage_limit)}` }),
+      q.network_class ? el('span', { class: 'pill', text: `شبكة ${q.network_class}` }) : null, q.source_document_id ? el('a', { href: `/insurance/documents/${q.source_document_id}/download`, target: '_blank', rel: 'noopener', text: 'PDF' }) : null, el('span', { class: 'muted', text: q.commission_rate != null ? `عمولة ${Number(q.commission_rate)}%` : 'بدون نسبة عمولة' }), el('span', { class: 'muted', text: q.validity_date ? `صالح حتى ${date(q.validity_date)}` : '' }))),
+    form);
+}
+
+// An AI-extracted quote: the underwriter checks it against the insurer's email, corrects, then confirms.
+function reviewQuote(q) {
+  const field = (label, name, value, type = 'number') => el('label', { class: 'field' }, el('span', { text: label }), el('input', { name, type, step: '0.01', value: value ?? '' }));
+  const form = el('form', { class: 'form-grid' },
+    field('القسط (ر.س)', 'premium', q.premium), field('حد التغطية (ر.س)', 'coverage_limit', q.coverage_limit),
+    field('نسبة العمولة (%)', 'commission_rate', q.commission_rate), field('صلاحية العرض حتى', 'validity_date', q.validity_date ? q.validity_date.slice(0, 10) : '', 'date'),
+    el('label', { class: 'field' }, el('span', { text: 'التحمل' }), el('input', { name: 'deductible', value: q.deductible || '' })),
+    el('label', { class: 'field' }, el('span', { text: 'فئة الشبكة الطبية' }), el('input', { name: 'network_class', value: q.network_class || '' })),
+    el('label', { class: 'field' }, el('span', { text: 'الشروط' }), el('input', { name: 'conditions', value: q.conditions || '' })),
+    el('label', { class: 'field' }, el('span', { text: 'الاستثناءات' }), el('input', { name: 'exclusions', value: q.exclusions || '' })),
+    el('div', { class: 'full actions' },
+      q.source_document_id && el('a', { class: 'button', href: `/insurance/documents/${q.source_document_id}/download`, target: '_blank', rel: 'noopener', text: 'فتح ملف الشركة' }),
+      el('button', { class: 'button primary', type: 'submit', text: 'اعتماد العرض' }),
+      el('button', { class: 'button', type: 'button', text: 'رفض (قراءة خاطئة)', onclick: e => {
+        if (!confirm('حذف هذا العرض المستخرج؟ رسالة الشركة تبقى في «ردود الشركات».')) return;
+        run(e.currentTarget, () => api(`/quotes/${q.quote_id}`, { method: 'DELETE' }), 'حُذف العرض المستخرج').then(renderEmails);
+      } }),
+      q.inbound_email_id && el('button', { class: 'button', type: 'button', text: 'رسالة الشركة', onclick: () => showTab('inbox', q.inbound_email_id) })));
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const d = Object.fromEntries(new FormData(form));
+    const body = { premium: d.premium || null, coverage_limit: d.coverage_limit || null, commission_rate: d.commission_rate || null,
+      conditions: d.conditions || null, exclusions: d.exclusions || null, deductible: d.deductible || null, network_class: d.network_class || null,
+      validity_date: d.validity_date ? `${d.validity_date}T23:59:59Z` : null };
+    run(e.submitter, () => api(`/quotes/${q.quote_id}/confirm`, { method: 'POST', body }), 'اعتُمد العرض').then(renderEmails);
+  });
+  return el('div', { class: 'notice', style: 'margin:8px 0' },
+    el('div', { class: 'actions', style: 'margin-bottom:8px' }, el('span', { class: 'pill blue', text: q.source_document_id ? 'مقروء آليًا من ملف الشركة — بانتظار التحقق' : 'مستخرج آليًا من بريد الشركة — بانتظار التحقق' })),
+    q.extraction_notes && el('div', { class: 'muted', style: 'white-space:pre-wrap;margin-bottom:8px', text: q.extraction_notes }),
+    form);
+}
+
+document.getElementById('draft').addEventListener('click', e => {
+  const ids = [...document.querySelectorAll('#insurer-choices input:checked')].map(i => i.value);
+  if (!ids.length) { notify('اختر شركة واحدة على الأقل'); return; }
+  run(e.currentTarget, () => api(`/requests/${current.request_id}/submissions`, { method: 'POST', body: { insurer_ids: ids } }), `جُهزت ${ids.length} رسالة للمراجعة`).then(refreshCase);
+});
+document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); renderQueue(); });
+
+// ---------- كشوف Excel ----------
+let analysis = null;
+const SHEET_DOCS = () => (cat.line(current.insurance_type)?.documents || []).filter(d => d.spreadsheet && (!d.products || d.products.includes(current.product_type)));
+
+async function renderLists() {
+  const lists = await api(`/requests/${current.request_id}/lists`);
+  const types = SHEET_DOCS();
+  const typeSel = el('select', { class: 'search', style: 'width:auto' }, ...(types.length ? types : [{ key: 'customer_upload', label: 'كشف' }]).map(d => el('option', { value: d.key, text: d.label })));
+  const file = el('input', { type: 'file', accept: '.xlsx', onchange: e => {
+    const data = new FormData(); data.append('file', e.currentTarget.files[0]); data.append('document_type', typeSel.value);
+    run(null, () => api(`/requests/${current.request_id}/documents`, { method: 'POST', form: data }), 'رُفع الكشف').then(renderLists);
+  } });
+  const STATUS = { draft: ['مسودة تحليل', ''], finalized: ['منسّق ومعتمد', 'blue'] };
+  document.getElementById('case-lists').replaceChildren(
+    ...(lists.length ? lists.map(l => el('div', { class: 'list-row' },
+      el('span', {}, el('b', { text: l.document_label }), ' · ', el('a', { href: `/insurance/documents/${l.document_id}/download`, target: '_blank', rel: 'noopener', text: l.file_name })),
+      el('span', { class: 'actions' }, l.analysis ? pill(STATUS, l.analysis.status) : el('span', { class: 'muted', text: 'لم يُحلَّل' }),
+        l.analysis?.output_document_id ? el('a', { class: 'button', href: `/insurance/documents/${l.analysis.output_document_id}/download`, text: 'الملف المنسّق' }) : null,
+        el('button', { class: 'button primary', type: 'button', text: l.analysis ? 'فتح التحليل' : 'تحليل الكشف',
+          onclick: e => run(e.currentTarget, () => api(`/documents/${l.document_id}/analysis`, { method: 'POST' })).then(renderAnalysis) }))))
+      : [el('p', { class: 'muted', text: 'لا توجد كشوف Excel لهذا الطلب.' })]),
+    el('div', { class: 'actions', style: 'margin-top:6px' }, el('span', { class: 'muted', text: 'رفع كشف:' }), typeSel, file));
+  if (analysis && !lists.some(l => l.document_id === analysis.document_id)) { analysis = null; document.getElementById('analysis').replaceChildren(); }
+}
+
+function currentOptions(box) {
+  const o = structuredClone(analysis.options);
+  box.querySelectorAll('[data-map]').forEach(s => { o.column_mapping[s.dataset.map] = s.value === '' ? null : Number(s.value); });
+  o.class_mapping = {};
+  box.querySelectorAll('[data-class]').forEach(i => { if (i.value.trim() && i.value.trim() !== i.dataset.class) o.class_mapping[i.dataset.class] = i.value.trim(); });
+  o.default_class = box.querySelector('[name=default_class]').value.trim() || null;
+  const targets = [...box.querySelectorAll('[data-include]')];
+  const chosen = targets.filter(c => c.checked).map(c => c.dataset.include);
+  o.include_classes = chosen.length === targets.length ? null : chosen;
+  o.target_insurer_ids = [...box.querySelectorAll('[data-insurer]:checked')].map(c => c.dataset.insurer);
+  o.exclude_invalid = box.querySelector('[name=exclude_invalid]').checked;
+  o.split_by_class = box.querySelector('[name=split_by_class]').checked;
+  const sheet = box.querySelector('[name=sheet_name]'); if (sheet) o.sheet_name = sheet.value;
+  const profile = box.querySelector('[name=profile]').value;
+  if (profile !== o.profile) { o.profile = profile; o.column_mapping = null; o.class_mapping = {}; o.include_classes = null; }
+  return o;
+}
+
+function renderAnalysis(a) {
+  analysis = a;
+  const s = a.summary, o = a.options;
+  const box = el('div', { class: 'analysis' });
+  const reanalyze = (opts, msg) => api(`/documents/${a.document_id}/analysis`, { method: 'POST', body: opts }).then(r => { if (msg) notify(msg); return r; });
+  const stat = (label, value, tone) => el('div', { class: `stat ${tone || ''}` }, el('b', { text: value ?? '—' }), el('span', { text: label }));
+  const stats = [stat('السجلات', s.total_rows), stat('في الملف النهائي', s.included_rows),
+    stat('أخطاء', a.issue_counts.error, a.issue_counts.error ? 'bad' : ''), stat('تنبيهات', a.issue_counts.warning, a.issue_counts.warning ? 'warn' : '')];
+  if (a.profile === 'people') stats.push(stat('موظفون', s.employees), stat('تابعون', s.dependents), stat('سعوديون', s.saudis), stat('متوسط العمر', s.average_age), stat('65 فأكثر', s.over_65, s.over_65 ? 'warn' : ''));
+  else stats.push(stat('إجمالي القيمة', money(s.total_value)), a.profile === 'vehicles' ? stat('متوسط عمر المركبة', s.average_age) : null);
+
+  const targets = [...new Set(a.categories.map(c => c.mapped || 'غير محدد'))];
+  const datalist = el('datalist', { id: 'class-options' }, ...a.default_categories.map(c => el('option', { value: c })));
+  const activeInsurers = insurers.filter(i => i.is_active);
+
+  box.append(
+    el('div', { class: 'list-row', style: 'border:0;padding-top:0' }, el('b', { text: `${a.profile_label}: ${a.file_name}` }),
+      el('span', { class: 'muted', text: `صف العناوين ${a.header_row}${a.truncated ? ' · قُرئت أول 20,000 صف فقط' : ''}` })),
+    el('div', { class: 'actions' },
+      el('label', { class: 'opt' }, 'نوع الكشف', el('select', { name: 'profile' }, ...[['people', 'كشف أفراد'], ['vehicles', 'كشف مركبات'], ['generic', 'جدول بنود']].map(([v, t]) => el('option', { value: v, text: t, selected: v === a.profile })))),
+      a.sheet_names.length > 1 ? el('label', { class: 'opt' }, 'الورقة', el('select', { name: 'sheet_name' }, ...a.sheet_names.map(n => el('option', { value: n, text: n, selected: n === a.sheet_name })))) : null),
+    el('h3', { text: 'النتيجة' }), el('div', { class: 'stat-grid' }, ...stats.filter(Boolean)),
+    el('h3', { text: 'مطابقة الأعمدة' }), el('p', { class: 'muted', style: 'margin:0 0 4px', text: 'تعرّف النظام على الأعمدة تلقائيًا. صحّح أي عمود خاطئ ثم أعد التحليل.' }),
+    el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table' }, el('tr', {}, el('th', { text: 'الحقل' }), el('th', { text: 'العمود في الملف' })),
+      ...a.fields.map(f => el('tr', {}, el('td', { text: f.required ? `${f.label} *` : f.label }),
+        el('td', {}, el('select', { 'data-map': f.key }, el('option', { value: '', text: '— غير موجود —' }),
+          ...a.headers.map((h, i) => el('option', { value: i, text: h, selected: o.column_mapping[f.key] === i })))))))),
+    el('h3', { text: `${a.category_label}: التوحيد والاختيار` }), datalist,
+    el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table' }, el('tr', {}, el('th', { text: 'القيمة في الملف' }), el('th', { text: 'العدد' }), el('th', { text: `${a.category_label} المعتمدة` })),
+      ...a.categories.map(c => el('tr', {}, el('td', { text: c.raw || '(فارغ)' }), el('td', { text: c.count }),
+        el('td', {}, c.raw ? el('input', { type: 'text', 'data-class': c.raw, value: c.mapped, list: 'class-options' }) : el('span', { class: 'muted', text: 'تأخذ الفئة الافتراضية' })))))),
+    el('label', { class: 'opt' }, `${a.category_label} الافتراضية للصفوف الفارغة`, el('input', { name: 'default_class', value: o.default_class || '', list: 'class-options', style: 'width:110px' })),
+    el('div', { class: 'opt' }, el('b', { text: 'الفئات المشمولة في الملف:' }),
+      ...targets.map(t => el('label', { class: 'opt' }, el('input', { type: 'checkbox', 'data-include': t, checked: !o.include_classes || o.include_classes.includes(t) }), t))));
+
+  if (s.by_category.length) box.append(el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table', style: 'margin-top:6px' },
+    el('tr', {}, el('th', { text: a.category_label }), el('th', { text: 'العدد' }), ...(a.profile === 'people' ? [el('th', { text: 'موظفون' }), el('th', { text: 'تابعون' })] : [el('th', { text: 'القيمة' })])),
+    ...s.by_category.map(c => el('tr', {}, el('td', { text: c.category }), el('td', { text: c.count }),
+      ...(a.profile === 'people' ? [el('td', { text: c.employees || 0 }), el('td', { text: c.dependents || 0 })] : [el('td', { text: money(c.value) })]))))));
+  if (a.profile === 'people') box.append(el('h3', { text: 'التوزيع العمري' }), el('div', { class: 'scroll-x' }, el('table', { class: 'grid-table' },
+    el('tr', {}, el('th', { text: 'الفئة العمرية' }), el('th', { text: 'ذكور' }), el('th', { text: 'إناث' })),
+    ...s.age_bands.map(b => el('tr', {}, el('td', { text: b.band }), el('td', { text: b['ذكر'] }), el('td', { text: b['أنثى'] }))))));
+  if (a.issues.length) box.append(el('h3', { text: `ملاحظات المراجعة (${a.issues.length})` }),
+    el('ul', { class: 'issues' }, ...a.issues.map(i => el('li', { class: i.level, text: `${i.row ? `صف ${i.row}: ` : ''}${i.message}` }))));
+
+  box.append(el('h3', { text: 'الشركات المستهدفة' }),
+    el('div', { class: 'check-list' }, ...(activeInsurers.length ? activeInsurers.map(i => el('label', {}, el('input', { type: 'checkbox', 'data-insurer': i.insurer_id, checked: o.target_insurer_ids.includes(i.insurer_id) }), el('span', { class: 'strong', text: i.name }))) : [el('span', { class: 'muted', text: 'لا توجد شركات مفعّلة.' })])),
+    el('label', { class: 'opt' }, el('input', { type: 'checkbox', name: 'exclude_invalid', checked: o.exclude_invalid }), 'استبعاد الصفوف التي فيها أخطاء من الملف النهائي'),
+    el('label', { class: 'opt' }, el('input', { type: 'checkbox', name: 'split_by_class', checked: o.split_by_class }), `ورقة مستقلة لكل ${a.category_label}`),
+    el('div', { class: 'actions', style: 'margin-top:8px' },
+      el('button', { class: 'button', type: 'button', text: 'إعادة التحليل بالتعديلات', onclick: e => run(e.currentTarget, () => reanalyze(currentOptions(box)), 'حُدّث التحليل').then(renderAnalysis) }),
+      el('button', { class: 'button primary', type: 'button', text: 'اعتماد وتنسيق الملف', onclick: e => run(e.currentTarget, async () => {
+        const saved = await reanalyze(currentOptions(box));
+        return api(`/analyses/${saved.analysis_id}/finalize`, { method: 'POST' });
+      }, 'جُهّز الملف المنسّق').then(r => { renderAnalysis(r); renderLists(); }) }),
+      a.status === 'finalized' ? el('a', { class: 'button', href: `/insurance/documents/${a.output_document_id}/download`, text: 'تنزيل الملف المنسّق' }) : null,
+      a.status === 'finalized' && o.target_insurer_ids.length ? el('button', { class: 'button primary', type: 'button', text: `تجهيز رسائل التسعير (${o.target_insurer_ids.length} شركة)`, onclick: e => run(e.currentTarget, async () => {
+        const done = new Set((await api(`/submissions?request_id=${current.request_id}`)).map(x => x.insurer_id));
+        const ids = o.target_insurer_ids.filter(id => !done.has(id));
+        if (!ids.length) throw new Error('جُهزت رسائل لكل الشركات المختارة مسبقًا.');
+        return api(`/requests/${current.request_id}/submissions`, { method: 'POST', body: { insurer_ids: ids, notes: 'الكشف المنسّق مرفق' } });
+      }, 'جُهزت الرسائل للمراجعة والاعتماد').then(refreshCase) }) : null),
+    a.status === 'finalized' ? el('p', { class: 'muted', text: 'الملف المنسّق يُرفق في رسائل الشركات بدل الكشف الأصلي.' }) : el('p', { class: 'muted', text: 'أي تعديل يعيد التحليل إلى مسودة حتى تعتمده من جديد.' }));
+  document.getElementById('analysis').replaceChildren(box);
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---------- ردود الشركات ----------
+const INBOX_STATUS = { unmatched: ['تحتاج ربط', 'red'], matched: ['مربوطة', ''], quote_created: ['عرض بانتظار التحقق', 'blue'], declined: ['اعتذار', ''],
+  no_quote: ['بدون سعر', ''], failed: ['فشل الاستخراج', 'red'], skipped: ['الاستخراج متوقف', ''] };
+const EXTRACT_LABELS = { premium: 'القسط', coverage_limit: 'حد التغطية', commission_rate: 'العمولة %', deductible: 'التحمل', exclusions: 'الاستثناءات',
+  conditions: 'الشروط', validity_date: 'صالح حتى', insurer_reference: 'مرجع الشركة', questions_for_broker: 'طلبات الشركة', confidence: 'الثقة', notes: 'ملاحظات' };
+let inbox = [], mailId = null;
+const inboxPill = st => { const [l, t] = INBOX_STATUS[st] || [st, '']; return el('span', { class: `pill ${t}`, text: l }); };
+
+async function loadInbox(focus) {
+  const status = document.getElementById('inbox-filter').value;
+  inbox = await api(`/inbound${status ? `?status=${status}` : ''}`);
+  const pending = inbox.filter(m => ['unmatched', 'quote_created', 'failed'].includes(m.status)).length;
+  document.getElementById('inbox-count').textContent = pending ? `(${pending})` : '';
+  document.getElementById('inbox').replaceChildren(...inbox.map(m => el('tr', { class: `clickable${m.inbound_id === mailId ? ' selected' : ''}`, onclick: () => openMail(m.inbound_id) },
+    el('td', {}, el('div', { class: 'strong', text: m.subject || '(بدون موضوع)' }), el('div', { class: 'sub', dir: 'ltr', style: 'text-align:right', text: m.from_address })),
+    el('td', {}, el('div', { text: m.request_number || '—' }), el('div', { class: 'sub', text: m.insurer_name || '' })),
+    el('td', {}, inboxPill(m.status)), el('td', { class: 'muted', text: date(m.received_at || m.created_at) }))));
+  document.getElementById('inbox-empty').hidden = inbox.length > 0;
+  if (focus || mailId) openMail(focus || mailId);
+}
+
+async function openMail(id) {
+  const m = inbox.find(x => x.inbound_id === id);
+  mailId = id;
+  document.getElementById('mail').hidden = !m;
+  document.getElementById('mail-empty').hidden = !!m;
+  if (!m) return;
+  document.querySelectorAll('#inbox tr').forEach((tr, i) => tr.classList.toggle('selected', inbox[i]?.inbound_id === id));
+  document.getElementById('mail-subject').textContent = m.subject || '(بدون موضوع)';
+  document.getElementById('mail-from').textContent = m.from_address;
+  document.getElementById('mail-status').replaceChildren(inboxPill(m.status));
+  const err = document.getElementById('mail-error'); err.hidden = !m.error; err.textContent = m.error || '';
+  document.getElementById('mail-body').textContent = m.body_text;
+  document.getElementById('mail-attachments').replaceChildren(...(m.attachments.length ? m.attachments.map(a => a.skipped
+    ? el('span', { class: 'pill red', text: `${a.name} (${a.skipped})` })
+    : el('a', { class: 'pill blue', target: '_blank', rel: 'noopener', href: `/insurance/inbound/${m.inbound_id}/attachments/${a.index}`, text: a.name })) : [el('span', { class: 'muted', text: 'لا توجد مرفقات' })]));
+  const x = m.extraction;
+  document.getElementById('mail-extraction').replaceChildren(...(x ? [el('div', { class: 'section-title', text: 'ما استخرجه الذكاء الاصطناعي' }),
+    el('dl', { class: 'kv' }, ...Object.entries(EXTRACT_LABELS).filter(([k]) => x[k] != null && x[k] !== '').flatMap(([k, l]) => [el('dt', { text: l }), el('dd', { text: String(x[k]) })]))] : []));
+  const canLink = !m.quote_id;
+  document.getElementById('mail-link').hidden = !canLink;
+  document.getElementById('retry-btn').hidden = !(m.submission_id && !m.quote_id);
+  const caseLink = document.getElementById('mail-case');
+  caseLink.hidden = !m.request_id;
+  caseLink.href = `underwriting.html?request=${m.request_id}`;
+  if (canLink) {
+    const open = requests.filter(r => ['ready_for_quote', 'quote_selected', 'under_review'].includes(r.status));
+    const subs = (await Promise.all(open.map(r => api(`/submissions?request_id=${r.request_id}`).then(list => list.map(sub => ({ sub, r })))))).flat();
+    document.getElementById('link-submission').replaceChildren(el('option', { value: '', text: 'اختر الطلب والشركة' }),
+      ...subs.map(({ sub, r }) => el('option', { value: sub.submission_id, selected: sub.submission_id === m.submission_id, text: `${r.request_number} · ${r.customer_name} · ${insurerName(sub.insurer_id)}` })));
+  }
+}
+document.getElementById('inbox-filter').addEventListener('change', () => loadInbox());
+document.getElementById('link-btn').addEventListener('click', e => {
+  const submissionId = document.getElementById('link-submission').value;
+  if (!submissionId) { notify('اختر الطلب والشركة'); return; }
+  run(e.currentTarget, () => api(`/inbound/${mailId}/link`, { method: 'POST', body: { submission_id: submissionId } }), 'رُبطت الرسالة').then(() => loadInbox());
+});
+document.getElementById('retry-btn').addEventListener('click', e => run(e.currentTarget, () => api(`/inbound/${mailId}/extract`, { method: 'POST' })).then(() => loadInbox()));
+
+// ---------- القوالب ----------
+let templates = [], defaults, editing = null; // editing: {template|null, insurer_id|null}
+let draftInsurers = new Set(); // insurers picked for a new template that isn't saved yet
+const tplForm = document.getElementById('tpl-form');
+const lineSelect = document.getElementById('tpl-line');
+
+async function loadTemplates() { templates = await api(`/templates?category=${lineSelect.value}`); renderTemplateList(); }
+
+function renderTemplateList() {
+  const line = lineSelect.value;
+  const def = templates.find(t => !t.insurer_id);
+  const items = [{ template: def || null, insurer_id: null, label: 'القالب الافتراضي للفرع', note: def ? 'مخصص' : 'النص الأساسي' },
+    ...templates.filter(t => t.insurer_id).map(t => ({ template: t, insurer_id: t.insurer_id, label: insurerName(t.insurer_id), note: t.active ? 'خاص بالشركة' : 'معطّل' })),
+    ...[...draftInsurers].filter(id => !templates.some(t => t.insurer_id === id)).map(id => ({ template: null, insurer_id: id, label: insurerName(id), note: 'جديد — غير محفوظ' }))];
+  if (!editing || !items.some(i => i.insurer_id === editing.insurer_id)) editing = items[0];
+  document.getElementById('tpl-list').replaceChildren(...items.map(item => el('button', { type: 'button', class: item.insurer_id === editing.insurer_id ? 'active' : '',
+    onclick: () => { editing = item; renderTemplateList(); } }, el('span', { text: item.label }), el('span', { class: 'muted', text: item.note }))));
+  const taken = new Set(items.map(i => i.insurer_id));
+  document.getElementById('tpl-new-insurer').replaceChildren(el('option', { value: '', text: 'اختر الشركة' }),
+    ...insurers.filter(i => !taken.has(i.insurer_id)).map(i => el('option', { value: i.insurer_id, text: i.name })));
+  fillEditor(line);
+}
+
+function fillEditor(line) {
+  const t = editing.template;
+  const lineLabel = cat.lineLabel(line);
+  tplForm.name.value = t?.name || (editing.insurer_id ? `${lineLabel} - ${insurerName(editing.insurer_id)}` : `${lineLabel} - افتراضي`);
+  tplForm.subject_template.value = t?.subject_template || defaults.default_subject;
+  tplForm.body_template.value = t?.body_template || defaults.default_body;
+  tplForm.active.checked = t ? t.active : true;
+  document.getElementById('tpl-title').textContent = editing.insurer_id ? `قالب ${insurerName(editing.insurer_id)}` : 'القالب الافتراضي';
+  document.getElementById('tpl-sub').textContent = editing.insurer_id ? `يُستخدم لهذه الشركة فقط في فرع ${lineLabel}` : `يُستخدم لكل شركة ليس لها قالب خاص في فرع ${lineLabel}`;
+  document.getElementById('tpl-state').replaceChildren(el('span', { class: `pill${t ? ' blue' : ''}`, text: t ? 'محفوظ' : 'غير محفوظ بعد' }));
+  document.getElementById('tpl-delete').hidden = !(t && editing.insurer_id);
+  schedulePreview();
+}
+
+let previewTimer;
+function schedulePreview() { clearTimeout(previewTimer); previewTimer = setTimeout(preview, 300); }
+async function preview() {
+  try {
+    const result = await api('/templates/preview', { method: 'POST', body: {
+      subject_template: tplForm.subject_template.value, body_template: tplForm.body_template.value,
+      request_id: document.getElementById('preview-request').value || null, insurer_id: editing.insurer_id || insurers[0]?.insurer_id || null } });
+    document.getElementById('preview-subject').textContent = result.subject;
+    document.getElementById('preview-body').textContent = result.body;
+    const unknown = document.getElementById('preview-unknown');
+    unknown.hidden = !result.unknown_placeholders.length;
+    unknown.textContent = `متغيرات غير معروفة: ${result.unknown_placeholders.map(v => `{${v}}`).join('، ')}`;
+  } catch (error) { showError(error.message); }
+}
+
+let lastField = null;
+tplForm.subject_template.addEventListener('focus', e => { lastField = e.target; });
+tplForm.body_template.addEventListener('focus', e => { lastField = e.target; });
+tplForm.addEventListener('input', schedulePreview);
+document.getElementById('preview-request').addEventListener('change', preview);
+document.getElementById('tpl-reset').addEventListener('click', () => { tplForm.subject_template.value = defaults.default_subject; tplForm.body_template.value = defaults.default_body; schedulePreview(); });
+tplForm.addEventListener('submit', e => {
+  e.preventDefault();
+  const body = { name: tplForm.name.value, subject_template: tplForm.subject_template.value, body_template: tplForm.body_template.value, active: tplForm.active.checked };
+  const t = editing.template;
+  const save = t ? api(`/templates/${t.template_id}`, { method: 'PATCH', body })
+    : api('/templates', { method: 'POST', body: { ...body, category: lineSelect.value, insurer_id: editing.insurer_id } });
+  run(e.submitter, () => save, 'حُفظ القالب').then(saved => { editing = { ...editing, template: saved }; return loadTemplates(); });
+});
+document.getElementById('tpl-delete').addEventListener('click', e => {
+  if (!confirm('حذف القالب الخاص بهذه الشركة؟ ستُستخدم القوالب الافتراضية بدلًا منه.')) return;
+  run(e.currentTarget, () => api(`/templates/${editing.template.template_id}`, { method: 'DELETE' }), 'حُذف القالب').then(() => { editing = null; return loadTemplates(); });
+});
+document.getElementById('tpl-new-insurer').addEventListener('change', e => {
+  if (!e.target.value) return;
+  draftInsurers.add(e.target.value);
+  editing = { template: null, insurer_id: e.target.value };
+  renderTemplateList();
+});
+lineSelect.addEventListener('change', () => { editing = null; draftInsurers = new Set(); loadTemplates(); });
+
+// ---------- التبويبات والتحميل ----------
+function showTab(name, focusMail) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.getElementById('tab-cases').hidden = name !== 'cases';
+  document.getElementById('tab-templates').hidden = name !== 'templates';
+  document.getElementById('tab-inbox').hidden = name !== 'inbox';
+  if (name === 'inbox') loadInbox(focusMail);
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showTab(t.dataset.tab)));
+
+(async () => {
+  try {
+    [cat, insurers, defaults] = await Promise.all([BUD.catalog(), api('/insurers'), api('/template-variables')]);
+    lineSelect.replaceChildren(...cat.lines.map(l => el('option', { value: l.key, text: l.label })));
+    document.getElementById('chips').replaceChildren(...defaults.variables.map(v => el('button', { type: 'button', class: 'chip', title: v.label, text: `{${v.key}}`,
+      onclick: () => { const f = lastField || tplForm.body_template; const at = f.selectionStart ?? f.value.length; f.value = f.value.slice(0, at) + `{${v.key}}` + f.value.slice(f.selectionEnd ?? at); f.focus(); schedulePreview(); } })));
+    await loadRequests();
+    document.getElementById('preview-request').append(...requests.slice(0, 30).map(r => el('option', { value: r.request_id, text: `${r.request_number} · ${r.customer_name}` })));
+    await loadTemplates();
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') === 'templates') showTab('templates');
+    if (params.get('tab') === 'inbox') showTab('inbox');
+    api('/inbound?status=unmatched').then(r => { if (r.length) document.getElementById('inbox-count').textContent = `(${r.length})`; }).catch(() => {});
+    if (params.get('request')) await openCase(params.get('request'));
+  } catch (error) { showError(error.message); }
+})();
+</script>
+</body></html>

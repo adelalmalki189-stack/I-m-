@@ -1,4 +1,4 @@
-"""Async SQLAlchemy engine/session setup for PostgreSQL (docs/DATA_SPEC_V0.1.md).
+"""Async SQLAlchemy engine/session setup for PostgreSQL.
 
 Uses settings.database_url so tests can point this at an in-memory sqlite
 database (via aiosqlite) without touching production wiring.

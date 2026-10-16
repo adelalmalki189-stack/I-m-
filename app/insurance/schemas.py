@@ -1,16 +1,27 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from decimal import Decimal
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 from app.insurance.models import InsurancePolicyStatus, InsuranceRequestStatus, InsuranceSubmissionStatus
 
+CR_PATTERN = r"^[1-7]\d{9}$"  # commercial registration / unified number: 10 digits
+VAT_PATTERN = r"^3\d{13}3$"  # Saudi VAT: 15 digits, starts and ends with 3
+
 
 class CustomerCreateRequest(BaseModel):
-    customer_type: str = Field(default="individual")
+    """BUD serves businesses only: company_name is the business, full_name its representative."""
+
+    customer_type: str = Field(default="business", pattern="^business$")
     full_name: str = Field(..., min_length=2, max_length=200)
-    company_name: str | None = Field(default=None, max_length=200)
+    company_name: str = Field(..., min_length=2, max_length=200)
+    cr_number: str | None = Field(default=None, pattern=CR_PATTERN)
+    vat_number: str | None = Field(default=None, pattern=VAT_PATTERN)
+    contact_title: str | None = Field(default=None, max_length=120)
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=32)
     notes: str | None = None
@@ -23,6 +34,9 @@ class CustomerResponse(BaseModel):
     customer_type: str
     full_name: str
     company_name: str | None = None
+    cr_number: str | None = None
+    vat_number: str | None = None
+    contact_title: str | None = None
     email: str | None = None
     phone: str | None = None
     notes: str | None = None
@@ -31,9 +45,13 @@ class CustomerResponse(BaseModel):
     updated_at: datetime
 
 
+STAFF_ROLE_PATTERN = "^(sales_agent|underwriter|claims_officer|customer_service|manager)$"
+
+
 class SalesEmployeeCreateRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=200)
-    role: str = Field(default="sales_agent", max_length=80)
+    role: str = Field(default="sales_agent", pattern=STAFF_ROLE_PATTERN)
+    password: str | None = None  # omit to create an employee who can't log in yet
     email: EmailStr
     phone: str | None = Field(default=None, max_length=32)
     branch: str | None = Field(default=None, max_length=120)
@@ -52,6 +70,8 @@ class SalesEmployeeResponse(BaseModel):
     branch: str | None = None
     manager_id: str | None = None
     is_active: bool
+    can_login: bool = False
+    last_login_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -60,7 +80,39 @@ class SalesEmployeeResponse(BaseModel):
     def set_sales_agent_id(cls, data):
         if isinstance(data, dict):
             data.setdefault("sales_agent_id", data.get("employee_id"))
+        elif hasattr(data, "password_hash"):  # ORM object
+            data = {
+                **{k: getattr(data, k) for k in cls.model_fields if hasattr(data, k)},
+                "sales_agent_id": data.employee_id,
+                "can_login": bool(data.password_hash),
+            }
         return data
+
+
+class SalesEmployeeUpdateRequest(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=200)
+    role: str | None = Field(default=None, pattern=STAFF_ROLE_PATTERN)
+    phone: str | None = Field(default=None, max_length=32)
+    branch: str | None = Field(default=None, max_length=120)
+    is_active: bool | None = None
+
+
+class PasswordSetRequest(BaseModel):
+    password: str
+
+
+class AuditEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    event_id: str
+    actor_id: str | None = None
+    actor_name: str
+    action: str
+    entity_type: str
+    entity_id: str | None = None
+    details: str | None = None
+    ip_address: str | None = None
+    created_at: datetime
 
 
 class InsuranceRequestCreateRequest(BaseModel):
@@ -100,6 +152,9 @@ class RequestDocumentResponse(BaseModel):
     storage_key: str
     is_verified: bool
     uploaded_by_employee_id: str | None = None
+    claim_id: str | None = None
+    review_status: str = "passed"
+    rejection_reason: str | None = None
     created_at: datetime
 
 
@@ -117,6 +172,11 @@ class InsuranceRequestResponse(BaseModel):
     sales_employee_id: str | None = None
     underwriter_id: str | None = None
     underwriter_status: str | None = None
+    sales_employee_name: str | None = None
+    underwriter_name: str | None = None
+    contact_name: str | None = None
+    contact_mobile: str | None = None
+    contact_title: str | None = None
     preferred_insurer: str | None = None
     preferred_insurers: list[str] = Field(default_factory=list)
     preferred_premium_range: str | None = None
@@ -129,6 +189,12 @@ class InsuranceRequestResponse(BaseModel):
     coverage_amount: str | None = None
     summary: str | None = None
     notes: str | None = None
+    customer_name: str | None = None
+    insurance_type_label: str | None = None
+    product_type_label: str | None = None
+    request_details: dict[str, Any] = Field(default_factory=dict)
+    allowed_transitions: list[str] = Field(default_factory=list)
+    last_status_change_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     documents: list[RequestDocumentResponse] = []
@@ -235,6 +301,7 @@ class InsuranceRequestPreferenceResponse(BaseModel):
             insurers = data.get("preferred_insurers")
             if isinstance(insurers, str):
                 import json
+
                 try:
                     data["preferred_insurers"] = json.loads(insurers)
                 except Exception:
@@ -284,6 +351,14 @@ class InsurerResponse(BaseModel):
     updated_at: datetime
 
 
+class InsurerUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    email: EmailStr | None = None
+    contact_name: str | None = Field(default=None, max_length=200)
+    is_active: bool | None = None
+    notes: str | None = None
+
+
 class InsurerTemplateCreateRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=200)
     category: str = Field(..., min_length=2, max_length=80)
@@ -297,7 +372,7 @@ class InsurerTemplateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     template_id: str
-    insurer_id: str
+    insurer_id: str | None = None
     name: str
     category: str
     subject_template: str
@@ -306,6 +381,31 @@ class InsurerTemplateResponse(BaseModel):
     active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class DefaultTemplateCreateRequest(InsurerTemplateCreateRequest):
+    insurer_id: str | None = None  # None = default template for the category
+
+
+class InsurerTemplateUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=200)
+    subject_template: str | None = Field(default=None, min_length=3)
+    body_template: str | None = Field(default=None, min_length=3)
+    required_attachments: list[str] | None = None
+    active: bool | None = None
+
+
+class TemplatePreviewRequest(BaseModel):
+    subject_template: str
+    body_template: str
+    request_id: str | None = None
+    insurer_id: str | None = None
+
+
+class TemplatePreviewResponse(BaseModel):
+    subject: str
+    body: str
+    unknown_placeholders: list[str]
 
 
 class InsuranceSubmissionCreateRequest(BaseModel):
@@ -328,9 +428,25 @@ class InsuranceSubmissionResponse(BaseModel):
     status: InsuranceSubmissionStatus
     approved_for_send: bool
     sent_at: datetime | None = None
+    delivery_error: str | None = None
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class InsuranceSubmissionUpdateRequest(BaseModel):
+    subject: str | None = Field(default=None, min_length=3, max_length=255)
+    email_body: str | None = Field(default=None, min_length=3)
+    notes: str | None = None
+
+
+class BulkSubmissionCreateRequest(BaseModel):
+    insurer_ids: list[str] = Field(..., min_length=1)
+    notes: str | None = None
+
+
+class SubmissionMarkSentRequest(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
 
 
 class InsuranceQuoteCreateRequest(BaseModel):
@@ -341,12 +457,17 @@ class InsuranceQuoteCreateRequest(BaseModel):
     validity_date: datetime | None = None
     currency: str = Field(default="SAR", max_length=10)
     source_channel: str = Field(default="email", max_length=30)
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=100)  # percent offered in this quote
+    deductible: str | None = Field(default=None, max_length=300)
+    network_class: str | None = Field(default=None, max_length=40)  # medical: the insurer's network class
 
 
 class InsurancePolicyCreateRequest(BaseModel):
     effective_from: datetime | None = None
     effective_to: datetime | None = None
     notes: str | None = None
+    installments: int = 1  # number of equal premium payments: 1, 2, 3, 4, 6 or 12
+    allow_unpaid: bool = False  # issue although the payment request isn't paid (customer on credit)
 
 
 class InsurancePolicyStatusUpdateRequest(BaseModel):
@@ -386,5 +507,87 @@ class InsuranceQuoteResponse(BaseModel):
     validity_date: datetime | None = None
     currency: str
     source_channel: str
+    commission_rate: Decimal | None = None
+    needs_review: bool = False
+    inbound_email_id: str | None = None
+    extraction_notes: str | None = None
+    deductible: str | None = None
+    network_class: str | None = None
+    source_document_id: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class QuoteReviewRequest(BaseModel):
+    """Corrections an underwriter makes while confirming an AI-extracted quote."""
+
+    premium: Decimal | None = Field(default=None, gt=0)
+    coverage_limit: Decimal | None = Field(default=None, ge=0)
+    exclusions: str | None = None
+    conditions: str | None = None
+    validity_date: datetime | None = None
+    commission_rate: Decimal | None = Field(default=None, ge=0, le=100)
+    deductible: str | None = Field(default=None, max_length=300)
+    network_class: str | None = Field(default=None, max_length=40)
+
+
+_NON_DIGITS = re.compile(r"\D")
+
+
+def normalize_saudi_mobile(raw: str) -> str:
+    """Return +9665XXXXXXXX for any common Saudi mobile spelling, else raise ValueError."""
+    digits = _NON_DIGITS.sub("", raw)
+    for prefix in ("00966", "966", "0"):
+        if digits.startswith(prefix):
+            digits = digits[len(prefix) :]
+            break
+    if len(digits) != 9 or not digits.startswith("5"):
+        raise ValueError("رقم الجوال غير صحيح؛ استخدم صيغة 05XXXXXXXX")
+    return f"+966{digits}"
+
+
+class PortalRequestCreate(BaseModel):
+    """A customer's request from the public portal: contact details + risk details in one call."""
+
+    customer_type: str = Field(default="business", pattern="^business$")  # businesses only
+    company_name: str = Field(..., min_length=2, max_length=200)
+    cr_number: str = Field(..., pattern=CR_PATTERN)
+    vat_number: str | None = Field(default=None, pattern=VAT_PATTERN)
+    full_name: str = Field(..., min_length=2, max_length=200)  # the person filing for the business
+    contact_title: str | None = Field(default=None, max_length=120)
+    mobile: str
+    email: EmailStr | None = None
+    insurance_type: str = Field(..., max_length=80)
+    product_type: str = Field(..., max_length=80)
+    details: dict[str, Any] = Field(default_factory=dict)
+    coverage_amount: str | None = Field(default=None, max_length=50)
+    customer_priority: str | None = Field(default=None, max_length=30)
+    notes: str | None = Field(default=None, max_length=2000)
+    consent: bool
+
+    @field_validator("mobile")
+    @classmethod
+    def _mobile(cls, value: str) -> str:
+        return normalize_saudi_mobile(value)
+
+    @field_validator("consent")
+    @classmethod
+    def _consent(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("الموافقة على استخدام البيانات مطلوبة")
+        return value
+
+
+class PortalRequestResponse(BaseModel):
+    request_id: str
+    request_number: str
+    status: InsuranceRequestStatus
+    upload_token: str  # lets the portal attach documents to this request for a limited time
+
+
+class PortalDocumentResponse(BaseModel):
+    document_id: str
+    file_name: str
+    document_type: str = "customer_upload"
+    review_status: str = "passed"
+    findings: list[str] = []

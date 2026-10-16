@@ -31,7 +31,8 @@ async def test_create_request_and_update_status(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Sara Ali",
                 "email": "sara@test.example",
             },
@@ -69,6 +70,7 @@ async def test_upload_document_to_request(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
+                "company_name": "شركة اختبار",
                 "customer_type": "business",
                 "full_name": "Al Noor Group",
                 "email": "admin@alnoor.example",

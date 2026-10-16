@@ -1,0 +1,98 @@
+# Production / staging stack for BUD. Run on the server from this directory:
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+# deploy.sh does this for you (pull → migrate → start → health check → rollback on failure).
+
+x-app: &app
+  image: ${BUD_IMAGE:-ghcr.io/OWNER/bud}:${BUD_VERSION:-latest}
+  restart: unless-stopped
+  env_file: .env
+  environment:
+    # Only Caddy can reach the app (its port isn't published), so trust its X-Forwarded-For.
+    FORWARDED_ALLOW_IPS: "*"
+    SESSION_COOKIE_SECURE: "true"
+  volumes:
+    - uploads:/app/app/static/uploads
+  logging: &logging
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app: { condition: service_healthy }
+    logging: *logging
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bud}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-bud}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bud}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  app:
+    <<: *app
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  worker:
+    <<: *app
+    command: ["python", "-m", "app.automation.worker"]
+    depends_on:
+      db: { condition: service_healthy }
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-bud}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-bud}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_HOUR_UTC: ${BACKUP_HOUR_UTC:-0}
+    volumes:
+      - ./backup.sh:/usr/local/bin/backup.sh:ro
+      - backups:/backups
+      - uploads:/uploads:ro
+    entrypoint: ["sh", "/usr/local/bin/backup.sh", "--daily"]
+    depends_on:
+      db: { condition: service_healthy }
+    logging: *logging
+
+volumes:
+  db_data:
+  uploads:
+  backups:
+  caddy_data:
+  caddy_config:

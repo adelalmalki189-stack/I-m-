@@ -10,7 +10,8 @@ async def test_create_insurer_template_and_submission_requires_approval(db_sessi
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Noura Ahmed",
                 "email": "noura@example.com",
             },
@@ -69,9 +70,18 @@ async def test_create_insurer_template_and_submission_requires_approval(db_sessi
         assert approval_response.status_code == 200
         assert approval_response.json()["status"] == "approved"
 
+        # Email delivery is disabled by default: sending must refuse rather than pretend.
         send_response = client.post(f"/insurance/submissions/{submission['submission_id']}/send")
-        assert send_response.status_code == 200
-        assert send_response.json()["status"] == "sent"
+        assert send_response.status_code == 409
+        assert send_response.json()["detail"]["error_code"] == "EMAIL_DELIVERY_DISABLED"
+        assert client.get(f"/insurance/submissions/{submission['submission_id']}").json()["status"] == "approved"
+
+        marked = client.post(
+            f"/insurance/submissions/{submission['submission_id']}/mark-sent",
+            json={"note": "Sent from the underwriter's mailbox"},
+        )
+        assert marked.status_code == 200
+        assert marked.json()["status"] == "sent"
 
 
 async def test_sales_employee_request_routes_to_underwriting(db_session):
@@ -92,7 +102,8 @@ async def test_sales_employee_request_routes_to_underwriting(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Mohammed Tariq",
                 "email": "mohammed@example.com",
                 "phone": "+966500022222",
@@ -150,7 +161,8 @@ async def test_quote_capture_and_best_quote_selection(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Aisha Rahman",
                 "email": "aisha@example.com",
             },
@@ -234,7 +246,8 @@ async def test_select_quote_for_request_and_store_selection(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Layla Hassan",
                 "email": "layla@example.com",
             },
@@ -292,7 +305,8 @@ async def test_issue_policy_after_selected_quote(db_session):
         customer_response = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Zayd Ali",
                 "email": "zayd@example.com",
             },
@@ -366,7 +380,7 @@ async def test_send_submission_uses_email_and_pdf_attachment(db_session, monkeyp
     captured = {}
 
     class FakeSMTP:
-        def __init__(self, host, port):
+        def __init__(self, host, port, timeout=None):
             self.host = host
             self.port = port
             self.sent = None
@@ -390,7 +404,7 @@ async def test_send_submission_uses_email_and_pdf_attachment(db_session, monkeyp
         def quit(self):
             pass
 
-    monkeypatch.setattr("app.api.routes.insurance.smtplib.SMTP", FakeSMTP)
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
     monkeypatch.setattr("app.api.routes.insurance.settings.smtp_host", "smtp.example.com")
     monkeypatch.setattr("app.api.routes.insurance.settings.smtp_port", 587)
     monkeypatch.setattr("app.api.routes.insurance.settings.smtp_username", "mailer@example.com")
@@ -402,7 +416,8 @@ async def test_send_submission_uses_email_and_pdf_attachment(db_session, monkeyp
         customer = client.post(
             "/insurance/customers",
             json={
-                "customer_type": "individual",
+                "customer_type": "business",
+                "company_name": "شركة اختبار",
                 "full_name": "Samira Noor",
                 "email": "samira@example.com",
             },

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0A0A0B">
+<title>BUD | تسجيل الدخول</title>
+<link rel="stylesheet" href="bud.css">
+<style>
+body{display:grid;min-height:100vh;place-items:center;padding:16px;background:var(--black)}
+.card{width:min(380px,100%);padding:26px 24px;border-radius:10px;background:var(--white)}
+.brand{display:flex;align-items:center;gap:11px;margin-bottom:22px}
+.brand-icon{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;background:var(--black);color:var(--white);font-size:12px;font-weight:700;letter-spacing:1px}
+.brand-name{font-size:19px;font-weight:700}.brand-sub{color:var(--muted);font-size:10px}
+h1{margin:0 0 4px;font-size:17px}.hint{margin:0 0 18px;color:var(--muted);font-size:10px}
+.button{width:100%;min-height:40px;font-size:12px}
+.foot{margin-top:16px;text-align:center;font-size:10px}.foot a{color:var(--muted)}
+.dev{margin-bottom:20px;padding:14px;border:1px dashed var(--muted);border-radius:8px}
+.dev h2{margin:0 0 10px;font-size:13px}.dev .hint{margin-bottom:12px}
+.or{margin:0 0 14px;text-align:center;color:var(--muted);font-size:10px}
+</style>
+</head>
+<body class="ui">
+<main class="card">
+<div class="brand"><div class="brand-icon">BUD</div><div><div class="brand-name">بُعد</div><div class="brand-sub">وساطة تأمينية رقمية</div></div></div>
+<section id="dev" class="dev" hidden>
+<h2>وضع الاختبار</h2><p class="hint">اختر القسم والموظف وادخل مباشرة بدون كلمة مرور.</p>
+<label class="field"><span>القسم</span><select id="dev-role"></select></label>
+<label class="field"><span>الموظف</span><select id="dev-user"></select></label>
+<button class="button primary" type="button" id="dev-enter">دخول</button>
+</section>
+<p class="or" id="dev-or" hidden>أو بالبريد وكلمة المرور</p>
+<h1>دخول فريق العمل</h1><p class="hint">استخدم البريد وكلمة المرور التي أعطاك إياها مدير النظام.</p>
+<div id="error" class="notice error" hidden></div>
+<form id="form">
+<label class="field"><span>البريد الإلكتروني</span><input name="email" type="email" required autocomplete="username" dir="ltr" autofocus></label>
+<label class="field"><span>كلمة المرور</span><input name="password" type="password" required autocomplete="current-password" dir="ltr"></label>
+<button class="button primary" type="submit">دخول</button>
+</form>
+<div class="foot"><a href="portal.html">أنت عميل؟ اطلب تأمينك من هنا</a></div>
+</main>
+<script>
+const MESSAGES = {
+  INVALID_CREDENTIALS: 'البريد أو كلمة المرور غير صحيحة.',
+  TOO_MANY_ATTEMPTS: 'محاولات كثيرة غير ناجحة. حاول بعد ربع ساعة.',
+};
+const form = document.getElementById('form');
+// Only allow returning to a page of this dashboard (no open redirect).
+const next = new URLSearchParams(location.search).get('next');
+const target = next && /^[a-z]+\.html(\?[\w=&%-]*)?$/.test(next) ? next : 'index.html';
+
+form.addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = form.querySelector('button');
+  const box = document.getElementById('error');
+  button.disabled = true;
+  try {
+    const response = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: form.email.value.trim(), password: form.password.value }) });
+    if (response.ok) { location.replace(target); return; }
+    const data = await response.json().catch(() => null);
+    box.textContent = MESSAGES[data?.detail?.error_code] || 'تعذر تسجيل الدخول. تأكد من البيانات.';
+  } catch { box.textContent = 'تعذر الوصول إلى الخادم.'; }
+  box.hidden = false;
+  button.disabled = false;
+  form.password.select();
+});
+fetch('/auth/me').then(r => { if (r.ok) location.replace(target); });
+
+// Test mode: the server only answers when DEV_LOGIN_ENABLED is on outside production.
+fetch('/auth/dev-login').then(r => r.ok ? r.json() : null).then(staff => {
+  if (!staff?.length) return;
+  const roleSel = document.getElementById('dev-role'), userSel = document.getElementById('dev-user');
+  const roles = [...new Map(staff.map(s => [s.role, s.role_label])).entries()];
+  roleSel.replaceChildren(...roles.map(([value, label]) => new Option(label, value)));
+  const fill = () => userSel.replaceChildren(
+    ...staff.filter(s => s.role === roleSel.value).map(s => new Option(`${s.full_name} — ${s.email}`, s.employee_id)));
+  roleSel.addEventListener('change', fill);
+  fill();
+  document.getElementById('dev-enter').addEventListener('click', async () => {
+    const box = document.getElementById('error');
+    const response = await fetch('/auth/dev-login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employee_id: userSel.value }) }).catch(() => null);
+    if (response?.ok) { location.replace(target); return; }
+    box.textContent = 'تعذر الدخول بهذا الموظف.';
+    box.hidden = false;
+  });
+  document.getElementById('dev').hidden = document.getElementById('dev-or').hidden = false;
+});
+</script>
+</body></html>
